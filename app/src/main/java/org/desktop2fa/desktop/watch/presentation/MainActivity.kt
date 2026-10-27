@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +35,7 @@ import androidx.wear.compose.material3.Text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.desktop2fa.desktop.watch.model.VaultData
 import org.desktop2fa.desktop.watch.vault.PasswordStrengthValidator
 import org.desktop2fa.desktop.watch.vault.Vault
 import org.desktop2fa.desktop.watch.vault.VaultSecurityManager
@@ -53,30 +55,42 @@ class MainActivity : ComponentActivity() {
             var successMessage by remember { mutableStateOf<String?>(null) }
             var passwordInput by remember { mutableStateOf("") }
             var saveToKeystore by remember { mutableStateOf(true) }
-            var isLoading by remember { mutableStateOf(false) }
+            var isLoading by remember { mutableStateOf(true) }
 
             // Add Account inputs
             var issuerInput by remember { mutableStateOf("") }
             var accountNameInput by remember { mutableStateOf("") }
             var secretInput by remember { mutableStateOf("") }
 
-            val vaultExists = remember { vaultFile.exists() }
-            var currentScreen by remember {
-                mutableStateOf(
-                    if (!vaultExists) Screen.SETUP else {
-                        val cachedPass = VaultSecurityManager.getPassword(context)
+            var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
+
+            // Asynchronous startup check off main thread
+            LaunchedEffect(Unit) {
+                coroutineScope.launch(Dispatchers.IO) {
+                    val vaultExists = vaultFile.exists()
+                    val cachedPass = if (vaultExists) VaultSecurityManager.getPassword(context) else null
+                    var loadedVault: Vault? = null
+                    var nextScreen = Screen.SETUP
+
+                    if (vaultExists) {
                         if (cachedPass != null) {
                             try {
-                                activeVault = Vault.load(vaultFile, cachedPass)
-                                Screen.MAIN
+                                loadedVault = Vault.load(vaultFile, cachedPass)
+                                nextScreen = Screen.MAIN
                             } catch (_: Exception) {
-                                Screen.UNLOCK
+                                nextScreen = Screen.UNLOCK
                             }
                         } else {
-                            Screen.UNLOCK
+                            nextScreen = Screen.UNLOCK
                         }
                     }
-                )
+
+                    withContext(Dispatchers.Main) {
+                        activeVault = loadedVault
+                        currentScreen = nextScreen
+                        isLoading = false
+                    }
+                }
             }
 
             val scrollState = rememberScrollState()
@@ -90,10 +104,16 @@ class MainActivity : ComponentActivity() {
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (isLoading) {
-                    Text(text = "Processing...", color = Color(0xFF3B82F6))
+                if (isLoading || currentScreen == Screen.SPLASH) {
+                    Text(text = "desktop-2fa", color = Color.White)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Loading Secure Vault...", color = Color(0xFF3B82F6))
                 } else {
                     when (currentScreen) {
+                        Screen.SPLASH -> {
+                            // Handled above
+                        }
+
                         Screen.SETUP -> {
                             Text(text = "Create Vault", color = Color.White)
                             Spacer(modifier = Modifier.height(8.dp))
@@ -344,13 +364,20 @@ class MainActivity : ComponentActivity() {
                                     isLoading = true
                                     coroutineScope.launch(Dispatchers.IO) {
                                         try {
-                                            vault.addEntry(
+                                            // Create a safe copy of vault data to mutate and persist
+                                            val tempVault = Vault(
+                                                VaultData(
+                                                    version = vault.data.version,
+                                                    entries = vault.data.entries.toMutableList()
+                                                )
+                                            )
+                                            tempVault.addEntry(
                                                 name = accountNameInput.trim(),
                                                 issuer = issuerInput.trim(),
                                                 secret = cleanSecret
                                             )
                                             val currentPass = VaultSecurityManager.getPassword(context) ?: passwordInput
-                                            vault.save(vaultFile, currentPass)
+                                            tempVault.save(vaultFile, currentPass)
                                             val reloaded = Vault.load(vaultFile, currentPass)
                                             withContext(Dispatchers.Main) {
                                                 activeVault = reloaded
@@ -379,5 +406,5 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SETUP, UNLOCK, MAIN, ADD_ACCOUNT
+    SPLASH, SETUP, UNLOCK, MAIN, ADD_ACCOUNT
 }
