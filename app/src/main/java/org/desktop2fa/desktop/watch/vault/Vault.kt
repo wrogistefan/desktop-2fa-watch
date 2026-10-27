@@ -48,7 +48,9 @@ class Vault(val data: VaultData = VaultData()) {
         validatePassword(password)
 
         try {
-            file.parentFile?.mkdirs()
+            val absFile = file.absoluteFile
+            val parentDir = absFile.parentFile ?: File(".")
+            parentDir.mkdirs()
 
             val header = VAULT_MAGIC + VAULT_VERSION
             val salt = CryptoUtils.generateSalt(16)
@@ -63,7 +65,7 @@ class Vault(val data: VaultData = VaultData()) {
                 throw VaultIOException("Vault content exceeds maximum supported size of $MAX_VAULT_SIZE bytes")
             }
 
-            val tempFile = File.createTempFile(".vault.", ".tmp", file.parentFile)
+            val tempFile = File.createTempFile(".vault.", ".tmp", parentDir)
             try {
                 FileOutputStream(tempFile).use { fos ->
                     fos.write(totalBytes)
@@ -71,19 +73,35 @@ class Vault(val data: VaultData = VaultData()) {
                     fos.fd.sync()
                 }
 
+                val backupFile = File(parentDir, "${absFile.name}.bak")
+                if (absFile.exists()) {
+                    absFile.copyTo(backupFile, overwrite = true)
+                }
+
                 try {
-                    Files.move(
-                        tempFile.toPath(),
-                        file.toPath(),
-                        StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.ATOMIC_MOVE
-                    )
-                } catch (e: Exception) {
-                    Files.move(
-                        tempFile.toPath(),
-                        file.toPath(),
-                        StandardCopyOption.REPLACE_EXISTING
-                    )
+                    try {
+                        Files.move(
+                            tempFile.toPath(),
+                            absFile.toPath(),
+                            StandardCopyOption.REPLACE_EXISTING,
+                            StandardCopyOption.ATOMIC_MOVE
+                        )
+                    } catch (_: Exception) {
+                        Files.move(
+                            tempFile.toPath(),
+                            absFile.toPath(),
+                            StandardCopyOption.REPLACE_EXISTING
+                        )
+                    }
+                    if (backupFile.exists()) {
+                        backupFile.delete()
+                    }
+                } catch (moveEx: Exception) {
+                    if (backupFile.exists()) {
+                        backupFile.copyTo(absFile, overwrite = true)
+                        backupFile.delete()
+                    }
+                    throw moveEx
                 }
             } finally {
                 if (tempFile.exists()) {
@@ -115,17 +133,18 @@ class Vault(val data: VaultData = VaultData()) {
         fun load(file: File, password: String): Vault {
             validatePassword(password)
 
-            if (!file.exists()) {
+            val absFile = file.absoluteFile
+            if (!absFile.exists()) {
                 throw VaultIOException("Vault file not found")
             }
 
-            if (file.length() > MAX_VAULT_SIZE) {
+            if (absFile.length() > MAX_VAULT_SIZE) {
                 throw UnsupportedFormatException("Vault file exceeds maximum supported size")
             }
 
             val blob: ByteArray
             try {
-                blob = file.readBytes()
+                blob = absFile.readBytes()
             } catch (e: IOException) {
                 throw VaultIOException("Failed to read vault file: ${e.message}", e)
             }
@@ -154,8 +173,8 @@ class Vault(val data: VaultData = VaultData()) {
             val decryptedJsonBytes: ByteArray
             try {
                 decryptedJsonBytes = CryptoUtils.decrypt(key, encrypted)
-            } catch (e: Exception) {
-                throw InvalidPasswordException("Invalid password or corrupted vault", e)
+            } catch (ex: Exception) {
+                throw InvalidPasswordException("Invalid password or corrupted vault", ex)
             }
 
             val rawJsonString = String(decryptedJsonBytes, Charsets.UTF_8)
