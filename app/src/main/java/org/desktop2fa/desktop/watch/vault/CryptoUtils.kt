@@ -50,11 +50,11 @@ object CryptoUtils {
 
     /**
      * Decrypts data using AES-256-GCM.
-     * Blob format: 12-byte nonce + ciphertext + 16-byte authentication tag.
+     * Blob format: 12-byte nonce + ciphertext + 16-byte authentication tag (min 28 bytes).
      */
     fun decrypt(key: ByteArray, blob: ByteArray): ByteArray {
-        if (blob.size < 12) {
-            throw IllegalArgumentException("Encrypted blob is too short")
+        if (blob.size < 12 + 16) {
+            throw IllegalArgumentException("Encrypted blob is too short (minimum 28 bytes required)")
         }
         val nonce = blob.copyOfRange(0, 12)
         val ciphertext = blob.copyOfRange(12, blob.size)

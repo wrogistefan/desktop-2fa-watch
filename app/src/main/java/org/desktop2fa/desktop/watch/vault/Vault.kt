@@ -7,6 +7,8 @@ import org.desktop2fa.desktop.watch.model.VaultData
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 class Vault(val data: VaultData = VaultData()) {
 
@@ -69,21 +71,19 @@ class Vault(val data: VaultData = VaultData()) {
                     fos.fd.sync()
                 }
 
-                if (!tempFile.renameTo(file)) {
-                    val backupFile = File(file.parentFile, "${file.name}.bak")
-                    if (file.exists()) {
-                        file.copyTo(backupFile, overwrite = true)
-                    }
-                    try {
-                        tempFile.copyTo(file, overwrite = true)
-                        backupFile.delete()
-                    } catch (copyErr: Exception) {
-                        if (backupFile.exists()) {
-                            backupFile.copyTo(file, overwrite = true)
-                            backupFile.delete()
-                        }
-                        throw copyErr
-                    }
+                try {
+                    Files.move(
+                        tempFile.toPath(),
+                        file.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE
+                    )
+                } catch (e: Exception) {
+                    Files.move(
+                        tempFile.toPath(),
+                        file.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING
+                    )
                 }
             } finally {
                 if (tempFile.exists()) {
@@ -119,17 +119,18 @@ class Vault(val data: VaultData = VaultData()) {
                 throw VaultIOException("Vault file not found")
             }
 
+            if (file.length() > MAX_VAULT_SIZE) {
+                throw UnsupportedFormatException("Vault file exceeds maximum supported size")
+            }
+
             val blob: ByteArray
             try {
                 blob = file.readBytes()
-                if (blob.size > MAX_VAULT_SIZE) {
-                    throw UnsupportedFormatException("Vault file exceeds maximum supported size")
-                }
             } catch (e: IOException) {
                 throw VaultIOException("Failed to read vault file: ${e.message}", e)
             }
 
-            if (blob.size < HEADER_LEN + 16) {
+            if (blob.size < HEADER_LEN + 16 + 12 + 16) {
                 throw UnsupportedFormatException("Vault file is too short or invalid format")
             }
 
