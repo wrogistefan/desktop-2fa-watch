@@ -1,5 +1,6 @@
 package org.desktop2fa.desktop.watch.vault
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -12,6 +13,17 @@ object VaultSecurityManager {
     private const val KEY_VAULT_PASSWORD = "vault_password"
 
     private fun getPreferences(context: Context): SharedPreferences? {
+        return createEncryptedPreferences(context) ?: run {
+            try {
+                context.deleteSharedPreferences(PREF_NAME)
+                createEncryptedPreferences(context)
+            } catch (_: Throwable) {
+                null
+            }
+        }
+    }
+
+    private fun createEncryptedPreferences(context: Context): SharedPreferences? {
         return try {
             val masterKey = MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -25,29 +37,24 @@ object VaultSecurityManager {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (_: GeneralSecurityException) {
-            fallbackPreferences(context)
+            null
         } catch (_: IOException) {
-            fallbackPreferences(context)
+            null
         } catch (_: SecurityException) {
-            fallbackPreferences(context)
-        }
-    }
-
-    private fun fallbackPreferences(context: Context): SharedPreferences? {
-        return try {
-            context.getSharedPreferences(PREF_NAME + "_fallback", Context.MODE_PRIVATE)
-        } catch (_: Throwable) {
+            null
+        } catch (_: Exception) {
             null
         }
     }
 
-    fun savePassword(context: Context, password: String) {
-        if (password.isBlank()) return
-        val prefs = getPreferences(context) ?: return
-        try {
-            prefs.edit().putString(KEY_VAULT_PASSWORD, password).apply()
+    @SuppressLint("ApplySharedPref")
+    fun savePassword(context: Context, password: String): Boolean {
+        if (password.isBlank()) return false
+        val prefs = getPreferences(context) ?: return false
+        return try {
+            prefs.edit().putString(KEY_VAULT_PASSWORD, password).commit()
         } catch (_: Throwable) {
-            // Ignore write failure
+            false
         }
     }
 
@@ -61,15 +68,25 @@ object VaultSecurityManager {
             null
         } catch (_: ClassCastException) {
             null
+        } catch (_: Throwable) {
+            null
         }
     }
 
-    fun clearPassword(context: Context) {
-        val prefs = getPreferences(context) ?: return
+    @SuppressLint("ApplySharedPref")
+    fun clearPassword(context: Context): Boolean {
         try {
-            prefs.edit().remove(KEY_VAULT_PASSWORD).apply()
+            context.deleteSharedPreferences("desktop_2fa_fallback_prefs")
+            context.deleteSharedPreferences("desktop_2fa_secure_prefs_fallback")
         } catch (_: Throwable) {
             // Ignore
+        }
+
+        val prefs = getPreferences(context) ?: return true
+        return try {
+            prefs.edit().remove(KEY_VAULT_PASSWORD).commit()
+        } catch (_: Throwable) {
+            false
         }
     }
 
