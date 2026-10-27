@@ -1,5 +1,6 @@
 package org.desktop2fa.desktop.watch.vault
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -9,10 +10,9 @@ import java.security.GeneralSecurityException
 
 object VaultSecurityManager {
     private const val PREF_NAME = "desktop_2fa_secure_prefs"
-    private const val FALLBACK_PREF_NAME = "desktop_2fa_fallback_prefs"
     private const val KEY_VAULT_PASSWORD = "vault_password"
 
-    private fun getEncryptedPreferences(context: Context): SharedPreferences? {
+    private fun getPreferences(context: Context): SharedPreferences? {
         return try {
             val masterKey = MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -34,73 +34,37 @@ object VaultSecurityManager {
         }
     }
 
-    private fun getFallbackPreferences(context: Context): SharedPreferences? {
+    @SuppressLint("ApplySharedPref")
+    fun savePassword(context: Context, password: String): Boolean {
+        if (password.isBlank()) return false
+        val prefs = getPreferences(context) ?: return false
         return try {
-            context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putString(KEY_VAULT_PASSWORD, password).commit()
         } catch (_: Throwable) {
-            null
-        }
-    }
-
-    fun savePassword(context: Context, password: String) {
-        if (password.isBlank()) return
-        val encryptedPrefs = getEncryptedPreferences(context)
-        if (encryptedPrefs != null) {
-            try {
-                encryptedPrefs.edit().putString(KEY_VAULT_PASSWORD, password).apply()
-                // Clear fallback if encrypted store works
-                getFallbackPreferences(context)?.edit()?.remove(KEY_VAULT_PASSWORD)?.apply()
-                return
-            } catch (_: Throwable) {
-                // If encrypted store write fails, fallback below
-            }
-        }
-
-        // Fallback store
-        try {
-            getFallbackPreferences(context)?.edit()?.putString(KEY_VAULT_PASSWORD, password)?.apply()
-        } catch (_: Throwable) {
-            // Ignore
+            false
         }
     }
 
     fun getPassword(context: Context): String? {
-        val encryptedPrefs = getEncryptedPreferences(context)
-        if (encryptedPrefs != null) {
-            val pass = try {
-                encryptedPrefs.getString(KEY_VAULT_PASSWORD, null)
-            } catch (_: GeneralSecurityException) {
-                null
-            } catch (_: SecurityException) {
-                null
-            } catch (_: ClassCastException) {
-                null
-            }
-            if (!pass.isNullOrEmpty()) return pass
-        }
-
-        // Fallback store
-        val fallbackPrefs = getFallbackPreferences(context) ?: return null
+        val prefs = getPreferences(context) ?: return null
         return try {
-            fallbackPrefs.getString(KEY_VAULT_PASSWORD, null)
-        } catch (_: Throwable) {
+            prefs.getString(KEY_VAULT_PASSWORD, null)
+        } catch (_: GeneralSecurityException) {
+            null
+        } catch (_: SecurityException) {
+            null
+        } catch (_: ClassCastException) {
             null
         }
     }
 
-    fun clearPassword(context: Context) {
-        // Clear from encrypted store
-        try {
-            getEncryptedPreferences(context)?.edit()?.remove(KEY_VAULT_PASSWORD)?.apply()
+    @SuppressLint("ApplySharedPref")
+    fun clearPassword(context: Context): Boolean {
+        val prefs = getPreferences(context) ?: return true
+        return try {
+            prefs.edit().remove(KEY_VAULT_PASSWORD).commit()
         } catch (_: Throwable) {
-            // Ignore
-        }
-
-        // Clear from fallback store
-        try {
-            getFallbackPreferences(context)?.edit()?.remove(KEY_VAULT_PASSWORD)?.apply()
-        } catch (_: Throwable) {
-            // Ignore
+            false
         }
     }
 
