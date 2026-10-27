@@ -25,8 +25,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.Text
+import org.desktop2fa.desktop.watch.vault.CorruptedVaultException
+import org.desktop2fa.desktop.watch.vault.InvalidPasswordException
 import org.desktop2fa.desktop.watch.vault.PasswordStrengthValidator
+import org.desktop2fa.desktop.watch.vault.UnsupportedFormatException
 import org.desktop2fa.desktop.watch.vault.Vault
+import org.desktop2fa.desktop.watch.vault.VaultIOException
 import org.desktop2fa.desktop.watch.vault.VaultSecurityManager
 import java.io.File
 
@@ -58,7 +62,13 @@ class MainActivity : ComponentActivity() {
                             try {
                                 activeVault = Vault.load(vaultFile, cachedPass)
                                 Screen.MAIN
-                            } catch (_: Exception) {
+                            } catch (_: InvalidPasswordException) {
+                                Screen.UNLOCK
+                            } catch (_: CorruptedVaultException) {
+                                Screen.UNLOCK
+                            } catch (_: UnsupportedFormatException) {
+                                Screen.UNLOCK
+                            } catch (_: VaultIOException) {
                                 Screen.UNLOCK
                             }
                         } else {
@@ -115,8 +125,10 @@ class MainActivity : ComponentActivity() {
                                         activeVault = newVault
                                         currentScreen = Screen.MAIN
                                         errorMessage = null
-                                    } catch (e: Exception) {
+                                    } catch (e: VaultIOException) {
                                         errorMessage = "Failed to create vault: ${e.message}"
+                                    } catch (e: IllegalArgumentException) {
+                                        errorMessage = "Invalid input: ${e.message}"
                                     }
                                 } else {
                                     errorMessage = res.feedback
@@ -158,8 +170,14 @@ class MainActivity : ComponentActivity() {
                                     activeVault = loaded
                                     currentScreen = Screen.MAIN
                                     errorMessage = null
-                                } catch (_: Exception) {
+                                } catch (_: InvalidPasswordException) {
                                     errorMessage = "Invalid password"
+                                } catch (_: CorruptedVaultException) {
+                                    errorMessage = "Vault is corrupted"
+                                } catch (_: UnsupportedFormatException) {
+                                    errorMessage = "Unsupported vault format"
+                                } catch (_: VaultIOException) {
+                                    errorMessage = "IO error reading vault"
                                 }
                             }
                         ) {
@@ -270,8 +288,10 @@ class MainActivity : ComponentActivity() {
                                     successMessage = "Account added successfully!"
                                     errorMessage = null
                                     currentScreen = Screen.MAIN
-                                } catch (e: Exception) {
+                                } catch (e: IllegalArgumentException) {
                                     errorMessage = e.message ?: "Failed to add account"
+                                } catch (e: VaultIOException) {
+                                    errorMessage = e.message ?: "IO error saving vault"
                                 }
                             }
                         ) {
