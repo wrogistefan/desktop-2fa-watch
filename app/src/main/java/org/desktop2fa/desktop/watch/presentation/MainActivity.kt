@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -27,8 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -36,12 +35,14 @@ import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.Text
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.desktop2fa.desktop.watch.model.VaultData
 import org.desktop2fa.desktop.watch.vault.CorruptedVaultException
 import org.desktop2fa.desktop.watch.vault.InvalidPasswordException
 import org.desktop2fa.desktop.watch.vault.PasswordStrengthValidator
+import org.desktop2fa.desktop.watch.vault.TotpGenerator
 import org.desktop2fa.desktop.watch.vault.UnsupportedFormatException
 import org.desktop2fa.desktop.watch.vault.Vault
 import org.desktop2fa.desktop.watch.vault.VaultIOException
@@ -56,8 +57,6 @@ class MainActivity : ComponentActivity() {
             val context = applicationContext
             val vaultFile = remember { File(context.filesDir, "vault.d2fa") }
             val coroutineScope = rememberCoroutineScope()
-            val keyboardController = LocalSoftwareKeyboardController.current
-            val focusManager = LocalFocusManager.current
 
             var activeVault by remember { mutableStateOf<Vault?>(null) }
             var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -106,13 +105,11 @@ class MainActivity : ComponentActivity() {
 
             // Helper action for submit
             val handleSetup = {
-                keyboardController?.hide()
-                focusManager.clearFocus()
                 if (passwordInput.isBlank()) {
                     errorMessage = "Password cannot be empty"
                 } else {
                     val res = PasswordStrengthValidator.evaluate(passwordInput)
-                    if (res.score >= 2 && res.isValid) {
+                    if (res.score >= 3 && res.isValid) {
                         isLoading = true
                         coroutineScope.launch(Dispatchers.IO) {
                             try {
@@ -143,8 +140,6 @@ class MainActivity : ComponentActivity() {
             }
 
             val handleUnlock = {
-                keyboardController?.hide()
-                focusManager.clearFocus()
                 if (passwordInput.isBlank()) {
                     errorMessage = "Password cannot be empty"
                 } else {
@@ -312,12 +307,47 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Screen.MAIN -> {
+                            var currentTime by remember { mutableStateOf(System.currentTimeMillis() / 1000) }
+                            LaunchedEffect(Unit) {
+                                while (true) {
+                                    delay(1000L)
+                                    currentTime = System.currentTimeMillis() / 1000
+                                }
+                            }
+
                             Text(text = "desktop-2fa", color = Color.White)
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Entries: ${activeVault?.entries?.size ?: 0}",
-                                color = Color(0xFF3B82F6)
-                            )
+
+                            val entries = activeVault?.entries ?: emptyList()
+                            if (entries.isEmpty()) {
+                                Text(text = "No accounts", color = Color(0xFF9CA3AF))
+                            } else {
+                                entries.forEach { entry ->
+                                    val code = TotpGenerator.generateTotp(
+                                        secret = entry.secret,
+                                        timeSeconds = currentTime,
+                                        period = entry.period,
+                                        digits = entry.digits,
+                                        algorithm = entry.algorithm
+                                    )
+                                    val secondsRemaining = entry.period - (currentTime % entry.period)
+
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp)
+                                            .background(Color(0xFF1E293B))
+                                            .padding(8.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(text = entry.issuer ?: "Service", color = Color(0xFF3B82F6))
+                                        Text(text = entry.accountName ?: "", color = Color(0xFF9CA3AF))
+                                        Text(text = code, color = Color.White)
+                                        Text(text = "${secondsRemaining}s", color = Color(0xFF9CA3AF))
+                                    }
+                                }
+                            }
+
                             if (successMessage != null) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(text = successMessage!!, color = Color(0xFF10B981))
@@ -335,6 +365,16 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 Text("Add Account")
                             }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Button(
+                                onClick = {
+                                    VaultSecurityManager.clearPassword(context)
+                                    passwordInput = ""
+                                    currentScreen = Screen.UNLOCK
+                                }
+                            ) {
+                                Text("Lock Vault")
+                            }
                             if (errorMessage != null) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(text = errorMessage!!, color = Color(0xFFEF4444))
@@ -343,8 +383,6 @@ class MainActivity : ComponentActivity() {
 
                         Screen.ADD_ACCOUNT -> {
                             val handleSaveAccount = {
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
                                 if (issuerInput.isBlank() || accountNameInput.isBlank() || secretInput.isBlank()) {
                                     errorMessage = "All fields are required"
                                 } else {
@@ -400,16 +438,7 @@ class MainActivity : ComponentActivity() {
                                 onValueChange = { issuerInput = it },
                                 label = { Text("Issuer (e.g. GitHub)") },
                                 singleLine = true,
-                                keyboardOptions = KeyboardOptions(
-                                    autoCorrectEnabled = false,
-                                    imeAction = ImeAction.Done
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onDone = {
-                                        keyboardController?.hide()
-                                        focusManager.clearFocus()
-                                    }
-                                ),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
                                     unfocusedTextColor = Color.White,
@@ -423,16 +452,7 @@ class MainActivity : ComponentActivity() {
                                 onValueChange = { accountNameInput = it },
                                 label = { Text("Account Name") },
                                 singleLine = true,
-                                keyboardOptions = KeyboardOptions(
-                                    autoCorrectEnabled = false,
-                                    imeAction = ImeAction.Done
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onDone = {
-                                        keyboardController?.hide()
-                                        focusManager.clearFocus()
-                                    }
-                                ),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
                                     unfocusedTextColor = Color.White,

@@ -32,7 +32,8 @@ object PasswordStrengthValidator {
         if (hasSpecial) score++
         if (password.length >= 12) score++
 
-        val isValid = password.length >= 8 && (hasUpper || hasLower) && hasDigit
+        // Require score >= 3 matching desktop-2fa security policy
+        val isValid = password.length >= 8 && score >= 3
 
         val feedback = when {
             score <= 2 -> "Weak password. Add uppercase, numbers, and symbols."
