@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.Text
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -103,7 +104,7 @@ class MainActivity : ComponentActivity() {
 
             val scrollState = rememberScrollState()
 
-            // Helper action for submit
+            // Helper action for setup
             val handleSetup = {
                 if (passwordInput.isBlank()) {
                     errorMessage = "Password cannot be empty"
@@ -368,14 +369,20 @@ class MainActivity : ComponentActivity() {
                             Spacer(modifier = Modifier.height(4.dp))
                             Button(
                                 onClick = {
+                                    // Immediate UI lock transition & input wipe
+                                    activeVault = null
+                                    passwordInput = ""
+                                    issuerInput = ""
+                                    accountNameInput = ""
+                                    secretInput = ""
+                                    errorMessage = null
+                                    successMessage = null
+                                    currentScreen = Screen.UNLOCK
+
+                                    // Non-cancellable background credential clear
                                     coroutineScope.launch(Dispatchers.IO) {
-                                        VaultSecurityManager.clearPassword(context)
-                                        withContext(Dispatchers.Main) {
-                                            activeVault = null
-                                            passwordInput = ""
-                                            successMessage = null
-                                            errorMessage = null
-                                            currentScreen = Screen.UNLOCK
+                                        withContext(NonCancellable) {
+                                            VaultSecurityManager.clearPassword(context)
                                         }
                                     }
                                 }
