@@ -17,6 +17,7 @@ object CryptoUtils {
      * - parallelism: 2
      * - hash_len: 32 bytes
      */
+    @Synchronized
     fun deriveKey(password: String, salt: ByteArray): ByteArray {
         val passwordBytes = password.toByteArray(Charsets.UTF_8)
         val builder = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)

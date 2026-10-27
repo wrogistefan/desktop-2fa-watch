@@ -5,15 +5,17 @@ import kotlinx.serialization.json.Json
 import org.desktop2fa.desktop.watch.model.TotpEntry
 import org.desktop2fa.desktop.watch.model.VaultData
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 
 class Vault(val data: VaultData = VaultData()) {
 
-    val entries: MutableList<TotpEntry>
-        get() = data.entries
+    val entries: List<TotpEntry>
+        get() = data.entries.toList()
 
+    @Synchronized
     fun addEntry(name: String, issuer: String, secret: String) {
-        if (entries.any { it.accountName == name }) {
+        if (data.entries.any { it.accountName == name }) {
             throw IllegalArgumentException("An entry with name \"$name\" already exists. Names must be unique.")
         }
         val entry = TotpEntry(
@@ -21,23 +23,25 @@ class Vault(val data: VaultData = VaultData()) {
             issuer = issuer,
             secret = secret,
         )
-        entries.add(entry)
+        data.entries.add(entry)
     }
 
     fun getEntry(issuerOrName: String): TotpEntry {
-        return entries.firstOrNull { it.issuer == issuerOrName || it.accountName == issuerOrName }
+        return data.entries.firstOrNull { it.issuer == issuerOrName || it.accountName == issuerOrName }
             ?: throw IllegalArgumentException("Entry '$issuerOrName' not found")
     }
 
     fun findEntries(name: String): List<TotpEntry> {
-        return entries.filter { it.issuer == name || it.accountName == name }
+        return data.entries.filter { it.issuer == name || it.accountName == name }
     }
 
+    @Synchronized
     fun removeEntry(issuerOrName: String) {
         val entry = getEntry(issuerOrName)
-        entries.remove(entry)
+        data.entries.remove(entry)
     }
 
+    @Synchronized
     fun save(file: File, password: String) {
         validatePassword(password)
 
@@ -52,12 +56,39 @@ class Vault(val data: VaultData = VaultData()) {
             val rawJson = jsonString.toByteArray(Charsets.UTF_8)
             val encrypted = CryptoUtils.encrypt(key, rawJson)
 
-            val tempFile = File.createTempFile(".vault.", ".tmp", file.parentFile)
-            tempFile.writeBytes(header + salt + encrypted)
+            val totalBytes = header + salt + encrypted
+            if (totalBytes.size > MAX_VAULT_SIZE) {
+                throw VaultIOException("Vault content exceeds maximum supported size of $MAX_VAULT_SIZE bytes")
+            }
 
-            if (!tempFile.renameTo(file)) {
-                tempFile.copyTo(file, overwrite = true)
-                tempFile.delete()
+            val tempFile = File.createTempFile(".vault.", ".tmp", file.parentFile)
+            try {
+                FileOutputStream(tempFile).use { fos ->
+                    fos.write(totalBytes)
+                    fos.flush()
+                    fos.fd.sync()
+                }
+
+                if (!tempFile.renameTo(file)) {
+                    val backupFile = File(file.parentFile, "${file.name}.bak")
+                    if (file.exists()) {
+                        file.copyTo(backupFile, overwrite = true)
+                    }
+                    try {
+                        tempFile.copyTo(file, overwrite = true)
+                        backupFile.delete()
+                    } catch (copyErr: Exception) {
+                        if (backupFile.exists()) {
+                            backupFile.copyTo(file, overwrite = true)
+                            backupFile.delete()
+                        }
+                        throw copyErr
+                    }
+                }
+            } finally {
+                if (tempFile.exists()) {
+                    tempFile.delete()
+                }
             }
         } catch (e: Exception) {
             if (e is VaultException) throw e
@@ -80,6 +111,7 @@ class Vault(val data: VaultData = VaultData()) {
             return Vault(VaultData())
         }
 
+        @Synchronized
         fun load(file: File, password: String): Vault {
             validatePassword(password)
 
@@ -89,10 +121,10 @@ class Vault(val data: VaultData = VaultData()) {
 
             val blob: ByteArray
             try {
-                if (file.length() > MAX_VAULT_SIZE) {
+                blob = file.readBytes()
+                if (blob.size > MAX_VAULT_SIZE) {
                     throw UnsupportedFormatException("Vault file exceeds maximum supported size")
                 }
-                blob = file.readBytes()
             } catch (e: IOException) {
                 throw VaultIOException("Failed to read vault file: ${e.message}", e)
             }
@@ -132,6 +164,10 @@ class Vault(val data: VaultData = VaultData()) {
                 vaultData = json.decodeFromString(VaultData.serializer(), rawJsonString)
             } catch (e: SerializationException) {
                 throw CorruptedVaultException("Vault contains invalid data", e)
+            }
+
+            if (vaultData.version != 1) {
+                throw UnsupportedFormatException("Unsupported vault data version: ${vaultData.version}")
             }
 
             return Vault(vaultData)
