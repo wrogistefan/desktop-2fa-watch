@@ -368,9 +368,16 @@ class MainActivity : ComponentActivity() {
                             Spacer(modifier = Modifier.height(4.dp))
                             Button(
                                 onClick = {
-                                    VaultSecurityManager.clearPassword(context)
-                                    passwordInput = ""
-                                    currentScreen = Screen.UNLOCK
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        VaultSecurityManager.clearPassword(context)
+                                        withContext(Dispatchers.Main) {
+                                            activeVault = null
+                                            passwordInput = ""
+                                            successMessage = null
+                                            errorMessage = null
+                                            currentScreen = Screen.UNLOCK
+                                        }
+                                    }
                                 }
                             ) {
                                 Text("Lock Vault")

@@ -13,6 +13,17 @@ object VaultSecurityManager {
     private const val KEY_VAULT_PASSWORD = "vault_password"
 
     private fun getPreferences(context: Context): SharedPreferences? {
+        return createEncryptedPreferences(context) ?: run {
+            try {
+                context.deleteSharedPreferences(PREF_NAME)
+                createEncryptedPreferences(context)
+            } catch (_: Throwable) {
+                null
+            }
+        }
+    }
+
+    private fun createEncryptedPreferences(context: Context): SharedPreferences? {
         return try {
             val masterKey = MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -30,6 +41,8 @@ object VaultSecurityManager {
         } catch (_: IOException) {
             null
         } catch (_: SecurityException) {
+            null
+        } catch (_: Exception) {
             null
         }
     }
@@ -55,11 +68,20 @@ object VaultSecurityManager {
             null
         } catch (_: ClassCastException) {
             null
+        } catch (_: Throwable) {
+            null
         }
     }
 
     @SuppressLint("ApplySharedPref")
     fun clearPassword(context: Context): Boolean {
+        try {
+            context.deleteSharedPreferences("desktop_2fa_fallback_prefs")
+            context.deleteSharedPreferences("desktop_2fa_secure_prefs_fallback")
+        } catch (_: Throwable) {
+            // Ignore
+        }
+
         val prefs = getPreferences(context) ?: return true
         return try {
             prefs.edit().remove(KEY_VAULT_PASSWORD).commit()
