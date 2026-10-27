@@ -365,15 +365,16 @@ class MainActivity : ComponentActivity() {
                                         Text(text = "No accounts", color = Color(0xFF9CA3AF))
                                     }
                                 } else {
-                                    items(entries) { entry ->
+                                    items(entries, key = { it.accountName ?: it.secret }) { entry ->
+                                        val safePeriod = if (entry.period > 0) entry.period else 30
                                         val code = TotpGenerator.generateTotp(
                                             secret = entry.secret,
                                             timeSeconds = currentTime,
-                                            period = entry.period,
+                                            period = safePeriod,
                                             digits = entry.digits,
                                             algorithm = entry.algorithm
                                         )
-                                        val secondsRemaining = entry.period - (currentTime % entry.period)
+                                        val secondsRemaining = safePeriod - (currentTime % safePeriod)
 
                                         Column(
                                             modifier = Modifier
