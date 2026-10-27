@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
@@ -36,8 +37,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.desktop2fa.desktop.watch.model.VaultData
+import org.desktop2fa.desktop.watch.vault.CorruptedVaultException
+import org.desktop2fa.desktop.watch.vault.InvalidPasswordException
 import org.desktop2fa.desktop.watch.vault.PasswordStrengthValidator
+import org.desktop2fa.desktop.watch.vault.UnsupportedFormatException
 import org.desktop2fa.desktop.watch.vault.Vault
+import org.desktop2fa.desktop.watch.vault.VaultIOException
 import org.desktop2fa.desktop.watch.vault.VaultSecurityManager
 import java.io.File
 
@@ -95,6 +100,91 @@ class MainActivity : ComponentActivity() {
 
             val scrollState = rememberScrollState()
 
+            // Helper action for submit
+            val handleSetup = {
+                if (passwordInput.isBlank()) {
+                    errorMessage = "Password cannot be empty"
+                } else {
+                    val res = PasswordStrengthValidator.evaluate(passwordInput)
+                    if (res.score >= 2 && res.isValid) {
+                        isLoading = true
+                        coroutineScope.launch(Dispatchers.IO) {
+                            try {
+                                val newVault = Vault.create()
+                                newVault.save(vaultFile, passwordInput)
+                                if (saveToKeystore) {
+                                    VaultSecurityManager.savePassword(context, passwordInput)
+                                } else {
+                                    VaultSecurityManager.clearPassword(context)
+                                }
+                                withContext(Dispatchers.Main) {
+                                    activeVault = newVault
+                                    currentScreen = Screen.MAIN
+                                    errorMessage = null
+                                    isLoading = false
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    errorMessage = "Failed: ${e.message}"
+                                    isLoading = false
+                                }
+                            }
+                        }
+                    } else {
+                        errorMessage = res.feedback
+                    }
+                }
+            }
+
+            val handleUnlock = {
+                if (passwordInput.isBlank()) {
+                    errorMessage = "Password cannot be empty"
+                } else {
+                    isLoading = true
+                    coroutineScope.launch(Dispatchers.IO) {
+                        try {
+                            val loaded = Vault.load(vaultFile, passwordInput)
+                            if (saveToKeystore) {
+                                VaultSecurityManager.savePassword(context, passwordInput)
+                            } else {
+                                VaultSecurityManager.clearPassword(context)
+                            }
+                            withContext(Dispatchers.Main) {
+                                activeVault = loaded
+                                currentScreen = Screen.MAIN
+                                errorMessage = null
+                                isLoading = false
+                            }
+                        } catch (_: InvalidPasswordException) {
+                            withContext(Dispatchers.Main) {
+                                errorMessage = "Invalid password"
+                                isLoading = false
+                            }
+                        } catch (_: CorruptedVaultException) {
+                            withContext(Dispatchers.Main) {
+                                errorMessage = "Vault file is corrupted"
+                                isLoading = false
+                            }
+                        } catch (_: UnsupportedFormatException) {
+                            withContext(Dispatchers.Main) {
+                                errorMessage = "Unsupported vault format"
+                                isLoading = false
+                            }
+                        } catch (e: VaultIOException) {
+                            withContext(Dispatchers.Main) {
+                                errorMessage = "IO error: ${e.message}"
+                                isLoading = false
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                errorMessage = "Unlock failed: ${e.message}"
+                                isLoading = false
+                            }
+                        }
+                    }
+                }
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -125,11 +215,15 @@ class MainActivity : ComponentActivity() {
                                     errorMessage = if (!res.isValid) res.feedback else null
                                 },
                                 label = { Text("Master Password") },
+                                singleLine = true,
                                 visualTransformation = PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = KeyboardType.Password,
                                     autoCorrectEnabled = false,
                                     imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = { handleSetup() }
                                 ),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
@@ -156,40 +250,7 @@ class MainActivity : ComponentActivity() {
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(
-                                onClick = {
-                                    if (passwordInput.isBlank()) {
-                                        errorMessage = "Password cannot be empty"
-                                        return@Button
-                                    }
-                                    val res = PasswordStrengthValidator.evaluate(passwordInput)
-                                    if (res.score >= 2 && res.isValid) {
-                                        isLoading = true
-                                        coroutineScope.launch(Dispatchers.IO) {
-                                            try {
-                                                val newVault = Vault.create()
-                                                newVault.save(vaultFile, passwordInput)
-                                                if (saveToKeystore) {
-                                                    VaultSecurityManager.savePassword(context, passwordInput)
-                                                } else {
-                                                    VaultSecurityManager.clearPassword(context)
-                                                }
-                                                withContext(Dispatchers.Main) {
-                                                    activeVault = newVault
-                                                    currentScreen = Screen.MAIN
-                                                    errorMessage = null
-                                                    isLoading = false
-                                                }
-                                            } catch (e: Exception) {
-                                                withContext(Dispatchers.Main) {
-                                                    errorMessage = "Failed: ${e.message}"
-                                                    isLoading = false
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        errorMessage = res.feedback
-                                    }
-                                }
+                                onClick = { handleSetup() }
                             ) {
                                 Text("Initialize Vault")
                             }
@@ -202,11 +263,15 @@ class MainActivity : ComponentActivity() {
                                 value = passwordInput,
                                 onValueChange = { passwordInput = it },
                                 label = { Text("Password") },
+                                singleLine = true,
                                 visualTransformation = PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = KeyboardType.Password,
                                     autoCorrectEnabled = false,
                                     imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = { handleUnlock() }
                                 ),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
@@ -232,34 +297,7 @@ class MainActivity : ComponentActivity() {
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(
-                                onClick = {
-                                    if (passwordInput.isBlank()) {
-                                        errorMessage = "Password cannot be empty"
-                                        return@Button
-                                    }
-                                    isLoading = true
-                                    coroutineScope.launch(Dispatchers.IO) {
-                                        try {
-                                            val loaded = Vault.load(vaultFile, passwordInput)
-                                            if (saveToKeystore) {
-                                                VaultSecurityManager.savePassword(context, passwordInput)
-                                            } else {
-                                                VaultSecurityManager.clearPassword(context)
-                                            }
-                                            withContext(Dispatchers.Main) {
-                                                activeVault = loaded
-                                                currentScreen = Screen.MAIN
-                                                errorMessage = null
-                                                isLoading = false
-                                            }
-                                        } catch (_: Exception) {
-                                            withContext(Dispatchers.Main) {
-                                                errorMessage = "Invalid password"
-                                                isLoading = false
-                                            }
-                                        }
-                                    }
-                                }
+                                onClick = { handleUnlock() }
                             ) {
                                 Text("Unlock")
                             }
@@ -296,12 +334,63 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Screen.ADD_ACCOUNT -> {
+                            val handleSaveAccount = {
+                                if (issuerInput.isBlank() || accountNameInput.isBlank() || secretInput.isBlank()) {
+                                    errorMessage = "All fields are required"
+                                } else {
+                                    val cleanSecret = secretInput.trim().uppercase()
+                                    val base32Regex = Regex("^[A-Z2-7]+=*$")
+                                    if (!cleanSecret.matches(base32Regex) || cleanSecret.length % 8 != 0) {
+                                        errorMessage = "Invalid Base32 secret format or length"
+                                    } else {
+                                        val vault = activeVault
+                                        if (vault == null) {
+                                            errorMessage = "No active vault"
+                                        } else {
+                                            isLoading = true
+                                            coroutineScope.launch(Dispatchers.IO) {
+                                                try {
+                                                    val tempVault = Vault(
+                                                        VaultData(
+                                                            version = vault.data.version,
+                                                            entries = vault.data.entries.toMutableList()
+                                                        )
+                                                    )
+                                                    tempVault.addEntry(
+                                                        name = accountNameInput.trim(),
+                                                        issuer = issuerInput.trim(),
+                                                        secret = cleanSecret
+                                                    )
+                                                    val currentPass = VaultSecurityManager.getPassword(context) ?: passwordInput
+                                                    tempVault.save(vaultFile, currentPass)
+                                                    val reloaded = Vault.load(vaultFile, currentPass)
+                                                    withContext(Dispatchers.Main) {
+                                                        activeVault = reloaded
+                                                        successMessage = "Account added successfully!"
+                                                        errorMessage = null
+                                                        currentScreen = Screen.MAIN
+                                                        isLoading = false
+                                                    }
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        errorMessage = e.message ?: "Failed to add account"
+                                                        isLoading = false
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             Text(text = "Add TOTP Account", color = Color.White)
                             Spacer(modifier = Modifier.height(4.dp))
                             OutlinedTextField(
                                 value = issuerInput,
                                 onValueChange = { issuerInput = it },
                                 label = { Text("Issuer (e.g. GitHub)") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
                                     unfocusedTextColor = Color.White,
@@ -314,6 +403,8 @@ class MainActivity : ComponentActivity() {
                                 value = accountNameInput,
                                 onValueChange = { accountNameInput = it },
                                 label = { Text("Account Name") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
                                     unfocusedTextColor = Color.White,
@@ -326,11 +417,15 @@ class MainActivity : ComponentActivity() {
                                 value = secretInput,
                                 onValueChange = { secretInput = it },
                                 label = { Text("Secret (Base32)") },
+                                singleLine = true,
                                 visualTransformation = PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = KeyboardType.Password,
                                     autoCorrectEnabled = false,
                                     imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = { handleSaveAccount() }
                                 ),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
@@ -345,55 +440,7 @@ class MainActivity : ComponentActivity() {
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(
-                                onClick = {
-                                    if (issuerInput.isBlank() || accountNameInput.isBlank() || secretInput.isBlank()) {
-                                        errorMessage = "All fields are required"
-                                        return@Button
-                                    }
-                                    val cleanSecret = secretInput.trim().uppercase()
-                                    val base32Regex = Regex("^[A-Z2-7]+=*$")
-                                    if (!cleanSecret.matches(base32Regex) || cleanSecret.length % 8 != 0) {
-                                        errorMessage = "Invalid Base32 secret format or length"
-                                        return@Button
-                                    }
-                                    val vault = activeVault
-                                    if (vault == null) {
-                                        errorMessage = "No active vault"
-                                        return@Button
-                                    }
-                                    isLoading = true
-                                    coroutineScope.launch(Dispatchers.IO) {
-                                        try {
-                                            // Create a safe copy of vault data to mutate and persist
-                                            val tempVault = Vault(
-                                                VaultData(
-                                                    version = vault.data.version,
-                                                    entries = vault.data.entries.toMutableList()
-                                                )
-                                            )
-                                            tempVault.addEntry(
-                                                name = accountNameInput.trim(),
-                                                issuer = issuerInput.trim(),
-                                                secret = cleanSecret
-                                            )
-                                            val currentPass = VaultSecurityManager.getPassword(context) ?: passwordInput
-                                            tempVault.save(vaultFile, currentPass)
-                                            val reloaded = Vault.load(vaultFile, currentPass)
-                                            withContext(Dispatchers.Main) {
-                                                activeVault = reloaded
-                                                successMessage = "Account added successfully!"
-                                                errorMessage = null
-                                                currentScreen = Screen.MAIN
-                                                isLoading = false
-                                            }
-                                        } catch (e: Exception) {
-                                            withContext(Dispatchers.Main) {
-                                                errorMessage = e.message ?: "Failed to add account"
-                                                isLoading = false
-                                            }
-                                        }
-                                    }
-                                }
+                                onClick = { handleSaveAccount() }
                             ) {
                                 Text("Save Account")
                             }
