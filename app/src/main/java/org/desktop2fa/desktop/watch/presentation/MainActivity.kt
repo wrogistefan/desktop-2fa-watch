@@ -27,6 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -54,6 +56,8 @@ class MainActivity : ComponentActivity() {
             val context = applicationContext
             val vaultFile = remember { File(context.filesDir, "vault.d2fa") }
             val coroutineScope = rememberCoroutineScope()
+            val keyboardController = LocalSoftwareKeyboardController.current
+            val focusManager = LocalFocusManager.current
 
             var activeVault by remember { mutableStateOf<Vault?>(null) }
             var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -102,6 +106,8 @@ class MainActivity : ComponentActivity() {
 
             // Helper action for submit
             val handleSetup = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
                 if (passwordInput.isBlank()) {
                     errorMessage = "Password cannot be empty"
                 } else {
@@ -137,6 +143,8 @@ class MainActivity : ComponentActivity() {
             }
 
             val handleUnlock = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
                 if (passwordInput.isBlank()) {
                     errorMessage = "Password cannot be empty"
                 } else {
@@ -335,6 +343,8 @@ class MainActivity : ComponentActivity() {
 
                         Screen.ADD_ACCOUNT -> {
                             val handleSaveAccount = {
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
                                 if (issuerInput.isBlank() || accountNameInput.isBlank() || secretInput.isBlank()) {
                                     errorMessage = "All fields are required"
                                 } else {
@@ -390,7 +400,16 @@ class MainActivity : ComponentActivity() {
                                 onValueChange = { issuerInput = it },
                                 label = { Text("Issuer (e.g. GitHub)") },
                                 singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                keyboardOptions = KeyboardOptions(
+                                    autoCorrectEnabled = false,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
+                                    }
+                                ),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
                                     unfocusedTextColor = Color.White,
@@ -404,7 +423,16 @@ class MainActivity : ComponentActivity() {
                                 onValueChange = { accountNameInput = it },
                                 label = { Text("Account Name") },
                                 singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                keyboardOptions = KeyboardOptions(
+                                    autoCorrectEnabled = false,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
+                                    }
+                                ),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
                                     unfocusedTextColor = Color.White,
