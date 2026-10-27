@@ -9,9 +9,10 @@ import java.security.GeneralSecurityException
 
 object VaultSecurityManager {
     private const val PREF_NAME = "desktop_2fa_secure_prefs"
+    private const val FALLBACK_PREF_NAME = "desktop_2fa_fallback_prefs"
     private const val KEY_VAULT_PASSWORD = "vault_password"
 
-    private fun getPreferences(context: Context): SharedPreferences? {
+    private fun getEncryptedPreferences(context: Context): SharedPreferences? {
         return try {
             val masterKey = MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -25,17 +26,17 @@ object VaultSecurityManager {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (_: GeneralSecurityException) {
-            fallbackPreferences(context)
+            null
         } catch (_: IOException) {
-            fallbackPreferences(context)
+            null
         } catch (_: SecurityException) {
-            fallbackPreferences(context)
+            null
         }
     }
 
-    private fun fallbackPreferences(context: Context): SharedPreferences? {
+    private fun getFallbackPreferences(context: Context): SharedPreferences? {
         return try {
-            context.getSharedPreferences(PREF_NAME + "_fallback", Context.MODE_PRIVATE)
+            context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE)
         } catch (_: Throwable) {
             null
         }
@@ -43,53 +44,61 @@ object VaultSecurityManager {
 
     fun savePassword(context: Context, password: String) {
         if (password.isBlank()) return
-        val prefs = getPreferences(context)
-        try {
-            prefs?.edit()?.putString(KEY_VAULT_PASSWORD, password)?.apply()
-        } catch (_: Throwable) {
-            // Ignore write failure
+        val encryptedPrefs = getEncryptedPreferences(context)
+        if (encryptedPrefs != null) {
+            try {
+                encryptedPrefs.edit().putString(KEY_VAULT_PASSWORD, password).apply()
+                // Clear fallback if encrypted store works
+                getFallbackPreferences(context)?.edit()?.remove(KEY_VAULT_PASSWORD)?.apply()
+                return
+            } catch (_: Throwable) {
+                // If encrypted store write fails, fallback below
+            }
         }
+
+        // Fallback store
         try {
-            val fallback = fallbackPreferences(context)
-            fallback?.edit()?.putString(KEY_VAULT_PASSWORD, password)?.apply()
+            getFallbackPreferences(context)?.edit()?.putString(KEY_VAULT_PASSWORD, password)?.apply()
         } catch (_: Throwable) {
             // Ignore
         }
     }
 
     fun getPassword(context: Context): String? {
-        val prefs = getPreferences(context)
-        val pass = try {
-            prefs?.getString(KEY_VAULT_PASSWORD, null)
-        } catch (_: GeneralSecurityException) {
-            null
-        } catch (_: SecurityException) {
-            null
-        } catch (_: ClassCastException) {
-            null
+        val encryptedPrefs = getEncryptedPreferences(context)
+        if (encryptedPrefs != null) {
+            val pass = try {
+                encryptedPrefs.getString(KEY_VAULT_PASSWORD, null)
+            } catch (_: GeneralSecurityException) {
+                null
+            } catch (_: SecurityException) {
+                null
+            } catch (_: ClassCastException) {
+                null
+            }
+            if (!pass.isNullOrEmpty()) return pass
         }
 
-        if (!pass.isNullOrEmpty()) return pass
-
-        // Try fallback
+        // Fallback store
+        val fallbackPrefs = getFallbackPreferences(context) ?: return null
         return try {
-            val fallback = fallbackPreferences(context)
-            fallback?.getString(KEY_VAULT_PASSWORD, null)
+            fallbackPrefs.getString(KEY_VAULT_PASSWORD, null)
         } catch (_: Throwable) {
             null
         }
     }
 
     fun clearPassword(context: Context) {
+        // Clear from encrypted store
         try {
-            val prefs = getPreferences(context)
-            prefs?.edit()?.clear()?.apply()
+            getEncryptedPreferences(context)?.edit()?.remove(KEY_VAULT_PASSWORD)?.apply()
         } catch (_: Throwable) {
             // Ignore
         }
+
+        // Clear from fallback store
         try {
-            val fallback = fallbackPreferences(context)
-            fallback?.edit()?.clear()?.apply()
+            getFallbackPreferences(context)?.edit()?.remove(KEY_VAULT_PASSWORD)?.apply()
         } catch (_: Throwable) {
             // Ignore
         }
