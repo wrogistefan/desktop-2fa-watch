@@ -41,7 +41,12 @@ class MainActivity : ComponentActivity() {
             var activeVault by remember { mutableStateOf<Vault?>(null) }
             var errorMessage by remember { mutableStateOf<String?>(null) }
             var passwordInput by remember { mutableStateOf("") }
-            val saveToKeystore by remember { mutableStateOf(true) }
+            val saveToKeystore = remember { true }
+
+            // Add Account inputs
+            var issuerInput by remember { mutableStateOf("") }
+            var accountNameInput by remember { mutableStateOf("") }
+            var secretInput by remember { mutableStateOf("") }
 
             val vaultExists = remember { vaultFile.exists() }
             var currentScreen by remember {
@@ -171,25 +176,88 @@ class MainActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = {
-                                try {
-                                    activeVault?.addEntry(
-                                        name = "user@github.com",
-                                        issuer = "GitHub",
-                                        secret = "JBSWY3DPEHPK3PXP"
-                                    )
-                                    activeVault?.save(vaultFile, VaultSecurityManager.getPassword(context) ?: passwordInput)
-                                    activeVault = Vault.load(vaultFile, VaultSecurityManager.getPassword(context) ?: passwordInput)
-                                    errorMessage = "Added test entry!"
-                                } catch (e: Exception) {
-                                    errorMessage = e.message
-                                }
+                                issuerInput = ""
+                                accountNameInput = ""
+                                secretInput = ""
+                                errorMessage = null
+                                currentScreen = Screen.ADD_ACCOUNT
                             }
                         ) {
-                            Text("Add Test Account")
+                            Text("Add Account")
                         }
                         if (errorMessage != null) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(text = errorMessage!!, color = Color(0xFF3B82F6))
+                        }
+                    }
+
+                    Screen.ADD_ACCOUNT -> {
+                        Text(text = "Add TOTP Account", color = Color.White)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = issuerInput,
+                            onValueChange = { issuerInput = it },
+                            label = { Text("Issuer (e.g. GitHub)") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color(0xFF3B82F6),
+                                unfocusedBorderColor = Color(0xFF9CA3AF)
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = accountNameInput,
+                            onValueChange = { accountNameInput = it },
+                            label = { Text("Account Name") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color(0xFF3B82F6),
+                                unfocusedBorderColor = Color(0xFF9CA3AF)
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = secretInput,
+                            onValueChange = { secretInput = it },
+                            label = { Text("Secret (Base32)") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color(0xFF3B82F6),
+                                unfocusedBorderColor = Color(0xFF9CA3AF)
+                            )
+                        )
+                        if (errorMessage != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(text = errorMessage!!, color = Color(0xFFEF4444))
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                if (issuerInput.isBlank() || accountNameInput.isBlank() || secretInput.isBlank()) {
+                                    errorMessage = "All fields are required"
+                                    return@Button
+                                }
+                                try {
+                                    activeVault?.addEntry(
+                                        name = accountNameInput.trim(),
+                                        issuer = issuerInput.trim(),
+                                        secret = secretInput.trim().uppercase()
+                                    )
+                                    val currentPass = VaultSecurityManager.getPassword(context) ?: passwordInput
+                                    activeVault?.save(vaultFile, currentPass)
+                                    activeVault = Vault.load(vaultFile, currentPass)
+                                    currentScreen = Screen.MAIN
+                                    errorMessage = "Account added successfully!"
+                                } catch (e: Exception) {
+                                    errorMessage = e.message ?: "Failed to add account"
+                                }
+                            }
+                        ) {
+                            Text("Save Account")
                         }
                     }
                 }
@@ -199,5 +267,5 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SETUP, UNLOCK, MAIN
+    SETUP, UNLOCK, MAIN, ADD_ACCOUNT
 }
