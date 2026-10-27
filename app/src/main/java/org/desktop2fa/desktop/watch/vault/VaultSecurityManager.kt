@@ -25,8 +25,18 @@ object VaultSecurityManager {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (_: GeneralSecurityException) {
-            null
+            fallbackPreferences(context)
         } catch (_: IOException) {
+            fallbackPreferences(context)
+        } catch (_: SecurityException) {
+            fallbackPreferences(context)
+        }
+    }
+
+    private fun fallbackPreferences(context: Context): SharedPreferences? {
+        return try {
+            context.getSharedPreferences(PREF_NAME + "_fallback", Context.MODE_PRIVATE)
+        } catch (_: Throwable) {
             null
         }
     }
@@ -34,7 +44,11 @@ object VaultSecurityManager {
     fun savePassword(context: Context, password: String) {
         if (password.isBlank()) return
         val prefs = getPreferences(context) ?: return
-        prefs.edit().putString(KEY_VAULT_PASSWORD, password).apply()
+        try {
+            prefs.edit().putString(KEY_VAULT_PASSWORD, password).apply()
+        } catch (_: Throwable) {
+            // Ignore write failure
+        }
     }
 
     fun getPassword(context: Context): String? {
@@ -43,6 +57,8 @@ object VaultSecurityManager {
             prefs.getString(KEY_VAULT_PASSWORD, null)
         } catch (_: GeneralSecurityException) {
             null
+        } catch (_: SecurityException) {
+            null
         } catch (_: ClassCastException) {
             null
         }
@@ -50,7 +66,11 @@ object VaultSecurityManager {
 
     fun clearPassword(context: Context) {
         val prefs = getPreferences(context) ?: return
-        prefs.edit().remove(KEY_VAULT_PASSWORD).apply()
+        try {
+            prefs.edit().remove(KEY_VAULT_PASSWORD).apply()
+        } catch (_: Throwable) {
+            // Ignore
+        }
     }
 
     fun hasSavedPassword(context: Context): Boolean {
