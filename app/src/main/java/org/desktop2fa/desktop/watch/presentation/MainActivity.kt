@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
 
             var activeVault by remember { mutableStateOf<Vault?>(null) }
             var errorMessage by remember { mutableStateOf<String?>(null) }
+            var successMessage by remember { mutableStateOf<String?>(null) }
             var passwordInput by remember { mutableStateOf("") }
             val saveToKeystore = remember { true }
 
@@ -173,6 +174,10 @@ class MainActivity : ComponentActivity() {
                             text = "Entries: ${activeVault?.entries?.size ?: 0}",
                             color = Color(0xFF3B82F6)
                         )
+                        if (successMessage != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(text = successMessage!!, color = Color(0xFF10B981))
+                        }
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = {
@@ -180,6 +185,7 @@ class MainActivity : ComponentActivity() {
                                 accountNameInput = ""
                                 secretInput = ""
                                 errorMessage = null
+                                successMessage = null
                                 currentScreen = Screen.ADD_ACCOUNT
                             }
                         ) {
@@ -187,7 +193,7 @@ class MainActivity : ComponentActivity() {
                         }
                         if (errorMessage != null) {
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = errorMessage!!, color = Color(0xFF3B82F6))
+                            Text(text = errorMessage!!, color = Color(0xFFEF4444))
                         }
                     }
 
@@ -241,17 +247,29 @@ class MainActivity : ComponentActivity() {
                                     errorMessage = "All fields are required"
                                     return@Button
                                 }
+                                val cleanSecret = secretInput.trim().uppercase()
+                                val base32Regex = Regex("^[A-Z2-7]+=*$")
+                                if (!cleanSecret.matches(base32Regex)) {
+                                    errorMessage = "Invalid Base32 secret format"
+                                    return@Button
+                                }
+                                val vault = activeVault
+                                if (vault == null) {
+                                    errorMessage = "No active vault"
+                                    return@Button
+                                }
                                 try {
-                                    activeVault?.addEntry(
+                                    vault.addEntry(
                                         name = accountNameInput.trim(),
                                         issuer = issuerInput.trim(),
-                                        secret = secretInput.trim().uppercase()
+                                        secret = cleanSecret
                                     )
                                     val currentPass = VaultSecurityManager.getPassword(context) ?: passwordInput
-                                    activeVault?.save(vaultFile, currentPass)
+                                    vault.save(vaultFile, currentPass)
                                     activeVault = Vault.load(vaultFile, currentPass)
+                                    successMessage = "Account added successfully!"
+                                    errorMessage = null
                                     currentScreen = Screen.MAIN
-                                    errorMessage = "Account added successfully!"
                                 } catch (e: Exception) {
                                     errorMessage = e.message ?: "Failed to add account"
                                 }

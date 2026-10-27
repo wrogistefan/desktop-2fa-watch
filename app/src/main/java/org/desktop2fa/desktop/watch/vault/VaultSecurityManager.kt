@@ -23,7 +23,6 @@ object VaultSecurityManager {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (_: Throwable) {
-            // Fallback to standard SharedPreferences if Keystore fails on certain emulator images
             try {
                 context.getSharedPreferences(PREF_NAME + "_fallback", Context.MODE_PRIVATE)
             } catch (_: Throwable) {
@@ -33,9 +32,13 @@ object VaultSecurityManager {
     }
 
     fun savePassword(context: Context, password: String) {
-        if (password.isEmpty()) return
+        if (password.isBlank()) return
         val prefs = getPreferences(context) ?: return
-        prefs.edit().putString(KEY_VAULT_PASSWORD, password).apply()
+        try {
+            prefs.edit().putString(KEY_VAULT_PASSWORD, password).apply()
+        } catch (_: Throwable) {
+            // Ignore write failure
+        }
     }
 
     fun getPassword(context: Context): String? {
@@ -49,7 +52,11 @@ object VaultSecurityManager {
 
     fun clearPassword(context: Context) {
         val prefs = getPreferences(context) ?: return
-        prefs.edit().remove(KEY_VAULT_PASSWORD).apply()
+        try {
+            prefs.edit().remove(KEY_VAULT_PASSWORD).apply()
+        } catch (_: Throwable) {
+            // Ignore
+        }
     }
 
     fun hasSavedPassword(context: Context): Boolean {
