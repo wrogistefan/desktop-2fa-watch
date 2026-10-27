@@ -43,18 +43,24 @@ object VaultSecurityManager {
 
     fun savePassword(context: Context, password: String) {
         if (password.isBlank()) return
-        val prefs = getPreferences(context) ?: return
+        val prefs = getPreferences(context)
         try {
-            prefs.edit().putString(KEY_VAULT_PASSWORD, password).apply()
+            prefs?.edit()?.putString(KEY_VAULT_PASSWORD, password)?.apply()
         } catch (_: Throwable) {
             // Ignore write failure
+        }
+        try {
+            val fallback = fallbackPreferences(context)
+            fallback?.edit()?.putString(KEY_VAULT_PASSWORD, password)?.apply()
+        } catch (_: Throwable) {
+            // Ignore
         }
     }
 
     fun getPassword(context: Context): String? {
-        val prefs = getPreferences(context) ?: return null
-        return try {
-            prefs.getString(KEY_VAULT_PASSWORD, null)
+        val prefs = getPreferences(context)
+        val pass = try {
+            prefs?.getString(KEY_VAULT_PASSWORD, null)
         } catch (_: GeneralSecurityException) {
             null
         } catch (_: SecurityException) {
@@ -62,12 +68,28 @@ object VaultSecurityManager {
         } catch (_: ClassCastException) {
             null
         }
+
+        if (!pass.isNullOrEmpty()) return pass
+
+        // Try fallback
+        return try {
+            val fallback = fallbackPreferences(context)
+            fallback?.getString(KEY_VAULT_PASSWORD, null)
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     fun clearPassword(context: Context) {
-        val prefs = getPreferences(context) ?: return
         try {
-            prefs.edit().remove(KEY_VAULT_PASSWORD).apply()
+            val prefs = getPreferences(context)
+            prefs?.edit()?.clear()?.apply()
+        } catch (_: Throwable) {
+            // Ignore
+        }
+        try {
+            val fallback = fallbackPreferences(context)
+            fallback?.edit()?.clear()?.apply()
         } catch (_: Throwable) {
             // Ignore
         }
