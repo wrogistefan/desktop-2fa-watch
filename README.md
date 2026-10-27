@@ -25,4 +25,4 @@ Offline TOTP Authenticator for Wear OS, fully compatible with the desktop-2fa va
 
 ## License
 
-Apache-2.0
+GNU General Public License v3.0 (GPL-3.0)
