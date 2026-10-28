@@ -1,6 +1,6 @@
 # Watch UX Specification
 
-This describes the implemented 0.2.0 screens. UI strings below match the
+This describes the development screens after the 0.2.0 MVP. UI strings below match the
 English labels currently shipped by the app.
 
 ## Screens and transitions
@@ -11,7 +11,7 @@ English labels currently shipped by the app.
 | Create Vault | Password field, validation feedback, Remember on watch, Initialize Vault | Main after a successful save |
 | Unlock Vault | Password field, Remember on watch, Unlock, error feedback | Main after a successful load |
 | Main | Scrollable account cards, empty state, Add Account, Lock Vault | Add Account or Unlock |
-| Add TOTP Account | Issuer, Account Name, Secret (Base32), Save Account | Main after save/reload; remains on form after error |
+| Add Account wizard | Service name → Account name → Setup key; one field per step, Back/Cancel, final Save Account | Main at the new card after save/reload; retains draft on error |
 
 On startup, a missing vault leads to setup. If a vault exists, a cached password
 is tried first; a missing or unusable cache leads to unlock. File access and
@@ -34,13 +34,32 @@ workflow. Future delete/reorder/sync features should revisit stable entry IDs.
 
 ## Forms and feedback
 
-Forms scroll vertically; keyboard actions submit the create/unlock/save flows.
-Password and secret fields mask their contents. All add-account fields are
-required, account names must be unique for new entries, and errors remain on
-the form. There is no confirmation password field or password-visibility toggle.
+The account wizard has three steps, each with a title above its field and a
+progress indicator. The layout scrolls and applies IME insets. Keyboard
+Next/Done validates and advances or saves; submission hides the keyboard and
+clears focus so errors can be read. Errors use a polite accessibility live
+region. Fullscreen editor behavior belongs to the installed IME and still
+has been checked on Samsung; its fullscreen editor still hides the app heading.
 
-The app uses simple screen state rather than a navigation back stack. A
-dedicated in-app cancel/back action is not implemented for the account form.
+Autofill is disabled on the activity view hierarchy. Wizard fields use ASCII, email, or password input as appropriate. Android
+EditorInfo flags explicitly disable suggestions, autocorrection, completion,
+and personalized learning, and request no fullscreen/extract UI. The step
+heading is passed to the IME as its hint/field name. IMEs can ignore hints. The setup key is masked by default with an
+explicit visibility toggle. Incomplete typing does not trigger errors;
+submission validates Base32 encoding, including padding and trailing bits.
+
+All fields remain required. The account step checks name uniqueness and the
+final step rechecks it before saving. Back preserves the draft; Cancel discards
+it. Hardware back follows the same step behavior. Saving claims the draft
+synchronously, disables edits/navigation/submission, and shows Saving… on the
+final action. Failed saves retain the draft with a generic error that does not
+echo provider exceptions or secrets. A successful save resets the draft and
+opens the list at the new card, which displays Account added.
+
+Drafts remain in memory rather than saved instance state. Activity/process
+recreation can discard unfinished input. Vault setup/unlock retain their
+existing single-password forms and remember checkbox, without a confirmation
+password field or password-visibility toggle there.
 
 ## Lock behavior
 
@@ -55,6 +74,8 @@ entries, identical secrets, scrolling, countdown/code changes, empty state,
 opening the account form, and locking. Screenshots in the README use synthetic
 data. This is not a full automated UI suite or an accessibility certification.
 
-Physical-watch checks remain pending, including keyboard comfort, rotary input,
-small-screen clipping, font scaling, and Argon2 resource use. See the
-[development checklist](development.md#manual-ui-checklist).
+The wizard was also functionally checked on a physical Galaxy Watch Ultra.
+See the [device report](testing/galaxy-watch-ultra.md) for results and screenshots.
+Keyboard comfort still needs user feedback; rotary input, other screen sizes,
+font scaling, and systematic Argon2 resource measurements remain outside that
+pass. See the [development checklist](development.md#manual-ui-checklist).

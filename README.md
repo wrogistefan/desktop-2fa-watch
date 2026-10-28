@@ -12,9 +12,9 @@ Compose for Wear OS, with a local encrypted vault designed around the
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![Build](https://github.com/wrogistefan/desktop-2fa-watch/actions/workflows/android.yml/badge.svg)](https://github.com/wrogistefan/desktop-2fa-watch/actions)
 
-Version **0.2.0** is the current MVP development version. It supports creating a
-vault, adding accounts manually, viewing live codes, and locking the vault.
-Watch import/export and synchronization are not available yet.
+The **v0.2.0** tag marks the standalone MVP: creating a vault, adding accounts
+manually, viewing live codes, and locking the vault. Current development adds
+guided account setup. Watch import/export and synchronization are not available yet.
 
 ---
 
@@ -25,7 +25,7 @@ Watch import/export and synchronization are not available yet.
 | 🔐 **Vault Security** | AES-256-GCM encryption with Argon2id key derivation |
 | ⏱️ **Live TOTP Codes** | Account cards with codes and countdowns refreshed every second |
 | ⌚ **Wear OS Interface** | Native scrolling list with rounded account cards |
-| ➕ **Manual Account Setup** | Add an issuer, account name, and Base32 secret |
+| ➕ **Manual Account Setup** | Three-step wizard with one field per screen, secret visibility, and Base32 validation |
 | 🔓 **Optional Password Storage** | Remember the password using encrypted preferences protected by Android Keystore |
 | 🔒 **Manual Lock** | Leave the account view and request removal of the remembered password |
 | 📴 **Offline Operation** | No registration, cloud service, or phone companion required |
@@ -39,6 +39,8 @@ not expose those settings.
 
 ## 📸 Screenshots
 
+### Wear OS emulator
+
 Captured from the Large Round Wear OS emulator (454 × 454), using synthetic
 accounts. Duplicate names are intentional regression-test data. These are
 actual application screenshots, not mockups or physical-device results.
@@ -46,6 +48,22 @@ actual application screenshots, not mockups or physical-device results.
 | Live accounts | Vault actions | Empty vault |
 |:-------------:|:-------------:|:-----------:|
 | <img src="assets/screenshots/accounts.png" width="240" alt="Live TOTP cards for synthetic accounts with duplicate names"> | <img src="assets/screenshots/vault-actions.png" width="240" alt="Add Account and Lock Vault actions at the end of the list"> | <img src="assets/screenshots/empty-vault.png" width="240" alt="Empty vault with account and lock actions"> |
+
+The development version adds a guided, one-field-per-screen setup:
+
+| Account wizard | Setup key feedback |
+|:--------------:|:------------------:|
+| <img src="assets/screenshots/account-wizard.png" width="240" alt="Service name step with a heading above its single input"> | <img src="assets/screenshots/setup-key-validation.png" width="240" alt="Setup key step explaining that zero is not a Base32 character"> |
+
+### Galaxy Watch Ultra
+
+The wizard was also checked on a physical Galaxy Watch Ultra (SM-L705F).
+See the [device report](docs/testing/galaxy-watch-ultra.md) for test results,
+more screenshots, and the Samsung fullscreen-keyboard limitation.
+
+| Single-field setup | Validation | Account added |
+|:------------------:|:----------:|:-------------:|
+| <img src="assets/screenshots/galaxy-watch-ultra/service-name.png" width="220" alt="Setup wizard on a physical Galaxy Watch Ultra"> | <img src="assets/screenshots/galaxy-watch-ultra/setup-key-validation.png" width="220" alt="Readable Base32 validation on Galaxy Watch Ultra"> | <img src="assets/screenshots/galaxy-watch-ultra/account-added.png" width="220" alt="Successfully added synthetic account on Galaxy Watch Ultra"> |
 
 ---
 
@@ -69,7 +87,8 @@ Android SDK Platform-Tools, or run the app directly from Android Studio.
 
 1. Open **desktop-2fa for Wear OS** and create a vault with a strong password.
 2. Choose whether to enable **Remember on watch** (enabled by default).
-3. Tap **Add Account** and enter the issuer, account name, and Base32 secret.
+3. Tap **Add Account** and follow three steps: service name, account name,
+   and setup key. Each step has one field, with Back and Cancel actions.
 4. Read the current code and countdown from the account card.
 5. Scroll to **Lock Vault** when finished.
 
@@ -119,6 +138,7 @@ password use. See the [security model](docs/SECURITY.md) for limitations.
 | [Watch UX](docs/ux.md) | Screen behavior and MVP boundaries |
 | [Desktop Compatibility](docs/compatibility.md) | Source-level parity and planned import/export |
 | [Development](docs/development.md) | Build, tests, emulator, and physical-device checks |
+| [UI Test Reports](docs/testing/README.md) | Emulator and Galaxy Watch Ultra results, screenshots, and limitations |
 | [Changelog](CHANGELOG.md) | Version history |
 | [Security Reporting](SECURITY.md) | Private vulnerability disclosure |
 
@@ -131,11 +151,12 @@ password use. See the [security model](docs/SECURITY.md) for limitations.
 ./gradlew assembleDebug
 ```
 
-The current unit suite has 5 tests covering vault round trips, wrong passwords,
-unsupported payload versions, and basic password strength. Manual emulator
+The unit suite covers vault round trips, wrong passwords, unsupported payload
+versions, password strength, and wizard validation, navigation, and save guards. Manual emulator
 checks cover duplicate/unnamed entries, scrolling, live codes, the empty state,
-opening the add-account form, and manual lock. Physical-watch validation and
-automated interoperability tests remain outstanding.
+opening the add-account form, and manual lock. The account wizard has also been
+checked on a physical Galaxy Watch Ultra; see the device report above for the
+scope and remaining keyboard limitation. Automated interoperability tests remain outstanding.
 
 ---
 

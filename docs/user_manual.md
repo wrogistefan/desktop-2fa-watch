@@ -1,6 +1,6 @@
 # Desktop-2FA for Wear OS User Manual
 
-This manual covers the 0.2.0 MVP. The app runs independently on a Wear OS watch
+This manual covers the development version after the 0.2.0 MVP. The app runs independently on a Wear OS watch
 and generates TOTP codes locally. A phone companion and cloud account are not required.
 
 ## Installation
@@ -35,23 +35,38 @@ must match the one used to encrypt it. The UI rejects blank password input.
 
 ## Add an account
 
-Scroll to **Add Account** and fill in all three fields:
+Scroll to **Add Account**. The wizard shows one field per screen, with its name
+above it and a step indicator:
 
-| Field | What to enter |
-|-------|---------------|
-| Issuer | Service name, for example `GitHub` |
-| Account Name | A unique name, for example `demo@example.com` |
-| Secret (Base32) | The service's manual setup key, without spaces |
+| Step | Field | Example |
+|------|-------|---------|
+| 1 of 3 | Service name | `GitHub` |
+| 2 of 3 | Account name | `demo@example.com` (required and unique) |
+| 3 of 3 | Setup key | The service's Base32 manual setup key |
 
-The form trims and uppercases the secret, accepts `A–Z`, `2–7`, and trailing
-`=` padding, and requires a length divisible by 8. For example,
-`JBSWY3DPEHPK3PXP` is synthetic test data, not a key for a real account.
-The form's check is not a complete Base32 decoder validation.
+Use **Next**, or the keyboard's Next action, to advance. **Back** preserves the
+draft; **Cancel** discards it without saving. Hardware back moves to the previous
+step, or cancels from the first step. With the keyboard open, the system may
+dismiss it before navigating. During saving, navigation and repeated
+submissions are disabled.
 
-Tap **Save Account** (scroll down if necessary). On success, the app saves and
-reloads the vault, returns to the account list, and displays a confirmation
-near the actions at the end of the list. New accounts use SHA1, 6 digits, and
-a 30-second period; there is no parameter editor in this version.
+Autofill is disabled in the app; the keyboard is asked to disable autocorrection
+and suggestions. Exact keyboard behavior depends on the watch IME. The layout
+accounts for IME insets and scrolls when space is limited. Submission dismisses
+the keyboard so validation feedback can be read on the current step.
+
+Setup keys are uppercased and formatting whitespace is removed. Both correctly
+padded and unpadded Base32 are accepted, fully decoded, and checked for canonical
+trailing bits. Padding is added before storage when needed. `0` and `1` are not
+Base32 characters. **Show / Hide** lets you inspect the input. Invalid
+characters and incomplete keys are explained on submission, without showing an
+error on every keystroke. `JBSWY3DPEHPK3PXP` is synthetic test data, not a key
+for a real account.
+
+Tap **Save Account** to finish. Failed saves preserve the draft for retry; a
+successful save returns to the new card with **Account added** confirmation.
+New accounts use SHA1, 6 digits, and a 30-second period; there is no parameter
+editor in this version.
 
 QR scanning, `otpauth://` entry, renaming, deleting, password changes, and
 import/export are not available in the current UI.

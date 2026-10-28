@@ -5,7 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Unreleased
+## [Unreleased]
+
+### ✨ Changed
+
+- Replace the account form with a three-step wizard: service name, account name,
+  and setup key, each with a heading and one input per screen.
+- Add Back/Cancel, secret visibility, keyboard submission, and validation after
+  keyboard dismissal. Disable autofill and request no suggestions.
+- Accept whitespace-formatted and unpadded Base32 keys, validate decoding and
+  trailing bits, and store canonical padding for desktop-compatible readers.
+- Guard repeated saves, retain drafts on errors, and scroll to the new account
+  with confirmation on its card.
+
+### 🧪 Testing
+
+- Cover Base32 normalization/padding, invalid input, wizard navigation, duplicate
+  names, save claiming, and retries with unit tests.
+- Validate wizard entry, native Samsung keyboard actions, draft retention,
+  duplicate-name checks, normalization, save/cancel, legacy entries, and locking
+  on a physical Galaxy Watch Ultra; add screenshots and a device report.
+- Samsung's fullscreen editor still hides the wizard heading despite IME hints.
+
+### 🐛 Fixed
+
+- Keep input text readable on the dark wizard background in error/disabled states.
+
+## [0.2.0] - 2026-10-28
 
 ### 🆕 Added
 

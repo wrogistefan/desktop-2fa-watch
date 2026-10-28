@@ -27,9 +27,9 @@ Windows PowerShell:
 ```
 
 The debug APK is `app/build/outputs/apk/debug/app-debug.apk`. JVM test reports
-are in `app/build/reports/tests/testDebugUnitTest/`. The 5 current tests cover
-vault save/load, invalid passwords, unsupported payload versions, and two
-password-strength examples. They do not prove full TOTP, Keystore, UI, or
+are in `app/build/reports/tests/testDebugUnitTest/`. Unit tests cover
+vault save/load, invalid passwords, unsupported payload versions, password
+strength, and wizard normalization/validation, navigation, and save guards. They do not prove full TOTP, Keystore, UI, or
 cross-platform compatibility.
 
 GitHub Actions runs unit tests and builds the debug APK on `main`, `feature/*`,
@@ -69,6 +69,10 @@ No root or bootloader unlock is needed. Disable debugging after testing.
 
 ## Manual UI checklist
 
+Recorded results: [emulator](testing/wear-os-emulator.md) and
+[Galaxy Watch Ultra](testing/galaxy-watch-ultra.md). See the
+[report index](testing/README.md) for scope and limitations.
+
 Use a disposable test device/profile and synthetic secrets. Preserve any
 existing vault and cached credentials before injecting fixtures; do not use
 personal accounts in screenshots or logs.
@@ -87,7 +91,21 @@ personal accounts in screenshots or logs.
 The 0.2.0 UI regression pass used the Large Round Wear OS emulator at
 454 × 454. It covered list duplicates/unnamed entries, live code/countdown
 changes, scrolling, empty state, opening the add-account form, and lock.
-It did not validate full account creation through the UI or physical hardware.
+That MVP pass did not validate full account creation through the UI or physical
+hardware.
+
+For the subsequent account wizard, the Large Round emulator pass additionally
+covered progression through all fields, duplicate-name and invalid-key feedback,
+Back with draft retention, Show/Hide, normalization, saving, new-card confirmation,
+and cancellation/reset. The saved synthetic vault was decrypted independently
+to verify a single entry and the unchanged SHA1/6-digit/30-second defaults.
+The 16 unit tests include 11 wizard tests. A subsequent
+[Galaxy Watch Ultra pass](testing/galaxy-watch-ultra.md) covered the physical
+Samsung keyboard and the wizard, including native Next/Done actions. Its
+fullscreen editor still hides the wizard heading. The emulator IME intercepted
+ADB text injection, so it was
+temporarily disabled for scripted entry and restored afterwards; those tests
+do not establish that typing is comfortable on a real watch.
 
 ## Screenshot provenance
 
@@ -97,10 +115,15 @@ synthetic test fixtures. The repeated account names demonstrate the regression
 case; they are not production data. Screenshots were captured before the
 metadata-only version bump; the displayed UI is unchanged.
 
+`account-wizard.png` and `setup-key-validation.png` show the subsequent wizard
+implementation on the same emulator. The invalid key is synthetic; its masked
+field and explanatory error demonstrate submit-time validation. Scripted entry
+used the temporary IME workaround described above.
+
 ## Versioning
 
 The MVP increments app SemVer from 0.1.0 to **0.2.0** and Android `versionCode`
 from 2 to **3** in `app/build.gradle.kts`. Feature additions justify the minor
 increment while the project is pre-1.0. This is not a declaration of a stable
-1.0 API or a published store release. The changelog entry stays unreleased
-until publication. Vault header/payload versions remain **1**.
+1.0 API or a published store release. The v0.2.0 tag marks the MVP baseline; subsequent wizard work is documented
+under Unreleased in the changelog. Vault header/payload versions remain **1**.
