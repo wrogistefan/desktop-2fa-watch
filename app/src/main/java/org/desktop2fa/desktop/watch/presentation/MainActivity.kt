@@ -34,7 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
-import androidx.wear.compose.foundation.lazy.items
+import androidx.wear.compose.foundation.lazy.itemsIndexed
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.Text
@@ -355,9 +355,11 @@ class MainActivity : ComponentActivity() {
                                     .weight(1f)
                             ) {
                                 item {
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(text = "desktop-2fa", color = Color.White)
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(text = "desktop-2fa", color = Color.White)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
                                 }
 
                                 if (entries.isEmpty()) {
@@ -365,7 +367,9 @@ class MainActivity : ComponentActivity() {
                                         Text(text = "No accounts", color = Color(0xFF9CA3AF))
                                     }
                                 } else {
-                                    items(entries, key = { it.accountName ?: it.secret }) { entry ->
+                                    // Legacy vaults may contain duplicate names and secrets. The
+                                    // current list only appends entries, so positions stay stable.
+                                    itemsIndexed(entries, key = { index, _ -> "entry-$index" }) { _, entry ->
                                         val safePeriod = if (entry.period > 0) entry.period else 30
                                         val code = TotpGenerator.generateTotp(
                                             secret = entry.secret,
@@ -394,49 +398,54 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 item {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Button(
-                                        onClick = {
-                                            issuerInput = ""
-                                            accountNameInput = ""
-                                            secretInput = ""
-                                            errorMessage = null
-                                            successMessage = null
-                                            currentScreen = Screen.ADD_ACCOUNT
-                                        }
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        Text("Add Account")
-                                    }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Button(
-                                        onClick = {
-                                            activeVault = null
-                                            passwordInput = ""
-                                            issuerInput = ""
-                                            accountNameInput = ""
-                                            secretInput = ""
-                                            errorMessage = null
-                                            successMessage = null
-                                            currentScreen = Screen.UNLOCK
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Button(
+                                            onClick = {
+                                                issuerInput = ""
+                                                accountNameInput = ""
+                                                secretInput = ""
+                                                errorMessage = null
+                                                successMessage = null
+                                                currentScreen = Screen.ADD_ACCOUNT
+                                            }
+                                        ) {
+                                            Text("Add Account")
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Button(
+                                            onClick = {
+                                                activeVault = null
+                                                passwordInput = ""
+                                                issuerInput = ""
+                                                accountNameInput = ""
+                                                secretInput = ""
+                                                errorMessage = null
+                                                successMessage = null
+                                                currentScreen = Screen.UNLOCK
 
-                                            coroutineScope.launch(Dispatchers.IO) {
-                                                withContext(NonCancellable) {
-                                                    VaultSecurityManager.clearPassword(context)
+                                                coroutineScope.launch(Dispatchers.IO) {
+                                                    withContext(NonCancellable) {
+                                                        VaultSecurityManager.clearPassword(context)
+                                                    }
                                                 }
                                             }
+                                        ) {
+                                            Text("Lock Vault")
                                         }
-                                    ) {
-                                        Text("Lock Vault")
+                                        if (successMessage != null) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(text = successMessage!!, color = Color(0xFF10B981))
+                                        }
+                                        if (errorMessage != null) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(text = errorMessage!!, color = Color(0xFFEF4444))
+                                        }
+                                        Spacer(modifier = Modifier.height(16.dp))
                                     }
-                                    if (successMessage != null) {
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(text = successMessage!!, color = Color(0xFF10B981))
-                                    }
-                                    if (errorMessage != null) {
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(text = errorMessage!!, color = Color(0xFFEF4444))
-                                    }
-                                    Spacer(modifier = Modifier.height(16.dp))
                                 }
                             }
                         }
