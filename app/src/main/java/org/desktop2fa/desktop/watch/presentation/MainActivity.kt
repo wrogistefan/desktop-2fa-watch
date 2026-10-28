@@ -1,6 +1,7 @@
 package org.desktop2fa.desktop.watch.presentation
 
 import android.os.Bundle
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -38,6 +39,7 @@ import androidx.wear.compose.foundation.lazy.itemsIndexed
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.Text
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -57,6 +59,7 @@ import java.io.File
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.decorView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
 
         setContent {
             val context = applicationContext
@@ -70,10 +73,8 @@ class MainActivity : ComponentActivity() {
             var saveToKeystore by remember { mutableStateOf(true) }
             var isLoading by remember { mutableStateOf(true) }
 
-            // Add Account inputs
-            var issuerInput by remember { mutableStateOf("") }
-            var accountNameInput by remember { mutableStateOf("") }
-            var secretInput by remember { mutableStateOf("") }
+            var wizardState by remember { mutableStateOf(AccountWizardState()) }
+            var addedAccountIndex by remember { mutableStateOf<Int?>(null) }
 
             var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
 
@@ -338,7 +339,9 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        val listState = rememberTransformingLazyColumnState()
+                        val listState = rememberTransformingLazyColumnState(
+                            initialAnchorItemIndex = addedAccountIndex?.plus(1) ?: 0
+                        )
                         val entries = activeVault?.entries ?: emptyList()
 
                         Column(
@@ -369,7 +372,7 @@ class MainActivity : ComponentActivity() {
                                 } else {
                                     // Legacy vaults may contain duplicate names and secrets. The
                                     // current list only appends entries, so positions stay stable.
-                                    itemsIndexed(entries, key = { index, _ -> "entry-$index" }) { _, entry ->
+                                    itemsIndexed(entries, key = { index, _ -> "entry-$index" }) { index, entry ->
                                         val safePeriod = if (entry.period > 0) entry.period else 30
                                         val code = TotpGenerator.generateTotp(
                                             secret = entry.secret,
@@ -388,6 +391,9 @@ class MainActivity : ComponentActivity() {
                                                 .padding(12.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
+                                            if (index == addedAccountIndex && successMessage != null) {
+                                                Text("Account added", color = Color(0xFF10B981))
+                                            }
                                             Text(text = entry.issuer ?: "Service", color = Color(0xFF3B82F6))
                                             Text(text = entry.accountName ?: "", color = Color(0xFF9CA3AF))
                                             Spacer(modifier = Modifier.height(4.dp))
@@ -405,9 +411,8 @@ class MainActivity : ComponentActivity() {
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Button(
                                             onClick = {
-                                                issuerInput = ""
-                                                accountNameInput = ""
-                                                secretInput = ""
+                                                wizardState = AccountWizardState()
+                                                addedAccountIndex = null
                                                 errorMessage = null
                                                 successMessage = null
                                                 currentScreen = Screen.ADD_ACCOUNT
@@ -420,9 +425,8 @@ class MainActivity : ComponentActivity() {
                                             onClick = {
                                                 activeVault = null
                                                 passwordInput = ""
-                                                issuerInput = ""
-                                                accountNameInput = ""
-                                                secretInput = ""
+                                                wizardState = AccountWizardState()
+                                                addedAccountIndex = null
                                                 errorMessage = null
                                                 successMessage = null
                                                 currentScreen = Screen.UNLOCK
@@ -452,126 +456,58 @@ class MainActivity : ComponentActivity() {
                     }
 
                     Screen.ADD_ACCOUNT -> {
-                        val handleSaveAccount = {
-                            if (issuerInput.isBlank() || accountNameInput.isBlank() || secretInput.isBlank()) {
-                                errorMessage = "All fields are required"
-                            } else {
-                                val cleanSecret = secretInput.trim().uppercase()
-                                val base32Regex = Regex("^[A-Z2-7]+=*$")
-                                if (!cleanSecret.matches(base32Regex) || cleanSecret.length % 8 != 0) {
-                                    errorMessage = "Invalid Base32 secret format or length"
-                                } else {
-                                    val vault = activeVault
-                                    if (vault == null) {
-                                        errorMessage = "No active vault"
-                                    } else {
-                                        isLoading = true
-                                        coroutineScope.launch(Dispatchers.IO) {
-                                            try {
-                                                val tempVault = Vault(
-                                                    VaultData(
-                                                        version = vault.data.version,
-                                                        entries = vault.data.entries.toMutableList()
-                                                    )
-                                                )
-                                                tempVault.addEntry(
-                                                    name = accountNameInput.trim(),
-                                                    issuer = issuerInput.trim(),
-                                                    secret = cleanSecret
-                                                )
-                                                val currentPass = VaultSecurityManager.getPassword(context) ?: passwordInput
-                                                tempVault.save(vaultFile, currentPass)
-                                                val reloaded = Vault.load(vaultFile, currentPass)
-                                                withContext(Dispatchers.Main) {
-                                                    activeVault = reloaded
-                                                    successMessage = "Account added successfully!"
-                                                    errorMessage = null
-                                                    currentScreen = Screen.MAIN
-                                                    isLoading = false
-                                                }
-                                            } catch (e: Exception) {
-                                                withContext(Dispatchers.Main) {
-                                                    errorMessage = e.message ?: "Failed to add account"
-                                                    isLoading = false
-                                                }
-                                            }
-                                        }
+                        val handleSubmit = submit@{
+                            if (wizardState.isSaving) return@submit
+                            val vault = activeVault
+                            if (vault == null) {
+                                wizardState = wizardState.copy(error = "Unlock the vault before adding an account")
+                                return@submit
+                            }
+                            val draft = wizardState.submit(vault.entries.map { it.accountName })
+                            wizardState = draft
+                            if (!draft.isSaving) return@submit
+
+                            // Capture the validated draft and fallback password on the UI thread.
+                            val fallbackPassword = passwordInput
+                            coroutineScope.launch {
+                                try {
+                                    val reloaded = withContext(Dispatchers.IO) {
+                                        val updated = Vault(VaultData(
+                                            version = vault.data.version,
+                                            entries = vault.data.entries.toMutableList()
+                                        ))
+                                        updated.addEntry(draft.account, draft.issuer, draft.secret)
+                                        val password = VaultSecurityManager.getPassword(context) ?: fallbackPassword
+                                        updated.save(vaultFile, password)
+                                        Vault.load(vaultFile, password)
                                     }
+                                    activeVault = reloaded
+                                    addedAccountIndex = reloaded.entries.lastIndex
+                                    successMessage = "Account added successfully!"
+                                    errorMessage = null
+                                    wizardState = AccountWizardState()
+                                    currentScreen = Screen.MAIN
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (_: Exception) {
+                                    // Keep the draft for retry; do not expose provider messages or key data.
+                                    wizardState = draft.copy(isSaving = false,
+                                        error = "Could not save the account. Try again.")
                                 }
                             }
                         }
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color(0xFF0F172A))
-                                .verticalScroll(scrollState)
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(text = "Add TOTP Account", color = Color.White)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            OutlinedTextField(
-                                value = issuerInput,
-                                onValueChange = { issuerInput = it },
-                                label = { Text("Issuer (e.g. GitHub)") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedBorderColor = Color(0xFF3B82F6),
-                                    unfocusedBorderColor = Color(0xFF9CA3AF)
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            OutlinedTextField(
-                                value = accountNameInput,
-                                onValueChange = { accountNameInput = it },
-                                label = { Text("Account Name") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedBorderColor = Color(0xFF3B82F6),
-                                    unfocusedBorderColor = Color(0xFF9CA3AF)
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            OutlinedTextField(
-                                value = secretInput,
-                                onValueChange = { secretInput = it },
-                                label = { Text("Secret (Base32)") },
-                                singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Password,
-                                    autoCorrectEnabled = false,
-                                    imeAction = ImeAction.Done
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onDone = { handleSaveAccount() }
-                                ),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedBorderColor = Color(0xFF3B82F6),
-                                    unfocusedBorderColor = Color(0xFF9CA3AF)
-                                )
-                            )
-                            if (errorMessage != null) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = errorMessage!!, color = Color(0xFFEF4444))
+                        AccountWizard(
+                            state = wizardState,
+                            onEdit = { wizardState = wizardState.edit(it) },
+                            onSubmit = handleSubmit,
+                            onBack = { wizardState = wizardState.back() },
+                            onCancel = {
+                                if (!wizardState.isSaving) {
+                                    wizardState = AccountWizardState()
+                                    currentScreen = Screen.MAIN
+                                }
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = { handleSaveAccount() }
-                            ) {
-                                Text("Save Account")
-                            }
-                        }
+                        )
                     }
                 }
             }
