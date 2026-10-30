@@ -65,6 +65,9 @@ class Vault(val data: VaultData = VaultData()) {
         // Validate the exact immutable-entry snapshot that will be serialized,
         // before any write, directory mutation or expensive KDF.
         val snapshot = data.copy(entries = data.entries.toMutableList())
+        if (snapshot.version != 1) {
+            throw UnsupportedFormatException("Unsupported vault data version: ${snapshot.version}")
+        }
         snapshot.entries.forEach(AccountValidation::requireValid)
 
         try {

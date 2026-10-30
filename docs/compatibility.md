@@ -33,8 +33,9 @@ complete desktop → watch → desktop round trip.
 - Watch generation rejects invalid supplied parameters with a controlled error;
   the list shows no code or countdown for that entry. It never substitutes SHA1
   or a 30-second period. Default parameters for new manual accounts are unchanged.
-- Watch requires JSON payload version 1. The compared desktop model accepts an
-  integer without the same load-time version check.
+- Watch requires an explicit integer-literal JSON payload version 1, independently
+  of binary header v1. The historical desktop revision compared above had looser
+  version acceptance; the current 0.10.0 differences are described below.
 - Both have a 10 MiB load limit, but watch checks size before `readBytes()` while
   desktop uses a bounded read. Watch also limits serialized output on save.
 - Unknown JSON fields are rejected by watch before exposing a writable vault.
@@ -70,6 +71,25 @@ historical duplicate labels remain unchanged on load/save. New manual accounts
 still require unique names; this is not a transfer collision/identity policy.
 The wizard uses the shared validator and canonicalizes new keys only. Supported
 v1 vaults require no migration. Existing callers of `addEntry` keep their signature.
+
+## Version and extension policy (#17)
+
+Watch rejects unknown root and entry fields (including nested extension objects)
+before exposing a writable vault. They cannot silently disappear during a later
+manual addition. A higher version is not a request to reinterpret data as v1.
+
+Header byte `0x01` and an explicitly present JSON integer literal `1` are required.
+Missing/null, string, Boolean, fractional/exponent and out-of-range values fail
+as invalid data; other Int versions fail as unsupported. Unsupported models also
+cannot be saved over existing files or used to create new ones. Errors preserve
+original encrypted bytes and never authorize a fresh setup.
+
+Pinned Desktop 0.10.0 rejects unknown fields and mistyped provided versions, but
+its model can default a missing version to 1. Watch intentionally does not guess
+that version. Normal generated v1 files, including the immutable Python fixture,
+already have explicit version 1 and need no migration. For an unversioned legacy
+file, keep the original and use a compatible reader to inspect/explicitly save a
+separate supported copy; no automatic Watch repair or lossy conversion is added.
 
 ## Import/export plan
 
