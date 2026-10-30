@@ -122,9 +122,18 @@ there is no automatic repair, silent deletion or format migration. See
 The generator uses a time-step counter, HMAC, dynamic truncation, and decimal
 padding. SHA1, SHA256, and SHA512 are supported. Intended desktop-compatible
 digit counts are 6, 7, and 8; vault boundaries enforce that range.
-Unknown algorithms currently fall back to SHA1, and generation failures return
-`------`. The UI substitutes a 30-second period for non-positive periods.
-These fallbacks are not a validation guarantee.
+Generation independently applies the shared account rules and rejects negative
+Unix times. Unknown algorithms, invalid digits/periods/keys and provider failures
+raise a controlled `TotpGenerationException`, without key material or raw provider
+diagnostics. There is no algorithm/period substitution or `------` placeholder.
+The account card shows `Code unavailable` and no countdown on failure; other
+valid cards still render. Successful countdowns use the account's actual period.
+The default SHA1/6-digit/30-second arguments for newly created accounts remain
+unchanged; they are not fallbacks for invalid supplied data.
+
+Targeted fixed-time cases use public vectors from
+[RFC 6238 Appendix B](https://www.rfc-editor.org/rfc/rfc6238.html#appendix-B).
+The complete RFC/boundary suite remains a separate task (#16).
 
 ## References
 

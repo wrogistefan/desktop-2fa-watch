@@ -16,3 +16,6 @@ The Ultra pass additionally exercised the native Samsung Next/Done controls.
 Storage/cache changes for #4/#5/#6 have a separate
 [regression report](vault-cache-regressions.md). Its JVM and Android checks do not
 replace the historical UI reports or constitute a new physical-watch UI pass.
+
+The [TOTP error-rendering report](totp-error-regressions.md) records the separate
+#15 generator and isolated Compose component checks and their device limitations.

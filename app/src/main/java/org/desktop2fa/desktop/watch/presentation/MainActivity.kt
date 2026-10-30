@@ -49,7 +49,6 @@ import org.desktop2fa.desktop.watch.model.VaultData
 import org.desktop2fa.desktop.watch.vault.CorruptedVaultException
 import org.desktop2fa.desktop.watch.vault.InvalidPasswordException
 import org.desktop2fa.desktop.watch.vault.PasswordStrengthValidator
-import org.desktop2fa.desktop.watch.vault.TotpGenerator
 import org.desktop2fa.desktop.watch.vault.UnsupportedFormatException
 import org.desktop2fa.desktop.watch.vault.Vault
 import org.desktop2fa.desktop.watch.vault.VaultIOException
@@ -411,15 +410,7 @@ class MainActivity : ComponentActivity() {
                                     // Legacy vaults may contain duplicate names and secrets. The
                                     // current list only appends entries, so positions stay stable.
                                     itemsIndexed(entries, key = { index, _ -> "entry-$index" }) { index, entry ->
-                                        val safePeriod = if (entry.period > 0) entry.period else 30
-                                        val code = TotpGenerator.generateTotp(
-                                            secret = entry.secret,
-                                            timeSeconds = currentTime,
-                                            period = safePeriod,
-                                            digits = entry.digits,
-                                            algorithm = entry.algorithm
-                                        )
-                                        val secondsRemaining = safePeriod - (currentTime % safePeriod)
+                                        val codeState = accountCodeState(entry, currentTime)
 
                                         Column(
                                             modifier = Modifier
@@ -435,8 +426,7 @@ class MainActivity : ComponentActivity() {
                                             Text(text = entry.issuer ?: "Service", color = Color(0xFF3B82F6))
                                             Text(text = entry.accountName ?: "", color = Color(0xFF9CA3AF))
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            Text(text = code, color = Color.White)
-                                            Text(text = "${secondsRemaining}s remaining", color = Color(0xFF9CA3AF))
+                                            AccountCode(codeState)
                                         }
                                     }
                                 }

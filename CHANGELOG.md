@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- Report controlled TOTP generation failures and render an unavailable state
+  without a code/countdown, instead of substituting SHA1/30 seconds or dashes (#15).
 - Share ASCII Base32 and TOTP parameter validation across wizard/load/add/save,
   reject invalid snapshots before I/O, and preserve valid historical key text,
   nullable names and duplicate labels (#14).

@@ -52,6 +52,11 @@ The Android suite uses isolated synthetic preference names and temporary files:
 ```
 
 It checks real encrypted preference cleanup and create-only publication on Android.
+The code-display Compose test also checks an unavailable state alongside a valid
+synthetic code, with only the valid entry showing a countdown. Espresso is pinned
+to 3.7.0 in the Android-test configuration: the older transitive version used
+reflection against an InputManager method unavailable on API 37. Production
+dependencies are unaffected. See [TOTP error checks](testing/totp-error-regressions.md).
 It does not delete the default Keystore key or inspect the user's vault. A full
 key-invalidation and lifecycle/IME pass remains separate from those tests.
 

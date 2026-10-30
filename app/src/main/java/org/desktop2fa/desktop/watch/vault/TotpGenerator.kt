@@ -2,9 +2,14 @@ package org.desktop2fa.desktop.watch.vault
 
 import org.bouncycastle.util.encoders.Base32
 import org.desktop2fa.desktop.watch.model.SetupKey
+import org.desktop2fa.desktop.watch.model.AccountValidation
+import org.desktop2fa.desktop.watch.model.TotpEntry
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.pow
+
+/** Controlled failure with no key material or cryptographic-provider diagnostics. */
+class TotpGenerationException : Exception("TOTP code is unavailable")
 
 object TotpGenerator {
 
@@ -16,6 +21,8 @@ object TotpGenerator {
         algorithm: String = "SHA1"
     ): String {
         return try {
+            AccountValidation.requireValid(TotpEntry(secret = secret, period = period, digits = digits, algorithm = algorithm))
+            require(timeSeconds >= 0) { "Unsupported TOTP time" }
             val decodedKey = Base32.decode(SetupKey.canonical(secret))
             val counter = timeSeconds / period
             val data = ByteArray(8)
@@ -25,10 +32,11 @@ object TotpGenerator {
                 value = value ushr 8
             }
 
-            val hmacAlg = when (algorithm.uppercase()) {
+            val hmacAlg = when (algorithm) {
+                "SHA1" -> "HmacSHA1"
                 "SHA256" -> "HmacSHA256"
                 "SHA512" -> "HmacSHA512"
-                else -> "HmacSHA1"
+                else -> throw IllegalArgumentException("Unsupported TOTP algorithm")
             }
 
             val mac = Mac.getInstance(hmacAlg)
@@ -44,7 +52,7 @@ object TotpGenerator {
             val otp = binary % 10.0.pow(digits.toDouble()).toInt()
             otp.toString().padStart(digits, '0')
         } catch (_: Exception) {
-            "------"
+            throw TotpGenerationException()
         }
     }
 }

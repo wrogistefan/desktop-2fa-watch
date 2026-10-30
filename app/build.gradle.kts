@@ -57,6 +57,8 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.ui.test.junit4)
+    // Older transitive Espresso reflects InputManager.getInstance, removed on API 37.
+    androidTestImplementation(libs.espresso.core)
     debugImplementation(libs.ui.test.manifest)
     debugImplementation(libs.ui.tooling)
 }

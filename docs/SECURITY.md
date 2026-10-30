@@ -86,8 +86,10 @@ parameter validation before mutation/persistence. Invalid snapshots are rejected
 before writes/KDF; invalid loaded accounts never expose a writable vault.
 This reduces malformed-input and silent-rewrite risks without changing encryption.
 Models remain plain serializable data; callers must use the shared validation at
-their boundary. Generation still has algorithm/error fallbacks until roadmap #15;
-the full RFC suite is tracked in #16, not established by boundary tests alone.
+their boundary. Generation validates independently and reports a controlled
+failure instead of silently changing parameters or returning a code-shaped
+placeholder. UI errors contain no raw provider diagnostics. The full RFC suite
+is tracked in #16, not established by boundary/error-handling tests alone.
 Unknown JSON fields at either the root or entry level are now rejected on load,
 before a writable vault is exposed. Original bytes are left untouched; no
 automatic stripping or migration is performed. Source-level format parity does

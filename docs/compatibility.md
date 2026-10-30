@@ -30,8 +30,9 @@ complete desktop → watch → desktop round trip.
 - Watch now validates Base32, digits 6/7/8, positive Int periods and known
   algorithms at load/add/save boundaries. Models are serializable data, not
   independently validated constructors; future importers must use the same boundary.
-- Watch generation falls back to SHA1 for unknown algorithms; the current list
-  replaces non-positive periods with 30. Invalid data may produce misleading codes.
+- Watch generation rejects invalid supplied parameters with a controlled error;
+  the list shows no code or countdown for that entry. It never substitutes SHA1
+  or a 30-second period. Default parameters for new manual accounts are unchanged.
 - Watch requires JSON payload version 1. The compared desktop model accepts an
   integer without the same load-time version check.
 - Both have a 10 MiB load limit, but watch checks size before `readBytes()` while
