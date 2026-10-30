@@ -123,6 +123,11 @@ If only a backup remains, creation is blocked to preserve that recovery candidat
 There is no automatic recovery flow yet; do not clear app storage to dismiss the
 error. Files with unknown JSON fields are rejected intact. Open such files only
 with a version that understands those fields; no metadata is silently stripped.
+The encrypted header and JSON payload must both declare supported v1. Missing
+or mistyped payload versions are rejected rather than guessed. Regular generated
+v1 vaults need no migration. Keep unsupported originals; use a compatible reader
+to inspect and explicitly save a separate supported copy, never clear app data
+or remove unknown fields from the original just to bypass an error.
 
 The MVP has no user-facing backup/export or forgotten-password recovery.
 Keep the service's recovery codes or another authenticator before relying on
@@ -136,7 +141,7 @@ available as an app workflow.
 |---------|---------------|
 | Loading takes time | Argon2id uses 128 MiB per derivation; performance varies by device |
 | Invalid password | Check the entered password; a modified encrypted payload can produce the same failure |
-| Unsupported vault format | Only the `D2FA` v1 header and payload version 1 are accepted |
+| Unsupported vault format / invalid data | Only the `D2FA` v1 header and explicit integer payload version 1 are accepted; keep the original when unsupported fields or metadata are reported |
 | Invalid Base32 | Enter the manual setup key, not a QR image or `otpauth://` URL; check padding and length |
 | Duplicate name | Choose a different account name for the new entry |
 | `Code unavailable` or rejected code | Check account parameters and the watch clock; no substitute code is generated. If it persists, report the app/device version using synthetic examples, never real keys or codes |

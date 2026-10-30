@@ -96,6 +96,11 @@ before a writable vault is exposed. Original bytes are left untouched; no
 automatic stripping or migration is performed. Source-level format parity does
 not establish complete desktop interoperability; follow
 [issue #10](https://github.com/wrogistefan/desktop-2fa-watch/issues/10).
+The binary header and payload versions are independent checks. Payload version
+must be explicitly present as integer literal 1; missing or coerced values are
+not accepted as evidence of v1. The writer refuses unsupported model versions
+before mutation. This prevents ambiguous/lossy rewrites without changing KDF or
+encryption; it does not add rollback protection or recovery for unsupported data.
 
 ## Network behavior
 

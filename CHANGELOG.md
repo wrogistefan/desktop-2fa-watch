@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- Require explicit integer payload version 1 and reject unsupported write
+  snapshots; preserve rejected version/extension data without silent migration (#17).
 - Report controlled TOTP generation failures and render an unavailable state
   without a code/countdown, instead of substituting SHA1/30 seconds or dashes (#15).
 - Share ASCII Base32 and TOTP parameter validation across wizard/load/add/save,

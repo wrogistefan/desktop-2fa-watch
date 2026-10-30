@@ -60,6 +60,18 @@ at the root or entry level are rejected during loading rather than silently
 removed on a later save. No automatic format migration is performed.
 Binary format version and JSON payload version are separate values, both
 currently 1. They do not change with the application version bump to 0.2.0.
+Both must be explicit and supported: the header byte is `0x01`, and the JSON
+`version` is the integer literal `1`. Missing/null, quoted, Boolean, decimal,
+exponent or out-of-range payload versions are rejected without coercion.
+Other representable integer versions are unsupported. The serializer always
+emits `version`, even when other defaults are omitted; the vault writer refuses
+unsupported model versions before any write or KDF.
+
+Normal Watch/Desktop v1 writers and the pinned historical fixture already emit
+the version field, so supported generated files require no migration. Previously
+accepted unversioned/mistyped JSON is now rejected intact. There is no automatic
+guess, repair or metadata-stripping path. Unknown root/entry fields are also
+rejected before a writable vault is exposed, rather than discarded on save.
 
 ## Save and load
 

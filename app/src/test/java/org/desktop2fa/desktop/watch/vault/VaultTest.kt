@@ -1,6 +1,5 @@
 package org.desktop2fa.desktop.watch.vault
 
-import org.desktop2fa.desktop.watch.model.VaultData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -60,12 +59,11 @@ class VaultTest {
 
     @Test
     fun testUnsupportedVersionThrowsException() {
-        val invalidVersionVault = Vault(VaultData(version = 99))
-        val vaultFile = tempFolder.newFile("vault_invalid_version.d2fa")
-        invalidVersionVault.save(vaultFile, "password")
+        // Build unsupported input without weakening the production writer's validation.
+        val vaultFile = encryptedFixture("""{"version":99,"entries":[]}""")
 
         try {
-            Vault.load(vaultFile, "password")
+            Vault.load(vaultFile, "synthetic password")
             fail("Expected UnsupportedFormatException was not thrown")
         } catch (e: UnsupportedFormatException) {
             assertTrue(e.message?.contains("Unsupported vault data version") == true)
