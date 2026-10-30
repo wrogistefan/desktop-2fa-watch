@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- Share ASCII Base32 and TOTP parameter validation across wizard/load/add/save,
+  reject invalid snapshots before I/O, and preserve valid historical key text,
+  nullable names and duplicate labels (#14).
 - Surface password-cache write and deletion failures, preserve immediate Lock,
   and clear unreadable secure/legacy stores without decrypting them (#4).
 - Refuse setup on uncertain storage or leftover recovery backups, and publish

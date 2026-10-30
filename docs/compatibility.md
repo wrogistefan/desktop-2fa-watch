@@ -27,8 +27,9 @@ complete desktop → watch → desktop round trip.
 
 ## Differences that matter
 
-- Desktop validates Base32, digits 6/7/8, positive periods, and known algorithms
-  through Pydantic. Watch deserialization does not enforce equivalent constraints.
+- Watch now validates Base32, digits 6/7/8, positive Int periods and known
+  algorithms at load/add/save boundaries. Models are serializable data, not
+  independently validated constructors; future importers must use the same boundary.
 - Watch generation falls back to SHA1 for unknown algorithms; the current list
   replaces non-positive periods with 30. Invalid data may produce misleading codes.
 - Watch requires JSON payload version 1. The compared desktop model accepts an
@@ -43,6 +44,31 @@ complete desktop → watch → desktop round trip.
   new entries still require unique account names.
 - Watch creation uses a character/length password heuristic; desktop uses
   zxcvbn in applicable flows. A similar score is not policy equivalence.
+
+## Current account rules and historical records (#14)
+
+The account-validation comparison uses Desktop-2FA 0.10.0 pinned to
+[`7d1089d6bee0f3f82678ca8a13988c742840fba0`](https://github.com/wrogistefan/desktop-2fa/tree/7d1089d6bee0f3f82678ca8a13988c742840fba0),
+specifically `utils/base32.py` and `vault/models.py`. This is a source comparison
+and targeted synthetic Kotlin regression coverage. One immutable Python-written
+v0.8.3 fixture from that commit is hash-checked and loaded/re-saved to verify all
+fields, Unicode labels/password and nullable names. It is not full current
+Python-library interoperability; the larger corpus/runner stays in #28/#29.
+
+Watch requires non-empty ASCII Base32 and canonical trailing bits at every vault
+boundary. It accepts ASCII space plus U+0009–U+000D formatting whitespace; pinned
+Desktop's decoder ignores only ASCII spaces and can accept non-canonical trailing
+bits. Desktop can retain some historical empty or Unicode-folded records for
+listing/repair. Watch intentionally rejects those vaults intact rather than
+silently changing/removing keys or generating a code from a substituted value.
+Use a reader supporting the original records to recover/review them; keep the
+original file and service recovery methods. There is no automatic Watch repair.
+
+Valid stored key text, Unicode labels, nullable issuer/account_name, ordering and
+historical duplicate labels remain unchanged on load/save. New manual accounts
+still require unique names; this is not a transfer collision/identity policy.
+The wizard uses the shared validator and canonicalizes new keys only. Supported
+v1 vaults require no migration. Existing callers of `addEntry` keep their signature.
 
 ## Import/export plan
 

@@ -2,6 +2,8 @@ package org.desktop2fa.desktop.watch.vault
 
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import org.desktop2fa.desktop.watch.model.AccountValidation
+import org.desktop2fa.desktop.watch.model.SetupKey
 import org.desktop2fa.desktop.watch.model.TotpEntry
 import org.desktop2fa.desktop.watch.model.VaultData
 import java.io.File
@@ -23,8 +25,9 @@ class Vault(val data: VaultData = VaultData()) {
         val entry = TotpEntry(
             accountName = name,
             issuer = issuer,
-            secret = secret,
+            secret = SetupKey.canonical(secret),
         )
+        AccountValidation.requireValid(entry)
         data.entries.add(entry)
     }
 
@@ -59,6 +62,10 @@ class Vault(val data: VaultData = VaultData()) {
 
     private fun save(file: File, password: String, createOnly: Boolean) {
         validatePassword(password)
+        // Validate the exact immutable-entry snapshot that will be serialized,
+        // before any write, directory mutation or expensive KDF.
+        val snapshot = data.copy(entries = data.entries.toMutableList())
+        snapshot.entries.forEach(AccountValidation::requireValid)
 
         try {
             val absFile = file.absoluteFile
@@ -69,7 +76,7 @@ class Vault(val data: VaultData = VaultData()) {
             val salt = CryptoUtils.generateSalt(16)
             val key = CryptoUtils.deriveKey(password, salt)
 
-            val jsonString = json.encodeToString(VaultData.serializer(), data)
+            val jsonString = json.encodeToString(VaultData.serializer(), snapshot)
             val rawJson = jsonString.toByteArray(Charsets.UTF_8)
             val encrypted = CryptoUtils.encrypt(key, rawJson)
 
@@ -206,6 +213,12 @@ class Vault(val data: VaultData = VaultData()) {
 
             if (vaultData.version != 1) {
                 throw UnsupportedFormatException("Unsupported vault data version: ${vaultData.version}")
+            }
+
+            try {
+                vaultData.entries.forEach(AccountValidation::requireValid)
+            } catch (_: IllegalArgumentException) {
+                throw CorruptedVaultException("Vault contains invalid account data")
             }
 
             return Vault(vaultData)
