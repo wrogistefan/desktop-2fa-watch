@@ -12,3 +12,7 @@ suite and do not replace an automated UI suite or a usability study.
 Both environments covered account setup, validation, draft navigation,
 save/cancel behavior, legacy duplicate entries, scrolling, and manual locking.
 The Ultra pass additionally exercised the native Samsung Next/Done controls.
+
+Storage/cache changes for #4/#5/#6 have a separate
+[regression report](vault-cache-regressions.md). Its JVM and Android checks do not
+replace the historical UI reports or constitute a new physical-watch UI pass.

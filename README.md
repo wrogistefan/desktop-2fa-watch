@@ -126,6 +126,10 @@ the desktop app's zxcvbn evaluation. Unlock sessions are held in memory; there
 is no automatic inactivity lock or device-authentication prompt for cached
 password use. See the [security model](docs/SECURITY.md) for limitations.
 
+Cache write/removal failures now show a separate warning without keeping the
+vault open. Setup refuses uncertain storage and cannot replace an existing file.
+Vaults with unknown JSON fields are rejected unchanged instead of losing metadata.
+
 ---
 
 ## 📚 Documentation

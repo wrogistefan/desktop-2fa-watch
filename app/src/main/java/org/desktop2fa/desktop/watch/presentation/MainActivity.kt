@@ -53,6 +53,8 @@ import org.desktop2fa.desktop.watch.vault.TotpGenerator
 import org.desktop2fa.desktop.watch.vault.UnsupportedFormatException
 import org.desktop2fa.desktop.watch.vault.Vault
 import org.desktop2fa.desktop.watch.vault.VaultIOException
+import org.desktop2fa.desktop.watch.vault.VaultFiles
+import org.desktop2fa.desktop.watch.vault.VaultPresence
 import org.desktop2fa.desktop.watch.vault.VaultSecurityManager
 import java.io.File
 
@@ -72,6 +74,9 @@ class MainActivity : ComponentActivity() {
             var passwordInput by remember { mutableStateOf("") }
             var saveToKeystore by remember { mutableStateOf(true) }
             var isLoading by remember { mutableStateOf(true) }
+            var startupAttempt by remember { mutableStateOf(0) }
+            var cacheWarning by remember { mutableStateOf<String?>(null) }
+            var clearingCache by remember { mutableStateOf(false) }
 
             var wizardState by remember { mutableStateOf(AccountWizardState()) }
             var addedAccountIndex by remember { mutableStateOf<Int?>(null) }
@@ -79,29 +84,38 @@ class MainActivity : ComponentActivity() {
             var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
 
             // Asynchronous startup check off main thread
-            LaunchedEffect(Unit) {
-                coroutineScope.launch(Dispatchers.IO) {
-                    val vaultExists = vaultFile.exists()
-                    val cachedPass = if (vaultExists) VaultSecurityManager.getPassword(context) else null
+            LaunchedEffect(startupAttempt) {
+                withContext(Dispatchers.IO) {
                     var loadedVault: Vault? = null
-                    var nextScreen = Screen.SETUP
-
-                    if (vaultExists) {
-                        if (cachedPass != null) {
-                            try {
-                                loadedVault = Vault.load(vaultFile, cachedPass)
-                                nextScreen = Screen.MAIN
-                            } catch (_: Exception) {
-                                nextScreen = Screen.UNLOCK
+                    var startupError: String? = null
+                    val nextScreen = try {
+                        when (VaultFiles.inspect(vaultFile)) {
+                            VaultPresence.MISSING -> Screen.SETUP
+                            VaultPresence.RECOVERY_REQUIRED -> {
+                                startupError = "A vault backup requires recovery. New vault creation is disabled."
+                                Screen.STORAGE_ERROR
                             }
-                        } else {
-                            nextScreen = Screen.UNLOCK
+                            VaultPresence.PRESENT -> {
+                                val cachedPass = VaultSecurityManager.getPassword(context)
+                                if (cachedPass != null) {
+                                    try {
+                                        loadedVault = Vault.load(vaultFile, cachedPass)
+                                    } catch (_: Exception) {
+                                        // A cache or load error never authorizes setup.
+                                    }
+                                }
+                                if (loadedVault != null) Screen.MAIN else Screen.UNLOCK
+                            }
                         }
+                    } catch (_: Exception) {
+                        startupError = "Cannot check vault storage. Existing data has not been replaced."
+                        Screen.STORAGE_ERROR
                     }
 
                     withContext(Dispatchers.Main) {
                         activeVault = loadedVault
                         currentScreen = nextScreen
+                        errorMessage = startupError
                         isLoading = false
                     }
                 }
@@ -110,7 +124,8 @@ class MainActivity : ComponentActivity() {
             val scrollState = rememberScrollState()
 
             // Helper action for setup
-            val handleSetup = {
+            val handleSetup = setup@{
+                if (isLoading) return@setup
                 if (passwordInput.isBlank()) {
                     errorMessage = "Password cannot be empty"
                 } else {
@@ -120,8 +135,8 @@ class MainActivity : ComponentActivity() {
                         coroutineScope.launch(Dispatchers.IO) {
                             try {
                                 val newVault = Vault.create()
-                                newVault.save(vaultFile, passwordInput)
-                                if (saveToKeystore) {
+                                newVault.saveNew(vaultFile, passwordInput)
+                                val cacheSaved = if (saveToKeystore) {
                                     VaultSecurityManager.savePassword(context, passwordInput)
                                 } else {
                                     VaultSecurityManager.clearPassword(context)
@@ -130,11 +145,13 @@ class MainActivity : ComponentActivity() {
                                     activeVault = newVault
                                     currentScreen = Screen.MAIN
                                     errorMessage = null
+                                    cacheWarning = cacheFailureMessage(cacheSaved, saveToKeystore)
                                     isLoading = false
                                 }
                             } catch (e: Exception) {
                                 withContext(Dispatchers.Main) {
-                                    errorMessage = "Failed: ${e.message}"
+                                    errorMessage = "Could not create a new vault. Existing data has not been replaced."
+                                    currentScreen = Screen.STORAGE_ERROR
                                     isLoading = false
                                 }
                             }
@@ -145,7 +162,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val handleUnlock = {
+            val handleUnlock = unlock@{
+                if (isLoading || clearingCache) return@unlock
                 if (passwordInput.isBlank()) {
                     errorMessage = "Password cannot be empty"
                 } else {
@@ -153,7 +171,7 @@ class MainActivity : ComponentActivity() {
                     coroutineScope.launch(Dispatchers.IO) {
                         try {
                             val loaded = Vault.load(vaultFile, passwordInput)
-                            if (saveToKeystore) {
+                            val cacheSaved = if (saveToKeystore) {
                                 VaultSecurityManager.savePassword(context, passwordInput)
                             } else {
                                 VaultSecurityManager.clearPassword(context)
@@ -162,6 +180,7 @@ class MainActivity : ComponentActivity() {
                                 activeVault = loaded
                                 currentScreen = Screen.MAIN
                                 errorMessage = null
+                                cacheWarning = cacheFailureMessage(cacheSaved, saveToKeystore)
                                 isLoading = false
                             }
                         } catch (_: InvalidPasswordException) {
@@ -171,7 +190,7 @@ class MainActivity : ComponentActivity() {
                             }
                         } catch (_: CorruptedVaultException) {
                             withContext(Dispatchers.Main) {
-                                errorMessage = "Vault file is corrupted"
+                                errorMessage = "Vault contains invalid or unsupported data"
                                 isLoading = false
                             }
                         } catch (_: UnsupportedFormatException) {
@@ -210,6 +229,20 @@ class MainActivity : ComponentActivity() {
             } else {
                 when (currentScreen) {
                     Screen.SPLASH -> {}
+
+                    Screen.STORAGE_ERROR -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(24.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(errorMessage ?: "Vault storage is unavailable", color = Color.White)
+                            Button(onClick = {
+                                isLoading = true
+                                startupAttempt += 1
+                            }) { Text("Retry storage check") }
+                        }
+                    }
 
                     Screen.SETUP -> {
                         Column(
@@ -284,6 +317,10 @@ class MainActivity : ComponentActivity() {
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(text = "Unlock Vault", color = Color.White)
+                            if (clearingCache) {
+                                Text("Removing remembered password…", color = Color.White)
+                            }
+                            cacheWarning?.let { Text(it, color = Color(0xFFFCA5A5)) }
                             Spacer(modifier = Modifier.height(8.dp))
                             OutlinedTextField(
                                 value = passwordInput,
@@ -323,7 +360,8 @@ class MainActivity : ComponentActivity() {
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(
-                                onClick = { handleUnlock() }
+                                onClick = { handleUnlock() },
+                                enabled = !clearingCache
                             ) {
                                 Text("Unlock")
                             }
@@ -430,11 +468,15 @@ class MainActivity : ComponentActivity() {
                                                 errorMessage = null
                                                 successMessage = null
                                                 currentScreen = Screen.UNLOCK
+                                                cacheWarning = null
+                                                clearingCache = true
 
-                                                coroutineScope.launch(Dispatchers.IO) {
-                                                    withContext(NonCancellable) {
+                                                coroutineScope.launch {
+                                                    val cleared = withContext(Dispatchers.IO + NonCancellable) {
                                                         VaultSecurityManager.clearPassword(context)
                                                     }
+                                                    clearingCache = false
+                                                    cacheWarning = cacheFailureMessage(cleared, remember = false)
                                                 }
                                             }
                                         ) {
@@ -448,6 +490,7 @@ class MainActivity : ComponentActivity() {
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(text = errorMessage!!, color = Color(0xFFEF4444))
                                         }
+                                        cacheWarning?.let { Text(it, color = Color(0xFFFCA5A5)) }
                                         Spacer(modifier = Modifier.height(16.dp))
                                     }
                                 }
@@ -477,7 +520,11 @@ class MainActivity : ComponentActivity() {
                                             entries = vault.data.entries.toMutableList()
                                         ))
                                         updated.addEntry(draft.account, draft.issuer, draft.secret)
-                                        val password = VaultSecurityManager.getPassword(context) ?: fallbackPassword
+                                        // Prefer the password that actually unlocked this session,
+                                        // even if updating an older cache failed.
+                                        val password = fallbackPassword.takeIf { it.isNotBlank() }
+                                            ?: VaultSecurityManager.getPassword(context)
+                                            ?: throw IllegalStateException("Unlock required")
                                         updated.save(vaultFile, password)
                                         Vault.load(vaultFile, password)
                                     }
@@ -516,5 +563,11 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, SETUP, UNLOCK, MAIN, ADD_ACCOUNT
+    SPLASH, SETUP, UNLOCK, MAIN, ADD_ACCOUNT, STORAGE_ERROR
+}
+
+internal fun cacheFailureMessage(success: Boolean, remember: Boolean): String? = when {
+    success -> null
+    remember -> "Could not remember the password. Keep your vault password for the next unlock."
+    else -> "Could not confirm removal of the remembered password. It may still unlock the vault after restart."
 }

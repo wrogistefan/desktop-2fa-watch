@@ -9,19 +9,22 @@ import java.io.IOException
 import java.security.GeneralSecurityException
 
 object VaultSecurityManager {
-    private const val PREF_NAME = "desktop_2fa_secure_prefs"
     private const val KEY_VAULT_PASSWORD = "vault_password"
 
-    private fun getPreferences(context: Context): SharedPreferences? {
-        return createEncryptedPreferences(context) ?: run {
-            try {
-                context.deleteSharedPreferences(PREF_NAME)
-                createEncryptedPreferences(context)
-            } catch (_: Throwable) {
-                null
+    private fun cache(context: Context) = PasswordCache(
+        openStore = {
+            createEncryptedPreferences(context)?.let { prefs ->
+                object : PasswordStore {
+                    override fun read(): String? = prefs.getString(KEY_VAULT_PASSWORD, null)
+
+                    @SuppressLint("ApplySharedPref")
+                    override fun write(password: String): Boolean =
+                        prefs.edit().putString(KEY_VAULT_PASSWORD, password).commit()
+                }
             }
-        }
-    }
+        },
+        deleteStore = { name -> context.deleteSharedPreferences(name) },
+    )
 
     private fun createEncryptedPreferences(context: Context): SharedPreferences? {
         return try {
@@ -31,7 +34,7 @@ object VaultSecurityManager {
 
             EncryptedSharedPreferences.create(
                 context,
-                PREF_NAME,
+                PasswordCache.SECURE_STORE,
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
@@ -47,47 +50,19 @@ object VaultSecurityManager {
         }
     }
 
-    @SuppressLint("ApplySharedPref")
+    @Synchronized
     fun savePassword(context: Context, password: String): Boolean {
-        if (password.isBlank()) return false
-        val prefs = getPreferences(context) ?: return false
-        return try {
-            prefs.edit().putString(KEY_VAULT_PASSWORD, password).commit()
-        } catch (_: Throwable) {
-            false
-        }
+        return cache(context).save(password)
     }
 
+    @Synchronized
     fun getPassword(context: Context): String? {
-        val prefs = getPreferences(context) ?: return null
-        return try {
-            prefs.getString(KEY_VAULT_PASSWORD, null)
-        } catch (_: GeneralSecurityException) {
-            null
-        } catch (_: SecurityException) {
-            null
-        } catch (_: ClassCastException) {
-            null
-        } catch (_: Throwable) {
-            null
-        }
+        return cache(context).read()
     }
 
-    @SuppressLint("ApplySharedPref")
+    @Synchronized
     fun clearPassword(context: Context): Boolean {
-        try {
-            context.deleteSharedPreferences("desktop_2fa_fallback_prefs")
-            context.deleteSharedPreferences("desktop_2fa_secure_prefs_fallback")
-        } catch (_: Throwable) {
-            // Ignore
-        }
-
-        val prefs = getPreferences(context) ?: return true
-        return try {
-            prefs.edit().remove(KEY_VAULT_PASSWORD).commit()
-        } catch (_: Throwable) {
-            false
-        }
+        return cache(context).clear()
     }
 
     fun hasSavedPassword(context: Context): Boolean {

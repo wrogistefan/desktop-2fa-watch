@@ -35,14 +35,25 @@ complete desktop → watch → desktop round trip.
   integer without the same load-time version check.
 - Both have a 10 MiB load limit, but watch checks size before `readBytes()` while
   desktop uses a bounded read. Watch also limits serialized output on save.
-- Unknown JSON fields are ignored by watch and lost on save. Future desktop
-  metadata cannot be assumed to survive a watch round trip.
+- Unknown JSON fields are rejected by watch before exposing a writable vault.
+  Existing files with additional metadata remain unchanged but cannot be opened
+  by this version; use a reader supporting those fields. Do not strip metadata
+  from the original file to work around rejection.
 - Duplicate names may exist in older desktop vaults. Watch renders them safely;
   new entries still require unique account names.
 - Watch creation uses a character/length password heuristic; desktop uses
   zxcvbn in applicable flows. A similar score is not policy equivalence.
 
 ## Import/export plan
+
+The changes for #4/#5/#6 keep the binary/payload v1 layout, KDF, nullable names
+and historical duplicate records. Ordinary supported v1 vaults need no migration.
+Stricter unknown-field rejection intentionally replaces the previous lossy
+acceptance. The comparison above remains historical, not a test of current
+Desktop-2FA 0.10.0; current fixtures/interoperability are tracked in #28/#29.
+
+The additive selected-account direction is tracked in [roadmap #13](https://github.com/wrogistefan/desktop-2fa-watch/issues/13).
+It differs from #10's whole-vault import/export scope below, which remains unchanged.
 
 [Issue #10](https://github.com/wrogistefan/desktop-2fa-watch/issues/10) defines the
 follow-up work on a separate branch:
