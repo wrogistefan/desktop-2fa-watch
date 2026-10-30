@@ -23,12 +23,23 @@ again after a fresh launch. Keep your own record of the password either way.
 
 Tap **Initialize Vault** and wait for key derivation and storage to finish.
 The app currently asks for the password once, without a confirmation field.
+Setup refuses to replace an existing vault, including a file created after the
+startup check. If storage cannot be inspected or a backup needs recovery, the
+app shows a storage error and retry action instead of opening setup.
+If the very first write is interrupted, an incomplete file may remain. The app
+will refuse to overwrite it; this version has no automatic reset/recovery flow.
 
 ## Unlock an existing vault
 
 If no usable cached password is available, **Unlock Vault** prompts for the
 master password. The same remember option controls whether it is cached.
 A failed cache lookup does not replace or reset the vault.
+If remembering or removing the password fails, the app displays a separate
+warning. The vault can still be unlocked with its password. A removal warning
+means automatic unlock after restart may still be possible.
+To request cache cleanup again, unlock with **Remember on watch** unchecked.
+An unavailable Keystore key may require continuing with manual password unlock;
+removing the cache does not repair or reset the Keystore key.
 
 Unlocking a vault does not reapply the creation strength policy. The password
 must match the one used to encrypt it. The UI rejects blank password input.
@@ -86,6 +97,8 @@ can be displayed. Adding a new entry with an existing account name is rejected.
 Scroll to **Lock Vault**. The app immediately leaves the account view, clears
 its active vault reference and form inputs, and requests removal of the cached
 password in the background. This does not delete the encrypted vault.
+The unlock action waits for that cleanup attempt. If removal fails, codes stay
+hidden and a warning explains that the remembered password may remain on disk.
 
 There is no automatic inactivity lock. Returning to the watch face is not an
 explicit lock action. Clearing references does not guarantee memory erasure;
@@ -98,6 +111,10 @@ the same app ID and signing key preserves it. Uninstalling, clearing app data,
 or resetting the watch can remove it. Configured Android backup/transfer rules
 exclude the vault and credential preferences. The temporary `.bak` used during
 saving is not a user backup or a supported restore mechanism.
+If only a backup remains, creation is blocked to preserve that recovery candidate.
+There is no automatic recovery flow yet; do not clear app storage to dismiss the
+error. Files with unknown JSON fields are rejected intact. Open such files only
+with a version that understands those fields; no metadata is silently stripped.
 
 The MVP has no user-facing backup/export or forgotten-password recovery.
 Keep the service's recovery codes or another authenticator before relying on

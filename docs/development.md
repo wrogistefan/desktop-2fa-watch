@@ -32,6 +32,22 @@ vault save/load, invalid passwords, unsupported payload versions, password
 strength, and wizard normalization/validation, navigation, and save guards. They do not prove full TOTP, Keystore, UI, or
 cross-platform compatibility.
 
+Storage/cache regression tests additionally cover unknown root/entry fields,
+inspection errors, competing create-only publication, nullable/duplicate entries,
+tampering/truncation and unsuccessful cache operations. See
+[vault/cache regression checks](testing/vault-cache-regressions.md).
+
+The Android suite uses isolated synthetic preference names and temporary files:
+
+```powershell
+.\gradlew.bat :app:assembleDebugAndroidTest --stacktrace
+.\gradlew.bat :app:connectedDebugAndroidTest --stacktrace
+```
+
+It checks real encrypted preference cleanup and create-only publication on Android.
+It does not delete the default Keystore key or inspect the user's vault. A full
+key-invalidation and lifecycle/IME pass remains separate from those tests.
+
 GitHub Actions runs unit tests and builds the debug APK on `main`, `feature/*`,
 and pull requests to `main`. Its setup step selects Java 17; the repository's
 daemon criteria separately request Java 25 through toolchain provisioning.

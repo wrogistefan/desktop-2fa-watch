@@ -56,13 +56,30 @@ The decrypted JSON has this shape (example values are synthetic):
 ```
 
 `issuer` and `account_name` are nullable. Defaults are encoded; unknown fields
-are ignored during loading and are not preserved when the vault is saved.
+at the root or entry level are rejected during loading rather than silently
+removed on a later save. No automatic format migration is performed.
 Binary format version and JSON payload version are separate values, both
 currently 1. They do not change with the application version bump to 0.2.0.
 
 ## Save and load
 
-Saving serializes and encrypts the data, rejects a result above 10 MiB, writes
+New-vault setup uses `saveNew`, separate from updating an existing vault. It
+inspects the directory, target and possible `.bak` with error-reporting metadata
+reads. Only confirmed absence allows creation. The encrypted
+file is written through a channel opened with atomic `CREATE_NEW`; an existing
+destination always causes failure, even if it appeared after the inspection.
+The content is fully encrypted before creation and the completed file is synced.
+If creation/write/sync fails, an incomplete or uncertain new file may remain;
+it is not removed or treated as permission to run setup again. This prevents
+replacement but does not make the entire new-file write atomic or claim
+directory-sync/power-loss durability. Android's app sandbox can deny hard links,
+so creation does not depend on them.
+
+Startup inspection errors show a retry screen; a backup without the main file
+blocks creation pending recovery. Backups are not automatically promoted or
+deleted. A failed password/authentication/load never authorizes new setup.
+
+Updating serializes and encrypts the data, rejects a result above 10 MiB, writes
 a unique temporary file, flushes and syncs it, then replaces `vault.d2fa`.
 The implementation requests an atomic move and falls back to a replacement
 move if it fails. It copies an existing vault to `.bak` before replacement,
@@ -76,7 +93,7 @@ Both the binary version byte and JSON payload version must be supported.
 
 Authentication/decryption failures are reported as `InvalidPasswordException`;
 this cannot distinguish a wrong password from encrypted-payload corruption.
-Invalid decrypted JSON raises `CorruptedVaultException`. Entry-level validation
+Invalid or unknown-field JSON raises `CorruptedVaultException`. Entry-level validation
 is less strict than desktop's; see [Compatibility](compatibility.md).
 
 ## TOTP

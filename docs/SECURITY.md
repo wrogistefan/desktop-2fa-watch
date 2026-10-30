@@ -28,11 +28,12 @@ protected by Android Keystore. It does not replace the password-derived vault
 key with a device-specific format. Cached-password access does not require a
 per-use PIN/biometric prompt in this implementation.
 
-Preference initialization attempts recreation if protected storage is
-unavailable or corrupted. This can discard the cache; the encrypted vault is
-not intentionally reset by that path. Cache read/write/clear operations can
-fail, and their Boolean results are not surfaced in the UI. A remember or lock
-action is therefore not a verified guarantee of successful disk-cache mutation.
+Unavailable or corrupted preferences fall back to manual password unlock without
+automatically deleting/recreating the cache or resetting the vault. Failed cache
+writes and deletions are surfaced separately from the vault operation. Clearing
+deletes all three known secure/legacy preference stores without decrypting them;
+all deletion results must succeed. This also permits cleanup of an unreadable
+cache. A failed clear warns that cached unlock may still be possible after restart.
 
 ## Sessions and locking
 
@@ -41,6 +42,9 @@ form values can also remain in Compose state. **Lock Vault** immediately drops
 the active vault reference, clears input state, changes to the unlock screen,
 and schedules cache removal on an I/O coroutine with a non-cancellable clearing
 section. Clearing also attempts to remove legacy plaintext fallback preferences.
+Unlock submission waits for that cleanup attempt to finish, avoiding a concurrent
+cache save being removed by the previous Lock action. Failure never keeps the
+active vault open.
 
 There is no inactivity/background lock or guaranteed memory zeroization.
 Kotlin/JVM strings and garbage collection do not provide secure erasure.
@@ -54,9 +58,15 @@ ciphertext can surface as the same error. There is no rollback protection,
 forward secrecy, or protection against deleting the vault. An older valid
 copy can replace the current file without a freshness warning.
 
-Saves use a synced temporary file, request atomic replacement, and have a
+Existing-vault updates use a synced temporary file, request atomic replacement, and have a
 non-atomic fallback. The `.bak` is temporary recovery support during that save,
 not a permanent backup or crash-recovery service. See [Cryptography](crypto.md).
+Startup distinguishes confirmed absence from inspection errors. Errors or a
+leftover backup without a main file block setup. New-vault publication is
+create-only, so a competing creator cannot be overwritten. Automatic backup
+recovery and full power-loss durability are still separate work.
+A failed initial write can leave a partial file that blocks setup. Creation is
+not an atomic write of the entire vault and never automatically discards such a file.
 
 ## Backup, transfer, and data loss
 
@@ -73,7 +83,9 @@ or password-reset mechanism. Keep independent service recovery methods.
 
 Loaded Kotlin models do not fully validate Base32, digit counts, periods, or
 algorithm names. Generation has fallbacks that may hide invalid parameters.
-Unknown JSON fields are discarded on save. Source-level format parity does
+Unknown JSON fields at either the root or entry level are now rejected on load,
+before a writable vault is exposed. Original bytes are left untouched; no
+automatic stripping or migration is performed. Source-level format parity does
 not establish complete desktop interoperability; follow
 [issue #10](https://github.com/wrogistefan/desktop-2fa-watch/issues/10).
 

@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- Surface password-cache write and deletion failures, preserve immediate Lock,
+  and clear unreadable secure/legacy stores without decrypting them (#4).
+- Refuse setup on uncertain storage or leftover recovery backups, and publish
+  new vaults without replacing a competing existing file (#5).
+- Reject unknown vault/entry JSON fields before modification instead of losing
+  them on save; supported v1 vaults need no migration (#6).
 - Keep input text readable on the dark wizard background in error/disabled states.
 
 ## [0.2.0] - 2026-10-28

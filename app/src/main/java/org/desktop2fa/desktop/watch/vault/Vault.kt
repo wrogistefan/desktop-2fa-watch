@@ -45,6 +45,19 @@ class Vault(val data: VaultData = VaultData()) {
 
     @Synchronized
     fun save(file: File, password: String) {
+        save(file, password, createOnly = false)
+    }
+
+    /** Create and sync a new encrypted file without replacing an existing destination. */
+    @Synchronized
+    fun saveNew(file: File, password: String) {
+        if (VaultFiles.inspect(file) != VaultPresence.MISSING) {
+            throw VaultIOException("Vault already exists or requires recovery")
+        }
+        save(file, password, createOnly = true)
+    }
+
+    private fun save(file: File, password: String, createOnly: Boolean) {
         validatePassword(password)
 
         try {
@@ -63,6 +76,11 @@ class Vault(val data: VaultData = VaultData()) {
             val totalBytes = header + salt + encrypted
             if (totalBytes.size > MAX_VAULT_SIZE) {
                 throw VaultIOException("Vault content exceeds maximum supported size of $MAX_VAULT_SIZE bytes")
+            }
+
+            if (createOnly) {
+                VaultFiles.writeNew(absFile, totalBytes)
+                return
             }
 
             val tempFile = File.createTempFile(".vault.", ".tmp", parentDir)
@@ -121,7 +139,7 @@ class Vault(val data: VaultData = VaultData()) {
         const val MAX_VAULT_SIZE = 10 * 1024 * 1024
 
         private val json = Json {
-            ignoreUnknownKeys = true
+            ignoreUnknownKeys = false
             encodeDefaults = true
         }
 

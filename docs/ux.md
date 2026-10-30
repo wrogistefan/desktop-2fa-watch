@@ -7,13 +7,16 @@ English labels currently shipped by the app.
 
 | Screen | Behavior | Next state |
 |--------|----------|------------|
-| Splash/loading | Displays `Loading Secure Vault...` during initialization or vault work | Setup, Unlock, Main, or the originating form after failure |
+| Splash/loading | Displays `Loading Secure Vault...` during initialization or vault work | Setup, Unlock, Main, storage error, or the originating form after failure |
+| Storage error | Inspection failed or only a recovery backup remains; Retry storage check, no Initialize action | Rechecked startup state |
 | Create Vault | Password field, validation feedback, Remember on watch, Initialize Vault | Main after a successful save |
 | Unlock Vault | Password field, Remember on watch, Unlock, error feedback | Main after a successful load |
 | Main | Scrollable account cards, empty state, Add Account, Lock Vault | Add Account or Unlock |
 | Add Account wizard | Service name → Account name → Setup key; one field per step, Back/Cancel, final Save Account | Main at the new card after save/reload; retains draft on error |
 
-On startup, a missing vault leads to setup. If a vault exists, a cached password
+On startup, only confirmed absence of both vault and backup leads to setup.
+Inspection errors block setup; create-only publication also refuses a competing
+creator. If a vault exists, a cached password
 is tried first; a missing or unusable cache leads to unlock. File access and
 cryptographic work run on an I/O dispatcher. The generic loading message is
 also used for creation and saving, not just startup.
@@ -64,8 +67,10 @@ password field or password-visibility toggle there.
 ## Lock behavior
 
 Lock transitions to Unlock immediately, clears active vault/form references,
-and requests cache removal in the background. No success indication confirms
-credential deletion. There is no inactivity lock or automatic lock on backgrounding.
+and requests cache removal in the background. Unlock submission waits until the
+attempt completes. Failed cache writes/deletions show a separate warning; cache
+failure never retains the active vault. There is no inactivity lock or automatic
+lock on backgrounding.
 
 ## Validation status
 
