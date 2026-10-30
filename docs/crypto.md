@@ -98,9 +98,11 @@ move if it fails. It copies an existing vault to `.bak` before replacement,
 attempts restoration if replacement fails, and removes the backup on success.
 It does not automatically recover a leftover backup on the next launch.
 
-Loading checks the file size before reading, validates the header, derives the
-key, authenticates/decrypts the payload, and deserializes JSON. The watch uses
-a size check followed by `readBytes()` rather than desktop's bounded read.
+Loading may reject an oversized metadata hint early, then reads through a bounded
+stream and closes it on success/failure. It consumes at most 10 MiB plus one
+overflow sentinel byte, rejecting overflow before KDF/decryption even when the
+file grows after the initial size check. Only a complete, accepted read proceeds
+to header validation, key derivation, authenticated decryption and JSON parsing.
 Both the binary version byte and JSON payload version must be supported.
 
 Authentication/decryption failures are reported as `InvalidPasswordException`;

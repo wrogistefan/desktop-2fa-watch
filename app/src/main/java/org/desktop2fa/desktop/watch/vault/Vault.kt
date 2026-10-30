@@ -9,6 +9,7 @@ import org.desktop2fa.desktop.watch.model.VaultData
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
@@ -158,7 +159,9 @@ class Vault(val data: VaultData = VaultData()) {
         }
 
         @Synchronized
-        fun load(file: File, password: String): Vault {
+        fun load(file: File, password: String): Vault = load(file, password) { it.inputStream() }
+
+        internal fun load(file: File, password: String, openInput: (File) -> InputStream): Vault {
             validatePassword(password)
 
             val absFile = file.absoluteFile
@@ -172,7 +175,7 @@ class Vault(val data: VaultData = VaultData()) {
 
             val blob: ByteArray
             try {
-                blob = absFile.readBytes()
+                blob = readVaultBytes(openInput(absFile))
             } catch (e: IOException) {
                 throw VaultIOException("Failed to read vault file: ${e.message}", e)
             }

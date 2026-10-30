@@ -48,6 +48,12 @@ cover period rollover without sleeps; unsupported digits including 10 are reject
 Fixture provenance is in `app/src/test/resources/totp/README.md`. Full vault
 interoperability remains separate (#28/#29); JVM vectors do not prove device lifecycle.
 
+Bounded-read regressions cover the real 10 MiB limit, overflow sentinels, small
+chunks, read failures and guaranteed stream closure. An internal opener seam
+lets a test grow a synthetic file after the metadata check, verifying that
+`Vault.load` still consumes no more than the limit plus one byte. Existing
+encrypted round-trip, wrong-password, tamper and truncation tests remain active.
+
 The Android suite uses isolated synthetic preference names and temporary files:
 
 ```powershell

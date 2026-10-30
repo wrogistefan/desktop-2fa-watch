@@ -119,6 +119,8 @@ the same app ID and signing key preserves it. Uninstalling, clearing app data,
 or resetting the watch can remove it. Configured Android backup/transfer rules
 exclude the vault and credential preferences. The temporary `.bak` used during
 saving is not a user backup or a supported restore mechanism.
+Vault files are limited to 10 MiB. Oversized/failed reads are rejected without
+replacing the file, including when its size changes during reading.
 If only a backup remains, creation is blocked to preserve that recovery candidate.
 There is no automatic recovery flow yet; do not clear app storage to dismiss the
 error. Files with unknown JSON fields are rejected intact. Open such files only
