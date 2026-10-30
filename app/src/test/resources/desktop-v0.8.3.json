@@ -1,0 +1,37 @@
+{
+  "file": "v0.8.3.bin",
+  "release": "v0.8.3",
+  "commit": "cd8c3aeff9f192edf650a8b0f007a62da75224a2",
+  "password": "synthetic-żółw-compatibility-only",
+  "supported": true,
+  "sha256": "6153e89f0de647a22425d3a805fa8da662fcc8bc937b18340117a3178f40492f",
+  "expected": {
+    "version": 1,
+    "entries": [
+      {
+        "issuer": "Synthetic SHA1",
+        "account_name": "alice@example.invalid",
+        "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+        "algorithm": "SHA1",
+        "digits": 6,
+        "period": 30
+      },
+      {
+        "issuer": "Synthetic SHA256",
+        "account_name": "konto-żółw",
+        "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA====",
+        "algorithm": "SHA256",
+        "digits": 8,
+        "period": 45
+      },
+      {
+        "issuer": "Synthetic SHA512",
+        "account_name": null,
+        "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA=",
+        "algorithm": "SHA512",
+        "digits": 7,
+        "period": 60
+      }
+    ]
+  }
+}

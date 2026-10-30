@@ -37,6 +37,13 @@ inspection errors, competing create-only publication, nullable/duplicate entries
 tampering/truncation and unsuccessful cache operations. See
 [vault/cache regression checks](testing/vault-cache-regressions.md).
 
+Account-validation regressions additionally exercise strict ASCII Base32,
+supported TOTP parameter boundaries, invalid load/save data preservation and
+unchanged historical key text/nullable names/duplicates. A hash-pinned synthetic
+Python-written fixture is described in `app/src/test/resources/README.md`.
+One SHA1 RFC vector checks formatted-key decoding; full RFC/interoperability
+suites remain separate roadmap tasks (#16 and #28/#29).
+
 The Android suite uses isolated synthetic preference names and temporary files:
 
 ```powershell

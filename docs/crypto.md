@@ -93,14 +93,35 @@ Both the binary version byte and JSON payload version must be supported.
 
 Authentication/decryption failures are reported as `InvalidPasswordException`;
 this cannot distinguish a wrong password from encrypted-payload corruption.
-Invalid or unknown-field JSON raises `CorruptedVaultException`. Entry-level validation
-is less strict than desktop's; see [Compatibility](compatibility.md).
+Invalid or unknown-field JSON raises `CorruptedVaultException`. Account validation
+also runs after decoding, before exposing a writable vault, and before saving an
+entry-list snapshot. Invalid entries never cause an empty replacement vault.
+
+## Account validation
+
+The shared `model/SetupKey` and `model/AccountValidation` rules apply to loaded
+entries, manual additions, the wizard and saved snapshots. Secrets use RFC 4648
+ASCII Base32 (letters A–Z/a–z, digits 2–7), with correctly supplied padding or
+omitted padding. ASCII space and U+0009–U+000D formatting whitespace are ignored
+for validation/decoding. Unicode folding, other whitespace, invalid padding,
+non-zero trailing bits and empty keys are rejected. Errors do not echo key data.
+
+Known algorithms are exactly SHA1/SHA256/SHA512, digits are 6/7/8 and the period
+is a positive Kotlin Int (up to 2,147,483,647 seconds). Nullable names and legacy
+duplicate labels are valid stored data; new-name collision checks remain separate.
+New additions store canonical uppercase padded keys. Loading/saving valid stored
+entries preserves their original key text and all account parameters. Generation
+canonicalizes only a temporary decoding value, never the stored entry.
+
+Historical empty/non-generatable keys are rejected with the original file intact;
+there is no automatic repair, silent deletion or format migration. See
+[Compatibility](compatibility.md) for intentional differences from Desktop.
 
 ## TOTP
 
 The generator uses a time-step counter, HMAC, dynamic truncation, and decimal
 padding. SHA1, SHA256, and SHA512 are supported. Intended desktop-compatible
-digit counts are 6, 7, and 8; the Kotlin model does not enforce that range.
+digit counts are 6, 7, and 8; vault boundaries enforce that range.
 Unknown algorithms currently fall back to SHA1, and generation failures return
 `------`. The UI substitutes a 30-second period for non-positive periods.
 These fallbacks are not a validation guarantee.

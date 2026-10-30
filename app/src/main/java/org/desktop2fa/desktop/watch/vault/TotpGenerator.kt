@@ -1,6 +1,7 @@
 package org.desktop2fa.desktop.watch.vault
 
 import org.bouncycastle.util.encoders.Base32
+import org.desktop2fa.desktop.watch.model.SetupKey
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.pow
@@ -15,7 +16,7 @@ object TotpGenerator {
         algorithm: String = "SHA1"
     ): String {
         return try {
-            val decodedKey = Base32.decode(secret.trim().uppercase())
+            val decodedKey = Base32.decode(SetupKey.canonical(secret))
             val counter = timeSeconds / period
             val data = ByteArray(8)
             var value = counter

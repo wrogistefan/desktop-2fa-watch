@@ -2,6 +2,7 @@ package org.desktop2fa.desktop.watch.presentation
 
 import org.junit.Assert.*
 import org.junit.Test
+import org.desktop2fa.desktop.watch.model.SetupKey
 
 class AccountWizardStateTest {
     @Test

@@ -66,7 +66,9 @@ and suggestions. Exact keyboard behavior depends on the watch IME. The layout
 accounts for IME insets and scrolls when space is limited. Submission dismisses
 the keyboard so validation feedback can be read on the current step.
 
-Setup keys are uppercased and formatting whitespace is removed. Both correctly
+Setup keys use ASCII letters A–Z/a–z and digits 2–7; ASCII spaces, tabs and
+line-formatting whitespace are removed. Other Unicode letters/whitespace are
+rejected rather than folded into a different key. Both correctly
 padded and unpadded Base32 are accepted, fully decoded, and checked for canonical
 trailing bits. Padding is added before storage when needed. `0` and `1` are not
 Base32 characters. **Show / Hide** lets you inspect the input. Invalid
@@ -91,6 +93,10 @@ rejects them. `------` indicates code generation failed.
 
 Duplicate account names and unnamed entries already present in a loaded vault
 can be displayed. Adding a new entry with an existing account name is rejected.
+Loaded accounts must have a valid non-empty Base32 key, SHA1/SHA256/SHA512,
+6/7/8 digits and a positive period. Invalid historical accounts cause the vault
+to be rejected intact; they are never silently removed or rewritten. Use a
+compatible reader and keep service recovery methods when repairing original data.
 
 ## Lock the vault
 
@@ -131,7 +137,7 @@ available as an app workflow.
 | Unsupported vault format | Only the `D2FA` v1 header and payload version 1 are accepted |
 | Invalid Base32 | Enter the manual setup key, not a QR image or `otpauth://` URL; check padding and length |
 | Duplicate name | Choose a different account name for the new entry |
-| `------` or rejected code | Check the key, parameters, and watch clock; invalid loaded entries are not fully validated yet |
+| `------` or rejected code | Check the watch clock; generation failures still show a placeholder, and provider/fixed-time coverage remains separate from vault validation |
 | Remember setting does not persist | Protected preference creation or saving may have failed; unlock manually |
 
 Report reproducible problems with synthetic data through
