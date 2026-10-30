@@ -41,8 +41,12 @@ Account-validation regressions additionally exercise strict ASCII Base32,
 supported TOTP parameter boundaries, invalid load/save data preservation and
 unchanged historical key text/nullable names/duplicates. A hash-pinned synthetic
 Python-written fixture is described in `app/src/test/resources/README.md`.
-One SHA1 RFC vector checks formatted-key decoding; full RFC/interoperability
-suites remain separate roadmap tasks (#16 and #28/#29).
+Formatted-key decoding has a fixed-time SHA1 check. The complete TOTP vector suite
+now covers all 18 RFC 6238 eight-digit results, their 6/7-digit suffixes and 162
+independent Python-generated boundary/parameter cases. Controlled countdown tests
+cover period rollover without sleeps; unsupported digits including 10 are rejected.
+Fixture provenance is in `app/src/test/resources/totp/README.md`. Full vault
+interoperability remains separate (#28/#29); JVM vectors do not prove device lifecycle.
 
 The Android suite uses isolated synthetic preference names and temporary files:
 

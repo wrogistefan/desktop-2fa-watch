@@ -133,7 +133,11 @@ unchanged; they are not fallbacks for invalid supplied data.
 
 Targeted fixed-time cases use public vectors from
 [RFC 6238 Appendix B](https://www.rfc-editor.org/rfc/rfc6238.html#appendix-B).
-The complete RFC/boundary suite remains a separate task (#16).
+The JVM suite covers all 18 published eight-digit results and their 6/7-digit
+decimal suffixes, plus 162 independently generated boundary/parameter vectors.
+Controlled countdown tests cover rollover without sleeps. Ten-digit generation
+remains unsupported; these checks do not establish hardware/lifecycle behavior
+or complete cross-platform vault interoperability.
 
 ## References
 

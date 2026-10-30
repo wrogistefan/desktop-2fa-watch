@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🧪 Testing
 
+- Verify all RFC 6238 vectors for three algorithms, 6/7/8 digits, leading zeroes,
+  independent boundary/large-counter cases and controlled countdown rollover (#16).
 - Cover Base32 normalization/padding, invalid input, wizard navigation, duplicate
   names, save claiming, and retries with unit tests.
 - Validate wizard entry, native Samsung keyboard actions, draft retention,

@@ -88,8 +88,9 @@ This reduces malformed-input and silent-rewrite risks without changing encryptio
 Models remain plain serializable data; callers must use the shared validation at
 their boundary. Generation validates independently and reports a controlled
 failure instead of silently changing parameters or returning a code-shaped
-placeholder. UI errors contain no raw provider diagnostics. The full RFC suite
-is tracked in #16, not established by boundary/error-handling tests alone.
+placeholder. UI errors contain no raw provider diagnostics. The JVM suite now
+checks the full RFC 6238 table and independent parameter/boundary vectors. These
+tests do not constitute a security audit or establish device lifecycle behavior.
 Unknown JSON fields at either the root or entry level are now rejected on load,
 before a writable vault is exposed. Original bytes are left untouched; no
 automatic stripping or migration is performed. Source-level format parity does

@@ -155,12 +155,15 @@ Vaults with unknown JSON fields are rejected unchanged instead of losing metadat
 ./gradlew assembleDebug
 ```
 
-The unit suite covers vault round trips, wrong passwords, unsupported payload
+The unit suite includes the full RFC 6238 TOTP table, supported parameters,
+controlled-time period/countdown boundaries, and unsupported-input failures.
+It also covers vault round trips, wrong passwords, unsupported payload
 versions, password strength, and wizard validation, navigation, and save guards. Manual emulator
 checks cover duplicate/unnamed entries, scrolling, live codes, the empty state,
 opening the add-account form, and manual lock. The account wizard has also been
 checked on a physical Galaxy Watch Ultra; see the device report above for the
-scope and remaining keyboard limitation. Automated interoperability tests remain outstanding.
+scope and remaining keyboard limitation. Full automated Python ↔ Kotlin vault
+interoperability remains outstanding.
 
 ---
 
