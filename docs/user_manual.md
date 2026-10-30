@@ -89,7 +89,9 @@ import/export are not available in the current UI.
 Each card shows the issuer, account name, code, and seconds remaining.
 The list refreshes its time value approximately once per second while visible.
 Codes depend on the watch clock; check date/time synchronization if a service
-rejects them. `------` indicates code generation failed.
+rejects them. `Code unavailable` means generation failed; that card shows no code
+or countdown. Check the account parameters and watch time, then retry/reopen the
+app. Other valid cards continue working. The app does not substitute settings.
 
 Duplicate account names and unnamed entries already present in a loaded vault
 can be displayed. Adding a new entry with an existing account name is rejected.
@@ -137,7 +139,7 @@ available as an app workflow.
 | Unsupported vault format | Only the `D2FA` v1 header and payload version 1 are accepted |
 | Invalid Base32 | Enter the manual setup key, not a QR image or `otpauth://` URL; check padding and length |
 | Duplicate name | Choose a different account name for the new entry |
-| `------` or rejected code | Check the watch clock; generation failures still show a placeholder, and provider/fixed-time coverage remains separate from vault validation |
+| `Code unavailable` or rejected code | Check account parameters and the watch clock; no substitute code is generated. If it persists, report the app/device version using synthetic examples, never real keys or codes |
 | Remember setting does not persist | Protected preference creation or saving may have failed; unlock manually |
 
 Report reproducible problems with synthetic data through

@@ -30,6 +30,9 @@ success/error feedback; users may need to scroll to read it.
 Cards display issuer, optional account name, TOTP code, and seconds remaining.
 Missing issuers display `Service`. Missing names render as an empty line.
 Time is refreshed approximately every second; no per-card copy action exists.
+An invalid account or generation failure displays `Code unavailable` and
+`Check account data and watch time` in place of its code/countdown. Other cards
+continue rendering. No SHA1, 30-second period or dash-code fallback is applied.
 
 The current list assigns positional keys with an `entry-` prefix so duplicate
 names and secrets can coexist. Positions remain stable for the present append
