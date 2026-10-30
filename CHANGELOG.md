@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- Enforce the vault read limit on bytes actually consumed, including files that
+  grow after the size check; close streams and reject partial/oversized input (#18).
 - Require explicit integer payload version 1 and reject unsupported write
   snapshots; preserve rejected version/extension data without silent migration (#17).
 - Report controlled TOTP generation failures and render an unavailable state

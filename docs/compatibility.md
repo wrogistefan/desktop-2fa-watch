@@ -36,8 +36,9 @@ complete desktop → watch → desktop round trip.
 - Watch requires an explicit integer-literal JSON payload version 1, independently
   of binary header v1. The historical desktop revision compared above had looser
   version acceptance; the current 0.10.0 differences are described below.
-- Both have a 10 MiB load limit, but watch checks size before `readBytes()` while
-  desktop uses a bounded read. Watch also limits serialized output on save.
+- Both have a 10 MiB load limit with bounded reads. Watch now enforces the bound
+  on bytes actually consumed, independent of earlier file metadata, and also
+  limits encrypted output size on save.
 - Unknown JSON fields are rejected by watch before exposing a writable vault.
   Existing files with additional metadata remain unchanged but cannot be opened
   by this version; use a reader supporting those fields. Do not strip metadata

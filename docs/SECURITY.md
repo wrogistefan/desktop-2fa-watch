@@ -101,6 +101,10 @@ must be explicitly present as integer literal 1; missing or coerced values are
 not accepted as evidence of v1. The writer refuses unsupported model versions
 before mutation. This prevents ambiguous/lossy rewrites without changing KDF or
 encryption; it does not add rollback protection or recovery for unsupported data.
+Reads consume at most the 10 MiB vault limit plus one overflow sentinel, with
+streams closed on every outcome. An early file-size hint is not trusted as the
+read bound. Overflow and I/O failures never expose partial data as a vault or
+modify the source file; this bounds input consumption without lowering KDF costs.
 
 ## Network behavior
 
