@@ -73,6 +73,13 @@ v1 vaults require no migration. Existing callers of `addEntry` keep their signat
 
 ## Import/export plan
 
+The #16 JVM suite verifies all RFC 6238 Appendix B timestamps for all three hash
+algorithms, supported digit counts/leading zeroes, non-default periods, time zero,
+large counters/timestamps and countdown rollover. Additional expected values come
+from an offline Python standard-library oracle checked against the published RFC
+table. This checks TOTP semantics, not the complete current Desktop Vault library
+or Android lifecycle/clock behavior on a physical device.
+
 The changes for #4/#5/#6 keep the binary/payload v1 layout, KDF, nullable names
 and historical duplicate records. Ordinary supported v1 vaults need no migration.
 Stricter unknown-field rejection intentionally replaces the previous lossy
