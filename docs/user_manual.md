@@ -121,7 +121,10 @@ The vault is stored as `vault.d2fa` in private app storage. A normal update with
 the same app ID and signing key preserves it. Uninstalling, clearing app data,
 or resetting the watch can remove it. Configured Android backup/transfer rules
 exclude the vault and credential preferences. The temporary `.bak` used during
-saving is not a user backup or a supported restore mechanism.
+saving is not a user backup or a supported restore mechanism. Updates now require
+atomic replacement; unsupported storage or leftover `.tmp`/`.bak` candidates can
+block saving. Do not delete app data or retry by recreating the vault. Failed
+updates retain available recovery evidence; automatic recovery is separate work.
 Vault files are limited to 10 MiB. Oversized/failed reads are rejected without
 replacing the file, including when its size changes during reading.
 If only a backup remains, creation is blocked to preserve that recovery candidate.

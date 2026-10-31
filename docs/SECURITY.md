@@ -58,9 +58,13 @@ ciphertext can surface as the same error. There is no rollback protection,
 forward secrecy, or protection against deleting the vault. An older valid
 copy can replace the current file without a freshness warning.
 
-Existing-vault updates use a synced temporary file, request atomic replacement, and have a
-non-atomic fallback. The `.bak` is temporary recovery support during that save,
-not a permanent backup or crash-recovery service. See [Cryptography](crypto.md).
+Existing-vault updates require atomic replacement after syncing the encrypted
+temporary file and backup. There is no non-atomic fallback or automatic copy-back
+on failure. Ambiguous artifacts are retained and cannot be overwritten by the
+next save. Cleanup failures after a successful move do not roll back committed
+data. The `.bak` is recovery evidence, not a permanent backup service. See
+[Cryptography](crypto.md). Restart recovery and UI outcome reconciliation are
+separate #21/#22 work; directory/power-loss durability is not established.
 Startup distinguishes confirmed absence from inspection errors. Errors or a
 leftover backup without a main file block setup. New-vault publication is
 create-only, so a competing creator cannot be overwritten. Automatic backup
@@ -75,7 +79,7 @@ the later session-generation/lifecycle protection tracked in #25/#26.
 ## Backup, transfer, and data loss
 
 The configured Android cloud-backup and device-transfer rules exclude
-`vault.d2fa`, `vault.d2fa.bak`, and the secure preference file; a legacy fallback
+`vault.d2fa`, `vault.d2fa.bak`, `vault.d2fa.tmp`, and the secure preference file; a legacy fallback
 preference file is excluded too. The application manifest still allows backup
 for other eligible app data. These rules are not an implemented export feature.
 

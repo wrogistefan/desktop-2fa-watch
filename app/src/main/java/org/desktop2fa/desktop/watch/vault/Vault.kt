@@ -7,11 +7,8 @@ import org.desktop2fa.desktop.watch.model.SetupKey
 import org.desktop2fa.desktop.watch.model.TotpEntry
 import org.desktop2fa.desktop.watch.model.VaultData
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 
 class Vault(val data: VaultData = VaultData()) {
 
@@ -94,49 +91,7 @@ class Vault(val data: VaultData = VaultData()) {
                 return
             }
 
-            val tempFile = File.createTempFile(".vault.", ".tmp", parentDir)
-            try {
-                FileOutputStream(tempFile).use { fos ->
-                    fos.write(totalBytes)
-                    fos.flush()
-                    fos.fd.sync()
-                }
-
-                val backupFile = File(parentDir, "${absFile.name}.bak")
-                if (absFile.exists()) {
-                    absFile.copyTo(backupFile, overwrite = true)
-                }
-
-                try {
-                    try {
-                        Files.move(
-                            tempFile.toPath(),
-                            absFile.toPath(),
-                            StandardCopyOption.REPLACE_EXISTING,
-                            StandardCopyOption.ATOMIC_MOVE
-                        )
-                    } catch (_: Exception) {
-                        Files.move(
-                            tempFile.toPath(),
-                            absFile.toPath(),
-                            StandardCopyOption.REPLACE_EXISTING
-                        )
-                    }
-                    if (backupFile.exists()) {
-                        backupFile.delete()
-                    }
-                } catch (moveEx: Exception) {
-                    if (backupFile.exists()) {
-                        backupFile.copyTo(absFile, overwrite = true)
-                        backupFile.delete()
-                    }
-                    throw moveEx
-                }
-            } finally {
-                if (tempFile.exists()) {
-                    tempFile.delete()
-                }
-            }
+            replaceVaultFile(absFile, totalBytes)
         } catch (e: Exception) {
             if (e is VaultException) throw e
             throw VaultIOException("Failed to save vault: ${e.message}", e)

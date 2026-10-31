@@ -23,3 +23,7 @@ The [TOTP error-rendering report](totp-error-regressions.md) records the separat
 The [startup regression report](startup-regressions.md) records #19's resolver,
 create-only integration and isolated retry component checks. It is separate from
 the historical full-app UI passes above.
+
+The [replacement regression report](replacement-regressions.md) records #20's
+injected I/O matrix and Android atomic-replacement checks, without claiming
+physical power-loss durability or complete restart recovery.

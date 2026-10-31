@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- Require atomic existing-vault replacement without a non-atomic fallback or
+  destructive restore; retain failed-write evidence and test I/O faults (#20).
 - Keep startup routing independently testable: only confirmed absence allows
   setup; cache/load failures require unlock and cancellation is propagated (#19).
 - Enforce the vault read limit on bytes actually consumed, including files that

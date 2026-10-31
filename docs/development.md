@@ -61,6 +61,14 @@ component in an isolated Compose host. This does not launch MainActivity against
 user storage or establish full lifecycle/session behavior; see
 [startup regression checks](testing/startup-regressions.md).
 
+Replacement fault tests inject creation, partial write, flush, sync, close,
+partial backup, backup sync, move and cleanup failures. They verify unchanged
+old bytes before publication, committed bytes after it, and retained ambiguous
+candidates. Non-atomic fallback and automatic restore were removed; unsupported
+atomic moves are tested as safe failures. The Android test exercises an actual
+encrypted update on disposable storage. See
+[replacement regression checks](testing/replacement-regressions.md).
+
 The Android suite uses isolated synthetic preference names and temporary files:
 
 ```powershell
