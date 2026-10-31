@@ -18,7 +18,7 @@ class VaultReplacementDeviceTest {
             val oldVault = Vault.create().apply { addEntry("synthetic old", "synthetic service", "MY======") }
             oldVault.saveNew(file, password)
             val updated = Vault.load(file, password).apply { addEntry("synthetic new", "synthetic service", "MZXQ====") }
-            updated.save(file, password)
+            assertEquals(VaultSaveOutcome.COMMITTED, updated.save(file, password))
             assertEquals(updated.entries, Vault.load(file, password).entries)
             assertFalse(File(directory, "${file.name}.tmp").exists())
             assertFalse(File(directory, "${file.name}.bak").exists())

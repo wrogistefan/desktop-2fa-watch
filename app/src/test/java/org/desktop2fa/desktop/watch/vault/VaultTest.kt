@@ -26,7 +26,7 @@ class VaultTest {
         val vaultFile = tempFolder.newFile("vault.d2fa")
         val password = "StrongPassword123!"
 
-        vault.save(vaultFile, password)
+        assertEquals(VaultSaveOutcome.COMMITTED, vault.save(vaultFile, password))
 
         assertTrue(vaultFile.exists())
         assertTrue(vaultFile.length() > Vault.HEADER_LEN + 16)

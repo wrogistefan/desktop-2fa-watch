@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- Report explicit update/verification outcomes and require storage review after
+  uncertain or post-commit errors instead of inviting duplicate additions (#22).
 - Detect backup/fixed/legacy pending writes at startup and offer authenticated
   read-only code recovery without replacing or deleting any candidate (#21).
 - Require atomic existing-vault replacement without a non-atomic fallback or

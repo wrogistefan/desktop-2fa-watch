@@ -56,6 +56,7 @@ import org.desktop2fa.desktop.watch.vault.VaultSecurityManager
 import org.desktop2fa.desktop.watch.vault.VaultFiles
 import org.desktop2fa.desktop.watch.vault.RecoveryCandidate
 import org.desktop2fa.desktop.watch.vault.openRecoveryView
+import org.desktop2fa.desktop.watch.vault.VaultSaveOutcome
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -530,33 +531,44 @@ class MainActivity : ComponentActivity() {
                             // Capture the validated draft and fallback password on the UI thread.
                             val fallbackPassword = passwordInput
                             coroutineScope.launch {
-                                try {
-                                    val reloaded = withContext(Dispatchers.IO) {
+                                val result = withContext(Dispatchers.IO) {
+                                    val prepared = try {
                                         val updated = Vault(VaultData(
                                             version = vault.data.version,
                                             entries = vault.data.entries.toMutableList()
                                         ))
                                         updated.addEntry(draft.account, draft.issuer, draft.secret)
-                                        // Prefer the password that actually unlocked this session,
-                                        // even if updating an older cache failed.
                                         val password = fallbackPassword.takeIf { it.isNotBlank() }
                                             ?: VaultSecurityManager.getPassword(context)
                                             ?: throw IllegalStateException("Unlock required")
-                                        updated.save(vaultFile, password)
-                                        Vault.load(vaultFile, password)
+                                        updated to password
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Exception) {
+                                        null
                                     }
+                                    if (prepared == null) AccountSaveResult(VaultSaveOutcome.NOT_COMMITTED)
+                                    else persistAccountCandidate(prepared.first, vaultFile, prepared.second)
+                                }
+                                // No generic exception handler can turn a committed result into
+                                // a retryable draft after this point. Reconcile storage first.
+                                wizardState = AccountWizardState()
+                                if (result.requiresReview) {
+                                    activeVault = null
+                                    passwordInput = ""
+                                    recoverySource = null
+                                    recoveryCandidates = emptyList()
+                                    addedAccountIndex = null
+                                    successMessage = null
+                                    errorMessage = result.message
+                                    currentScreen = Screen.STORAGE_ERROR
+                                } else {
+                                    val reloaded = requireNotNull(result.vault)
                                     activeVault = reloaded
                                     addedAccountIndex = reloaded.entries.lastIndex
-                                    successMessage = "Account added successfully!"
+                                    successMessage = result.message
                                     errorMessage = null
-                                    wizardState = AccountWizardState()
                                     currentScreen = Screen.MAIN
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (_: Exception) {
-                                    // Keep the draft for retry; do not expose provider messages or key data.
-                                    wizardState = draft.copy(isSaving = false,
-                                        error = "Could not save the account. Try again.")
                                 }
                             }
                         }

@@ -77,6 +77,17 @@ that dies at synthetic filesystem stages, then restarts to inspect them. It neve
 opens MainActivity/user storage; only stage/directory metadata is passed in Intents.
 See [restart recovery checks](testing/recovery-regressions.md) for exact limits.
 
+The update API `Vault.save` returns `VaultSaveOutcome`; callers must inspect it,
+not assume that return means a clean commit. `saveNew` remains create-only and
+exception-based. All production update callers use `persistAccountCandidate`,
+which separates commit knowledge from matching post-save verification; it never
+automatically retries writes. An internal filesystem overload supports outcome
+fault tests. No stored data/KDF migration is needed. Validation/preparation can
+still throw before publication; unexpected writer exceptions are conservatively
+uncertain. Cancellation propagates without assuming a committed write rolled back.
+Session/cancellation ownership is separate #25 work. See
+[save-outcome checks](testing/save-outcome-regressions.md).
+
 The Android suite uses isolated synthetic preference names and temporary files:
 
 ```powershell

@@ -63,8 +63,11 @@ temporary file and backup. There is no non-atomic fallback or automatic copy-bac
 on failure. Ambiguous artifacts are retained and cannot be overwritten by the
 next save. Cleanup failures after a successful move do not roll back committed
 data. The `.bak` is recovery evidence, not a permanent backup service. See
-[Cryptography](crypto.md). UI outcome reconciliation remains #22;
-directory/power-loss durability is not established.
+[Cryptography](crypto.md). The save result distinguishes precommit failure,
+commit, retained cleanup artifacts and uncertain publication. A failed verification
+read cannot turn a known commit into a retryable addition. Non-clean outcomes
+detach the UI and clear its draft before storage review; no raw exception text is
+shown. Directory/power-loss durability is not established.
 Startup distinguishes confirmed absence from inspection errors. Errors or a
 leftover backup/pending data, with or without a main file, block setup and writable
 unlock. Authenticated recovery views expose codes read-only without promoting or
