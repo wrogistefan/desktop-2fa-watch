@@ -126,7 +126,7 @@ class Vault(val data: VaultData = VaultData()) {
         }
 
         @Synchronized
-        fun load(file: File, password: String): Vault = load(file, password) { it.inputStream() }
+        fun load(file: File, password: String): Vault = load(file, password, ::openVaultInput)
 
         internal fun load(file: File, password: String, openInput: (File) -> InputStream): Vault {
             validatePassword(password)

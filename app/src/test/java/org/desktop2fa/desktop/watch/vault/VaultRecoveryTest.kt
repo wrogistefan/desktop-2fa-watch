@@ -6,6 +6,9 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.nio.file.attribute.FileTime
 
 class VaultRecoveryTest {
     @get:Rule val folder = TemporaryFolder()
@@ -101,6 +104,48 @@ class VaultRecoveryTest {
             assertTrue(openRecoveryView(main, VaultFiles.inventory(main).candidates.single(), password).vault.entries.isNotEmpty())
             assertFalse(main.exists())
         }
+    }
+
+    @Test
+    fun normalizedAliasesDoNotChangeMembershipOrPresence() {
+        val main = folder.newFile("vault.d2fa").apply { writeBytes(fixture()) }
+        val aliasDirectory = folder.newFolder("alias")
+        val alias = File(aliasDirectory, "../vault.d2fa")
+        assertEquals(VaultPresence.PRESENT, VaultFiles.inspect(alias))
+        val selected = VaultFiles.inventory(alias).candidates.single().copy(file = alias)
+        assertTrue(openRecoveryView(alias, selected, password).vault.entries.isNotEmpty())
+        assertArrayEquals(fixture(), main.readBytes())
+    }
+
+    @Test
+    fun replacingAListedRegularFileRequiresRefreshingSelectionBeforeAnyLoad() {
+        val main = File(folder.root, "vault.d2fa")
+        val backup = folder.newFile("vault.d2fa.bak").apply { writeBytes(fixture()) }
+        Files.setLastModifiedTime(backup.toPath(), FileTime.fromMillis(1000))
+        val selected = VaultFiles.inventory(main).candidates.single()
+        val replacement = folder.newFile("replacement.bin").apply { writeBytes(fixture()) }
+        Files.move(replacement.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        var loads = 0
+        assertThrows(VaultIOException::class.java) {
+            openRecoveryView(main, selected, password) { _, _ -> loads++; Vault.create() }
+        }
+        assertEquals(0, loads)
+        assertArrayEquals(fixture(), backup.readBytes())
+        assertFalse(main.exists())
+    }
+
+    @Test
+    fun aChangeDuringLoadingCannotPublishAnAuthenticatedButStaleSelection() {
+        val main = File(folder.root, "vault.d2fa")
+        val backup = folder.newFile("vault.d2fa.bak").apply { writeBytes(fixture()) }
+        val selected = VaultFiles.inventory(main).candidates.single()
+        assertThrows(VaultIOException::class.java) {
+            openRecoveryView(main, selected, password) { file, supplied ->
+                Vault.load(file, supplied).also { file.appendBytes(byteArrayOf(1)) }
+            }
+        }
+        assertArrayEquals(fixture() + byteArrayOf(1), backup.readBytes())
+        assertFalse(main.exists())
     }
 
     @Test

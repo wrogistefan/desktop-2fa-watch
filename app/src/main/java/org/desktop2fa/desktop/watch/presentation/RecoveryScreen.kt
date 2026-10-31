@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
@@ -34,7 +35,9 @@ internal fun RecoveryScreen(
                 label = { Text("Vault password") }, visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true)
             candidates.forEach { candidate ->
-                Button(onClick = { onOpen(candidate) }, enabled = password.isNotBlank()) { Text(candidate.label) }
+                key(candidate.file.path) {
+                    Button(onClick = { onOpen(candidate) }, enabled = password.isNotBlank()) { Text(candidate.label) }
+                }
             }
         }
         error?.let { Text(it) }

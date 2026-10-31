@@ -34,3 +34,7 @@ promotion, writable repair, full-app lifecycle validation or power-loss safety.
 
 The [save-outcome report](save-outcome-regressions.md) records #22's commit/
 verification distinctions and storage-review feedback after post-save errors.
+
+The [recovery path follow-up](recovery-path-regressions.md) records the assessment
+of late #46 review findings, no-follow opens, changed selections and debug-host
+containment tests, including the limits of metadata-based checks.

@@ -8,13 +8,14 @@ import org.desktop2fa.desktop.watch.testing.SyntheticRecoveryProcessActivity
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
+import java.nio.file.Files
 
 class VaultRecoveryRestartDeviceTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun runChild(directory: File, stage: String): Pair<Int, String> {
         val result = File(directory, "result.txt")
-        result.delete()
+        Files.deleteIfExists(result.toPath())
         context.startActivity(Intent(context, SyntheticRecoveryProcessActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             .putExtra("syntheticDirectory", directory.name).putExtra("stage", stage))
@@ -25,9 +26,26 @@ class VaultRecoveryRestartDeviceTest {
         val pid = fields[0].toInt()
         assertNotEquals(Process.myPid(), pid)
         val manager = context.getSystemService(ActivityManager::class.java)
-        while (manager.runningAppProcesses.orEmpty().any { it.pid == pid } && System.nanoTime() < deadline) Thread.sleep(100)
+        val shutdownDeadline = System.nanoTime() + 30_000_000_000L
+        while (manager.runningAppProcesses.orEmpty().any { it.pid == pid } && System.nanoTime() < shutdownDeadline) Thread.sleep(100)
         assertFalse("Synthetic child terminated", manager.runningAppProcesses.orEmpty().any { it.pid == pid })
         return pid to fields[1]
+    }
+
+    private fun cleanSyntheticDirectory(directory: File) {
+        Files.newDirectoryStream(directory.toPath()).use { files -> files.forEach { Files.delete(it) } }
+        Files.delete(directory.toPath())
+    }
+
+    @Test
+    fun missingSyntheticFixtureReportsOnlyAConstantErrorAndTerminates() {
+        val directory = File(context.cacheDir, "synthetic-restart-${System.nanoTime()}").apply { check(mkdir()) }
+        try {
+            assertEquals("ERROR", runChild(directory, "beforeTemp").second)
+            assertFalse(File(directory, "synthetic.d2fa").exists())
+        } finally {
+            cleanSyntheticDirectory(directory)
+        }
     }
 
     @Test
@@ -47,6 +65,7 @@ class VaultRecoveryRestartDeviceTest {
                     oldFile.copyTo(File(directory, "old.fixture"))
                     newFile.copyTo(File(directory, "new.fixture"))
                     val writer = runChild(directory, stage)
+                    assertEquals(stage, writer.second)
                     val inspector = runChild(directory, "inspect")
                     assertNotEquals(writer.first, inspector.first)
                     val expected = if (stage == "beforeTemp") VaultPresence.PRESENT else VaultPresence.RECOVERY_REQUIRED
@@ -66,13 +85,11 @@ class VaultRecoveryRestartDeviceTest {
                         }
                     }
                 } finally {
-                    directory.listFiles()?.forEach { it.delete() }
-                    directory.delete()
+                    cleanSyntheticDirectory(directory)
                 }
             }
         } finally {
-            prepared.listFiles()?.forEach { it.delete() }
-            prepared.delete()
+            cleanSyntheticDirectory(prepared)
         }
     }
 }

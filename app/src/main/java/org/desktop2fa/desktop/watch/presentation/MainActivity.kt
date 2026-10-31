@@ -265,6 +265,7 @@ class MainActivity : ComponentActivity() {
                         onBack = {
                             passwordInput = ""
                             recoveryCandidates = emptyList()
+                            recoverySource = null
                             errorMessage = null
                             currentScreen = Screen.STORAGE_ERROR
                         },

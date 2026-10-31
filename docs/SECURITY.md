@@ -84,6 +84,13 @@ reported. For a present file, cache/load failures select manual unlock, never
 setup. Cancelled startup work does not publish a navigation result. This is not
 the later session-generation/lifecycle protection tracked in #25/#26.
 
+Vault reads refuse a final-component symlink at open time. Recovery also checks
+the listed file's temporary metadata fingerprint before and after loading; a
+detected replacement/change requires refreshed selection. File keys are provider
+dependent and optional; these checks do not establish immutable file identity
+against a malicious same-UID/root actor or override Android filesystem permissions.
+The app-private parent directory/trustworthy OS boundary remains unchanged.
+
 ## Backup, transfer, and data loss
 
 The configured Android cloud-backup and device-transfer rules exclude
