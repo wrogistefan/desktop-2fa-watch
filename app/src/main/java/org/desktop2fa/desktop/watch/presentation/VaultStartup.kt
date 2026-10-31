@@ -30,7 +30,7 @@ internal fun resolveVaultStartup(
     return when (presence) {
         VaultPresence.MISSING -> VaultStartup(Screen.SETUP)
         VaultPresence.RECOVERY_REQUIRED -> VaultStartup(Screen.STORAGE_ERROR, errorMessage =
-            "A vault backup requires recovery. New vault creation is disabled.")
+            "Vault recovery files require review. New vault creation is disabled.")
         VaultPresence.PRESENT -> {
             val loaded = try {
                 readCachedPassword()?.let { load(file, it) }

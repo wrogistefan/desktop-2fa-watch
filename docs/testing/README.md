@@ -27,3 +27,7 @@ the historical full-app UI passes above.
 The [replacement regression report](replacement-regressions.md) records #20's
 injected I/O matrix and Android atomic-replacement checks, without claiming
 physical power-loss durability or complete restart recovery.
+
+The [restart recovery report](recovery-regressions.md) records #21's conservative
+read-only decision table and separate-process tests. It does not claim automatic
+promotion, writable repair, full-app lifecycle validation or power-loss safety.

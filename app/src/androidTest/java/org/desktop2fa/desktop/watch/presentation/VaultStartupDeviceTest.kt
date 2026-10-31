@@ -58,7 +58,7 @@ class VaultStartupDeviceTest {
         assertArrayEquals(bytes, backup.readBytes())
         file.writeText("synthetic unsupported or truncated input")
         val unsupported = file.readBytes()
-        assertEquals(Screen.UNLOCK, resolveVaultStartup(file, { "synthetic password" }).screen)
+        assertEquals(Screen.STORAGE_ERROR, resolveVaultStartup(file, { "synthetic password" }).screen)
         assertArrayEquals(unsupported, file.readBytes())
         assertArrayEquals(bytes, backup.readBytes())
     }

@@ -87,9 +87,10 @@ replacement but does not make the entire new-file write atomic or claim
 directory-sync/power-loss durability. Android's app sandbox can deny hard links,
 so creation does not depend on them.
 
-Startup inspection errors show a retry screen; a backup without the main file
-blocks creation pending recovery. Backups are not automatically promoted or
-deleted. A failed password/authentication/load never authorizes new setup.
+Startup inspection errors show a retry screen. Any fixed `.bak`/`.tmp` or old
+random `.vault.*.tmp` blocks creation and writable unlock, even alongside a main
+file. Backups/pending files are never automatically promoted or deleted. A failed
+password/authentication/load never authorizes new setup.
 The startup resolver keeps inspection and cached-unlock outcomes separate: an
 unavailable cache or rejected load falls back to manual unlock, while an inspection
 error stays on retry. Cancellation propagates without producing a navigation result.
@@ -109,7 +110,13 @@ update rather than being silently replaced. After a successful move, backup
 cleanup failure returns an internal committed-with-artifacts result, preserving
 the committed main file. The current public `save` API still returns Unit;
 UI-facing reconciliation of uncertain/post-commit outcomes is separate (#22).
-Conservative next-start recovery/cleanup remains #21. The format, password and
+The conservative #21 restart path offers authenticated **read-only recovery**:
+choose current/backup/pending data, provide its password, then view codes without
+changing any file. Adding accounts is disabled and the recovery password is not
+cached. Lock detaches the view and returns to recovery/storage selection.
+No promotion, writable repair or cleanup is implemented, even after a successful
+read: choosing one valid candidate does not prove the others are obsolete. Keep
+independent service recovery methods. The format, password and
 KDF are unchanged. Backup/transfer rules exclude the fixed temporary path too.
 
 Android [Files.move](https://developer.android.com/reference/java/nio/file/Files#move(java.nio.file.Path,%20java.nio.file.Path,%20java.nio.file.CopyOption...))
@@ -118,6 +125,8 @@ fail-closed choice. Atomic replacement support is verified on disposable emulato
 storage; unsupported devices fail safely instead of falling back. File syncing
 does not establish directory-entry or physical power-loss durability. No hardware
 power-cut result is claimed; see [replacement regression checks](testing/replacement-regressions.md).
+The restart decision table, process-test scope and recovery limits are recorded
+in [restart recovery checks](testing/recovery-regressions.md).
 
 Loading may reject an oversized metadata hint early, then reads through a bounded
 stream and closes it on success/failure. It consumes at most 10 MiB plus one

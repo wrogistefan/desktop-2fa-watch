@@ -53,6 +53,9 @@ import org.desktop2fa.desktop.watch.vault.UnsupportedFormatException
 import org.desktop2fa.desktop.watch.vault.Vault
 import org.desktop2fa.desktop.watch.vault.VaultIOException
 import org.desktop2fa.desktop.watch.vault.VaultSecurityManager
+import org.desktop2fa.desktop.watch.vault.VaultFiles
+import org.desktop2fa.desktop.watch.vault.RecoveryCandidate
+import org.desktop2fa.desktop.watch.vault.openRecoveryView
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -74,6 +77,8 @@ class MainActivity : ComponentActivity() {
             var startupAttempt by remember { mutableStateOf(0) }
             var cacheWarning by remember { mutableStateOf<String?>(null) }
             var clearingCache by remember { mutableStateOf(false) }
+            var recoverySource by remember { mutableStateOf<String?>(null) }
+            var recoveryCandidates by remember { mutableStateOf(emptyList<RecoveryCandidate>()) }
 
             var wizardState by remember { mutableStateOf(AccountWizardState()) }
             var addedAccountIndex by remember { mutableStateOf<Int?>(null) }
@@ -88,6 +93,7 @@ class MainActivity : ComponentActivity() {
                     })
                     withContext(Dispatchers.Main) {
                         activeVault = startup.vault
+                        recoverySource = null
                         currentScreen = startup.screen
                         errorMessage = startup.errorMessage
                         isLoading = false
@@ -207,7 +213,61 @@ class MainActivity : ComponentActivity() {
                     Screen.STORAGE_ERROR -> StorageErrorScreen(errorMessage, onRetry = {
                         isLoading = true
                         startupAttempt += 1
+                    }, onRecovery = {
+                        isLoading = true
+                        coroutineScope.launch {
+                            try {
+                                recoveryCandidates = withContext(Dispatchers.IO) { VaultFiles.inventory(vaultFile).candidates }
+                                passwordInput = ""
+                                errorMessage = null
+                                currentScreen = Screen.RECOVERY
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                errorMessage = "Recovery files could not be inspected. No files were changed."
+                            } finally {
+                                isLoading = false
+                            }
+                        }
                     })
+
+                    Screen.RECOVERY -> RecoveryScreen(
+                        candidates = recoveryCandidates,
+                        password = passwordInput,
+                        error = errorMessage,
+                        onPasswordChange = { passwordInput = it; errorMessage = null },
+                        onOpen = { candidate ->
+                            val suppliedPassword = passwordInput
+                            isLoading = true
+                            coroutineScope.launch {
+                                try {
+                                    val view = withContext(Dispatchers.IO) {
+                                        openRecoveryView(vaultFile, candidate, suppliedPassword)
+                                    }
+                                    activeVault = view.vault
+                                    recoverySource = view.sourceLabel
+                                    passwordInput = ""
+                                    recoveryCandidates = emptyList()
+                                    errorMessage = null
+                                    successMessage = null
+                                    addedAccountIndex = null
+                                    currentScreen = Screen.MAIN
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (_: Exception) {
+                                    errorMessage = "Cannot open this file. Check its password and supported data. No files were changed."
+                                } finally {
+                                    isLoading = false
+                                }
+                            }
+                        },
+                        onBack = {
+                            passwordInput = ""
+                            recoveryCandidates = emptyList()
+                            errorMessage = null
+                            currentScreen = Screen.STORAGE_ERROR
+                        },
+                    )
 
                     Screen.SETUP -> {
                         Column(
@@ -364,6 +424,9 @@ class MainActivity : ComponentActivity() {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Spacer(modifier = Modifier.height(16.dp))
                                         Text(text = "desktop-2fa", color = Color.White)
+                                        recoverySource?.let { source ->
+                                            Text("Recovery view: $source. Read only; no files changed.", color = Color(0xFFFCA5A5))
+                                        }
                                         Spacer(modifier = Modifier.height(8.dp))
                                     }
                                 }
@@ -403,17 +466,13 @@ class MainActivity : ComponentActivity() {
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Spacer(modifier = Modifier.height(8.dp))
-                                        Button(
-                                            onClick = {
-                                                wizardState = AccountWizardState()
-                                                addedAccountIndex = null
-                                                errorMessage = null
-                                                successMessage = null
-                                                currentScreen = Screen.ADD_ACCOUNT
-                                            }
-                                        ) {
-                                            Text("Add Account")
-                                        }
+                                        AddAccountAction(recoveryReadOnly = recoverySource != null, onAdd = {
+                                            wizardState = AccountWizardState()
+                                            addedAccountIndex = null
+                                            errorMessage = null
+                                            successMessage = null
+                                            currentScreen = Screen.ADD_ACCOUNT
+                                        })
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Button(
                                             onClick = {
@@ -423,7 +482,9 @@ class MainActivity : ComponentActivity() {
                                                 addedAccountIndex = null
                                                 errorMessage = null
                                                 successMessage = null
-                                                currentScreen = Screen.UNLOCK
+                                                currentScreen = if (recoverySource == null) Screen.UNLOCK else Screen.STORAGE_ERROR
+                                                recoverySource = null
+                                                recoveryCandidates = emptyList()
                                                 cacheWarning = null
                                                 clearingCache = true
 
@@ -456,7 +517,7 @@ class MainActivity : ComponentActivity() {
 
                     Screen.ADD_ACCOUNT -> {
                         val handleSubmit = submit@{
-                            if (wizardState.isSaving) return@submit
+                            if (wizardState.isSaving || recoverySource != null) return@submit
                             val vault = activeVault
                             if (vault == null) {
                                 wizardState = wizardState.copy(error = "Unlock the vault before adding an account")
@@ -519,7 +580,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, SETUP, UNLOCK, MAIN, ADD_ACCOUNT, STORAGE_ERROR
+    SPLASH, SETUP, UNLOCK, MAIN, ADD_ACCOUNT, STORAGE_ERROR, RECOVERY
 }
 
 internal fun cacheFailureMessage(success: Boolean, remember: Boolean): String? = when {

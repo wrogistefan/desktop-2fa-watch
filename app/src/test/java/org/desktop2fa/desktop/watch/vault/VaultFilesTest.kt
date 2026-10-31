@@ -22,7 +22,7 @@ class VaultFilesTest {
         backup.writeText("synthetic recovery candidate")
         assertEquals(VaultPresence.RECOVERY_REQUIRED, VaultFiles.inspect(file))
         file.writeText("synthetic existing vault")
-        assertEquals(VaultPresence.PRESENT, VaultFiles.inspect(file))
+        assertEquals(VaultPresence.RECOVERY_REQUIRED, VaultFiles.inspect(file))
     }
 
     @Test
