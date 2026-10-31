@@ -143,11 +143,22 @@ The restart decision table, process-test scope and recovery limits are recorded
 in [restart recovery checks](testing/recovery-regressions.md).
 
 Loading may reject an oversized metadata hint early, then reads through a bounded
-stream and closes it on success/failure. It consumes at most 10 MiB plus one
+stream opened with `READ`/`NOFOLLOW_LINKS` and closes it on success/failure. A
+final-component symbolic link is refused at open time, with no weaker fallback.
+It consumes at most 10 MiB plus one
 overflow sentinel byte, rejecting overflow before KDF/decryption even when the
 file grows after the initial size check. Only a complete, accepted read proceeds
 to header validation, key derivation, authenticated decryption and JSON parsing.
 Both the binary version byte and JSON payload version must be supported.
+
+Recovery selection also records size, modification/creation times and the
+provider's optional file key. Re-inspection must match that temporary fingerprint
+before and after authentication. Changed selections require a refresh; paths are
+lexically normalized without resolving/deduplicating hard links. These are change
+checks, not persistent account IDs or proof against a malicious same-UID/root
+writer that can manipulate filesystem metadata. App-private parent directories
+and a trustworthy OS remain assumptions. See
+[recovery path follow-up](testing/recovery-path-regressions.md).
 
 Authentication/decryption failures are reported as `InvalidPasswordException`;
 this cannot distinguish a wrong password from encrypted-payload corruption.

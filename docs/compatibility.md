@@ -100,6 +100,9 @@ be authenticated for read-only code access without promotion or deletion. There
 is no automatic newest-copy selection or writable repair. Supported v1 data needs
 no migration, and unsupported originals stay intact. Future transfer must refuse
 read-only recovery sessions. See [recovery checks](testing/recovery-regressions.md).
+Regular supported v1 files remain unchanged. Watch now refuses final-component
+symlinks on load and changed recovery selections; this is a filesystem policy,
+not a new encrypted format or a transfer-package identity requirement.
 
 The #16 JVM suite verifies all RFC 6238 Appendix B timestamps for all three hash
 algorithms, supported digit counts/leading zeroes, non-default periods, time zero,

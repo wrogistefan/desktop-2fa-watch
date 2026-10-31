@@ -88,6 +88,13 @@ uncertain. Cancellation propagates without assuming a committed write rolled bac
 Session/cancellation ownership is separate #25 work. See
 [save-outcome checks](testing/save-outcome-regressions.md).
 
+The #21 review follow-up tests normalized path aliases, replaced files and changes
+during authentication, plus actual Android symlinks and the debug host's directory
+containment/error handling. The no-follow opener still uses bounded reads. File
+fingerprints are temporary metadata checks, not durable account IDs or protection
+against a compromised app UID/OS. See
+[recovery path checks](testing/recovery-path-regressions.md).
+
 The Android suite uses isolated synthetic preference names and temporary files:
 
 ```powershell

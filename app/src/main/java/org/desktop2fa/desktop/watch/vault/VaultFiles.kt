@@ -45,20 +45,22 @@ object VaultFiles {
 
     private fun inventory(file: File, attributes: (Path) -> BasicFileAttributes): VaultInventory {
         try {
-            val path = file.absoluteFile.toPath()
+            val path = file.absoluteFile.toPath().normalize()
             val parent = attributes(requireNotNull(path.parent))
             if (!parent.isDirectory) throw VaultIOException("Vault directory is unavailable")
-            fun present(candidate: Path): Boolean = try {
-                if (!attributes(candidate).isRegularFile) {
+            fun regular(candidate: Path): BasicFileAttributes? = try {
+                val found = attributes(candidate)
+                if (!found.isRegularFile) {
                     throw VaultIOException("Vault path is not a regular file")
                 }
-                true
+                found
             } catch (_: NoSuchFileException) {
-                false
+                null
             }
             val candidates = mutableListOf<RecoveryCandidate>()
             fun add(candidate: Path, label: String) {
-                if (present(candidate)) candidates.add(RecoveryCandidate(candidate.toFile(), label))
+                val found = regular(candidate) ?: return
+                candidates.add(RecoveryCandidate(candidate.toFile(), label, RecoveryFingerprint.from(found)))
             }
             add(path, "Current vault")
             add(path.resolveSibling("${file.name}.bak"), "Previous backup")
@@ -75,7 +77,7 @@ object VaultFiles {
             legacy.sortedBy { it.fileName.toString() }.forEachIndexed { index, candidate ->
                 add(candidate, "Older pending write ${index + 1}")
             }
-            return VaultInventory(file.absoluteFile, candidates)
+            return VaultInventory(path.toFile(), candidates)
         } catch (e: VaultException) {
             throw e
         } catch (e: Exception) {

@@ -134,11 +134,13 @@ Vault files are limited to 10 MiB. Oversized/failed reads are rejected without
 replacing the file, including when its size changes during reading.
 If a backup or pending file remains (including beside the main file), creation
 and writable unlock are blocked. Choose **Review recovery files**, enter the
-password for the selected file, then select **Current vault**, **Previous backup**
+password you intend to use, then tap **Current vault**, **Previous backup**
 or a pending file. Successfully authenticated supported files open a clearly
 marked **read-only recovery view**. Codes are available, but adding accounts is
 disabled, the supplied password is not remembered, and no files are changed.
 **Lock Vault** closes the view and returns to storage/recovery selection.
+If a selected file changes, return to storage checking and refresh the list
+before selecting again. Linked paths are refused; original files are not changed.
 
 This is access to recoverable codes, not a repair or permanent restore. The app
 does not choose the newest file, merge accounts, promote a backup or discard any

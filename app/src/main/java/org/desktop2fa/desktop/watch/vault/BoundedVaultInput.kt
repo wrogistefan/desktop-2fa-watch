@@ -2,6 +2,16 @@ package org.desktop2fa.desktop.watch.vault
 
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.io.File
+import java.nio.channels.Channels
+import java.nio.channels.FileChannel
+import java.nio.file.LinkOption
+import java.nio.file.StandardOpenOption
+
+/** Refuse a final-component symlink at open time, not only during inspection. */
+internal fun openVaultInput(file: File): InputStream = Channels.newInputStream(
+    FileChannel.open(file.toPath(), StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)
+)
 
 /** Read at most the limit plus one overflow sentinel, closing on every outcome. */
 internal fun readVaultBytes(input: InputStream, maxBytes: Int = Vault.MAX_VAULT_SIZE): ByteArray = input.use { stream ->
