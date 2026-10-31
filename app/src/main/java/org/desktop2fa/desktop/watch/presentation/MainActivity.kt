@@ -52,8 +52,6 @@ import org.desktop2fa.desktop.watch.vault.PasswordStrengthValidator
 import org.desktop2fa.desktop.watch.vault.UnsupportedFormatException
 import org.desktop2fa.desktop.watch.vault.Vault
 import org.desktop2fa.desktop.watch.vault.VaultIOException
-import org.desktop2fa.desktop.watch.vault.VaultFiles
-import org.desktop2fa.desktop.watch.vault.VaultPresence
 import org.desktop2fa.desktop.watch.vault.VaultSecurityManager
 import java.io.File
 
@@ -85,36 +83,13 @@ class MainActivity : ComponentActivity() {
             // Asynchronous startup check off main thread
             LaunchedEffect(startupAttempt) {
                 withContext(Dispatchers.IO) {
-                    var loadedVault: Vault? = null
-                    var startupError: String? = null
-                    val nextScreen = try {
-                        when (VaultFiles.inspect(vaultFile)) {
-                            VaultPresence.MISSING -> Screen.SETUP
-                            VaultPresence.RECOVERY_REQUIRED -> {
-                                startupError = "A vault backup requires recovery. New vault creation is disabled."
-                                Screen.STORAGE_ERROR
-                            }
-                            VaultPresence.PRESENT -> {
-                                val cachedPass = VaultSecurityManager.getPassword(context)
-                                if (cachedPass != null) {
-                                    try {
-                                        loadedVault = Vault.load(vaultFile, cachedPass)
-                                    } catch (_: Exception) {
-                                        // A cache or load error never authorizes setup.
-                                    }
-                                }
-                                if (loadedVault != null) Screen.MAIN else Screen.UNLOCK
-                            }
-                        }
-                    } catch (_: Exception) {
-                        startupError = "Cannot check vault storage. Existing data has not been replaced."
-                        Screen.STORAGE_ERROR
-                    }
-
+                    val startup = resolveVaultStartup(vaultFile, readCachedPassword = {
+                        VaultSecurityManager.getPassword(context)
+                    })
                     withContext(Dispatchers.Main) {
-                        activeVault = loadedVault
-                        currentScreen = nextScreen
-                        errorMessage = startupError
+                        activeVault = startup.vault
+                        currentScreen = startup.screen
+                        errorMessage = startup.errorMessage
                         isLoading = false
                     }
                 }
@@ -229,19 +204,10 @@ class MainActivity : ComponentActivity() {
                 when (currentScreen) {
                     Screen.SPLASH -> {}
 
-                    Screen.STORAGE_ERROR -> {
-                        Column(
-                            modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(24.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(errorMessage ?: "Vault storage is unavailable", color = Color.White)
-                            Button(onClick = {
-                                isLoading = true
-                                startupAttempt += 1
-                            }) { Text("Retry storage check") }
-                        }
-                    }
+                    Screen.STORAGE_ERROR -> StorageErrorScreen(errorMessage, onRetry = {
+                        isLoading = true
+                        startupAttempt += 1
+                    })
 
                     Screen.SETUP -> {
                         Column(

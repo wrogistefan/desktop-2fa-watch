@@ -19,3 +19,7 @@ replace the historical UI reports or constitute a new physical-watch UI pass.
 
 The [TOTP error-rendering report](totp-error-regressions.md) records the separate
 #15 generator and isolated Compose component checks and their device limitations.
+
+The [startup regression report](startup-regressions.md) records #19's resolver,
+create-only integration and isolated retry component checks. It is separate from
+the historical full-app UI passes above.

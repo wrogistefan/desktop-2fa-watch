@@ -26,6 +26,9 @@ The app currently asks for the password once, without a confirmation field.
 Setup refuses to replace an existing vault, including a file created after the
 startup check. If storage cannot be inspected or a backup needs recovery, the
 app shows a storage error and retry action instead of opening setup.
+Use **Retry storage check** to inspect again; repeated inspection errors do not
+enable creation. If cached unlock fails for an existing file, the app offers
+manual unlock instead. No error automatically replaces the vault or its backup.
 If the very first write is interrupted, an incomplete file may remain. The app
 will refuse to overwrite it; this version has no automatic reset/recovery flow.
 

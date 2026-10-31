@@ -54,6 +54,13 @@ lets a test grow a synthetic file after the metadata check, verifying that
 `Vault.load` still consumes no more than the limit plus one byte. Existing
 encrypted round-trip, wrong-password, tamper and truncation tests remain active.
 
+Startup routing has injected inspection/cache/load tests for every non-setup
+outcome and cancellation propagation. The Android suite also exercises the
+resolver with disposable encrypted files and the production storage-error/retry
+component in an isolated Compose host. This does not launch MainActivity against
+user storage or establish full lifecycle/session behavior; see
+[startup regression checks](testing/startup-regressions.md).
+
 The Android suite uses isolated synthetic preference names and temporary files:
 
 ```powershell
