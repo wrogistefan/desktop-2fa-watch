@@ -15,7 +15,7 @@ import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.Text
 
 @Composable
-internal fun StorageErrorScreen(message: String?, onRetry: () -> Unit) {
+internal fun StorageErrorScreen(message: String?, onRetry: () -> Unit, onRecovery: (() -> Unit)? = null) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.Center,
@@ -23,5 +23,6 @@ internal fun StorageErrorScreen(message: String?, onRetry: () -> Unit) {
     ) {
         Text(message ?: "Vault storage is unavailable", color = Color.White)
         Button(onClick = onRetry) { Text("Retry storage check") }
+        if (onRecovery != null) Button(onClick = onRecovery) { Text("Review recovery files") }
     }
 }

@@ -94,6 +94,13 @@ separate supported copy; no automatic Watch repair or lossy conversion is added.
 
 ## Import/export plan
 
+Restart recovery does not reinterpret storage as a transfer package. Leftover
+backup/fixed/legacy pending files require review; a selected supported file can
+be authenticated for read-only code access without promotion or deletion. There
+is no automatic newest-copy selection or writable repair. Supported v1 data needs
+no migration, and unsupported originals stay intact. Future transfer must refuse
+read-only recovery sessions. See [recovery checks](testing/recovery-regressions.md).
+
 The #16 JVM suite verifies all RFC 6238 Appendix B timestamps for all three hash
 algorithms, supported digit counts/leading zeroes, non-default periods, time zero,
 large counters/timestamps and countdown rollover. Additional expected values come

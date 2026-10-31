@@ -36,7 +36,14 @@ object VaultFiles {
         Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
     }
 
-    internal fun inspect(file: File, attributes: (Path) -> BasicFileAttributes): VaultPresence {
+    internal fun inspect(file: File, attributes: (Path) -> BasicFileAttributes): VaultPresence =
+        inventory(file, attributes).presence
+
+    internal fun inventory(file: File): VaultInventory = inventory(file) { path ->
+        Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+    }
+
+    private fun inventory(file: File, attributes: (Path) -> BasicFileAttributes): VaultInventory {
         try {
             val path = file.absoluteFile.toPath()
             val parent = attributes(requireNotNull(path.parent))
@@ -49,11 +56,26 @@ object VaultFiles {
             } catch (_: NoSuchFileException) {
                 false
             }
-            return when {
-                present(path) -> VaultPresence.PRESENT
-                present(path.resolveSibling("${file.name}.bak")) -> VaultPresence.RECOVERY_REQUIRED
-                else -> VaultPresence.MISSING
+            val candidates = mutableListOf<RecoveryCandidate>()
+            fun add(candidate: Path, label: String) {
+                if (present(candidate)) candidates.add(RecoveryCandidate(candidate.toFile(), label))
             }
+            add(path, "Current vault")
+            add(path.resolveSibling("${file.name}.bak"), "Previous backup")
+            add(path.resolveSibling("${file.name}.tmp"), "Pending write")
+            // Older versions used random temp names. Their existence is not
+            // permission to initialize, promote or discard an uncertain vault.
+            val legacy = mutableListOf<Path>()
+            Files.newDirectoryStream(path.parent, ".vault.*.tmp").use { stream ->
+                for (candidate in stream) {
+                    if (legacy.size >= 253) throw VaultIOException("Too many recovery candidates")
+                    legacy.add(candidate)
+                }
+            }
+            legacy.sortedBy { it.fileName.toString() }.forEachIndexed { index, candidate ->
+                add(candidate, "Older pending write ${index + 1}")
+            }
+            return VaultInventory(file.absoluteFile, candidates)
         } catch (e: VaultException) {
             throw e
         } catch (e: Exception) {

@@ -69,6 +69,14 @@ atomic moves are tested as safe failures. The Android test exercises an actual
 encrypted update on disposable storage. See
 [replacement regression checks](testing/replacement-regressions.md).
 
+Restart recovery inventory tests include main/backup/fixed/legacy temp states,
+partial data, password/tamper/read errors and setup refusal. Recovery is read-only:
+it does not repair files or resolve ambiguous candidates by deletion. Android tests
+exercise isolated selection controls and a non-exported debug-only child process
+that dies at synthetic filesystem stages, then restarts to inspect them. It never
+opens MainActivity/user storage; only stage/directory metadata is passed in Intents.
+See [restart recovery checks](testing/recovery-regressions.md) for exact limits.
+
 The Android suite uses isolated synthetic preference names and temporary files:
 
 ```powershell

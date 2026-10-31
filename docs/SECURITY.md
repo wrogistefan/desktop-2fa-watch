@@ -63,12 +63,17 @@ temporary file and backup. There is no non-atomic fallback or automatic copy-bac
 on failure. Ambiguous artifacts are retained and cannot be overwritten by the
 next save. Cleanup failures after a successful move do not roll back committed
 data. The `.bak` is recovery evidence, not a permanent backup service. See
-[Cryptography](crypto.md). Restart recovery and UI outcome reconciliation are
-separate #21/#22 work; directory/power-loss durability is not established.
+[Cryptography](crypto.md). UI outcome reconciliation remains #22;
+directory/power-loss durability is not established.
 Startup distinguishes confirmed absence from inspection errors. Errors or a
-leftover backup without a main file block setup. New-vault publication is
+leftover backup/pending data, with or without a main file, block setup and writable
+unlock. Authenticated recovery views expose codes read-only without promoting or
+deleting any candidate. Their passwords are not cached and adding accounts is
+disabled. No writable repair or cleanup is promised; multiple valid files can
+contain different accounts. Any previously remembered credentials are unchanged
+until Lock cleanup, but recovery routing never auto-loads them. New-vault publication is
 create-only, so a competing creator cannot be overwritten. Automatic backup
-recovery and full power-loss durability are still separate work.
+promotion and full power-loss durability are not implemented.
 A failed initial write can leave a partial file that blocks setup. Creation is
 not an atomic write of the entire vault and never automatically discards such a file.
 Startup routing does not read cached credentials when absence or recovery is

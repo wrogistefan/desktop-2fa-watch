@@ -124,12 +124,22 @@ exclude the vault and credential preferences. The temporary `.bak` used during
 saving is not a user backup or a supported restore mechanism. Updates now require
 atomic replacement; unsupported storage or leftover `.tmp`/`.bak` candidates can
 block saving. Do not delete app data or retry by recreating the vault. Failed
-updates retain available recovery evidence; automatic recovery is separate work.
+updates retain available recovery evidence; automatic promotion/repair is not implemented.
 Vault files are limited to 10 MiB. Oversized/failed reads are rejected without
 replacing the file, including when its size changes during reading.
-If only a backup remains, creation is blocked to preserve that recovery candidate.
-There is no automatic recovery flow yet; do not clear app storage to dismiss the
-error. Files with unknown JSON fields are rejected intact. Open such files only
+If a backup or pending file remains (including beside the main file), creation
+and writable unlock are blocked. Choose **Review recovery files**, enter the
+password for the selected file, then select **Current vault**, **Previous backup**
+or a pending file. Successfully authenticated supported files open a clearly
+marked **read-only recovery view**. Codes are available, but adding accounts is
+disabled, the supplied password is not remembered, and no files are changed.
+**Lock Vault** closes the view and returns to storage/recovery selection.
+
+This is access to recoverable codes, not a repair or permanent restore. The app
+does not choose the newest file, merge accounts, promote a backup or discard any
+candidate. Multiple files may hold different accounts. Keep independent service
+recovery methods; do not clear app storage or delete recovery files to dismiss
+the error. Files with unknown JSON fields are rejected intact. Open such files only
 with a version that understands those fields; no metadata is silently stripped.
 The encrypted header and JSON payload must both declare supported v1. Missing
 or mistyped payload versions are rejected rather than guessed. Regular generated
