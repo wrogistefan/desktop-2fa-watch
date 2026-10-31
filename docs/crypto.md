@@ -90,6 +90,10 @@ so creation does not depend on them.
 Startup inspection errors show a retry screen; a backup without the main file
 blocks creation pending recovery. Backups are not automatically promoted or
 deleted. A failed password/authentication/load never authorizes new setup.
+The startup resolver keeps inspection and cached-unlock outcomes separate: an
+unavailable cache or rejected load falls back to manual unlock, while an inspection
+error stays on retry. Cancellation propagates without producing a navigation result.
+The create-only protection was introduced in #38; #19 tests its startup integration.
 
 Updating serializes and encrypts the data, rejects a result above 10 MiB, writes
 a unique temporary file, flushes and syncs it, then replaces `vault.d2fa`.

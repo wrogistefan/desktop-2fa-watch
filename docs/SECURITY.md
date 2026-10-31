@@ -67,6 +67,10 @@ create-only, so a competing creator cannot be overwritten. Automatic backup
 recovery and full power-loss durability are still separate work.
 A failed initial write can leave a partial file that blocks setup. Creation is
 not an atomic write of the entire vault and never automatically discards such a file.
+Startup routing does not read cached credentials when absence or recovery is
+reported. For a present file, cache/load failures select manual unlock, never
+setup. Cancelled startup work does not publish a navigation result. This is not
+the later session-generation/lifecycle protection tracked in #25/#26.
 
 ## Backup, transfer, and data loss
 

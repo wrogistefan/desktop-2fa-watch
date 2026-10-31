@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- Keep startup routing independently testable: only confirmed absence allows
+  setup; cache/load failures require unlock and cancellation is propagated (#19).
 - Enforce the vault read limit on bytes actually consumed, including files that
   grow after the size check; close streams and reject partial/oversized input (#18).
 - Require explicit integer payload version 1 and reject unsupported write
