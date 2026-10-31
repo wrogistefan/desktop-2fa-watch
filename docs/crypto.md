@@ -95,12 +95,29 @@ unavailable cache or rejected load falls back to manual unlock, while an inspect
 error stays on retry. Cancellation propagates without producing a navigation result.
 The create-only protection was introduced in #38; #19 tests its startup integration.
 
-Updating serializes and encrypts the data, rejects a result above 10 MiB, writes
-a unique temporary file, flushes and syncs it, then replaces `vault.d2fa`.
-The implementation requests an atomic move and falls back to a replacement
-move if it fails. It copies an existing vault to `.bak` before replacement,
-attempts restoration if replacement fails, and removes the backup on success.
-It does not automatically recover a leftover backup on the next launch.
+Updating requires an existing regular file. It serializes/encrypts the data,
+rejects a result above 10 MiB, opens `vault.d2fa.tmp` with `CREATE_NEW`, writes,
+flushes, syncs and closes it. It copies the old destination to `vault.d2fa.bak`
+without overwriting an existing backup, then syncs the completed backup.
+Publication requires `ATOMIC_MOVE`; there is no non-atomic fallback, including
+when atomic moves are unsupported. Access/I/O errors are not a reason to weaken
+replacement semantics. Successful return from the move is the commit point.
+
+Failures retain any temporary/backup candidates; no automatic copy-back can
+overwrite a possibly committed destination. Existing artifacts block another
+update rather than being silently replaced. After a successful move, backup
+cleanup failure returns an internal committed-with-artifacts result, preserving
+the committed main file. The current public `save` API still returns Unit;
+UI-facing reconciliation of uncertain/post-commit outcomes is separate (#22).
+Conservative next-start recovery/cleanup remains #21. The format, password and
+KDF are unchanged. Backup/transfer rules exclude the fixed temporary path too.
+
+Android [Files.move](https://developer.android.com/reference/java/nio/file/Files#move(java.nio.file.Path,%20java.nio.file.Path,%20java.nio.file.CopyOption...))
+specifies undefined file state after a failed non-atomic move, motivating this
+fail-closed choice. Atomic replacement support is verified on disposable emulator
+storage; unsupported devices fail safely instead of falling back. File syncing
+does not establish directory-entry or physical power-loss durability. No hardware
+power-cut result is claimed; see [replacement regression checks](testing/replacement-regressions.md).
 
 Loading may reject an oversized metadata hint early, then reads through a bounded
 stream and closes it on success/failure. It consumes at most 10 MiB plus one
