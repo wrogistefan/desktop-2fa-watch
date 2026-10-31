@@ -79,8 +79,13 @@ characters and incomplete keys are explained on submission, without showing an
 error on every keystroke. `JBSWY3DPEHPK3PXP` is synthetic test data, not a key
 for a real account.
 
-Tap **Save Account** to finish. Failed saves preserve the draft for retry; a
-successful save returns to the new card with **Account added** confirmation.
+Tap **Save Account** to finish. A verified successful save returns to the new card
+with **Account added** confirmation. If storage fails or the result needs review,
+the app clears the submitted draft and opens storage checking instead of offering
+to add it again. Read the message: it distinguishes **not saved**, **saved but not
+verified**, **saved with recovery files**, and **uncertain**. Do not re-add an account
+until you have checked existing data. **Retry storage check** re-inspects the vault;
+it does not repeat the addition. Keep the source/recovery method for a new account.
 New accounts use SHA1, 6 digits, and a 30-second period; there is no parameter
 editor in this version.
 

@@ -108,8 +108,22 @@ Failures retain any temporary/backup candidates; no automatic copy-back can
 overwrite a possibly committed destination. Existing artifacts block another
 update rather than being silently replaced. After a successful move, backup
 cleanup failure returns an internal committed-with-artifacts result, preserving
-the committed main file. The current public `save` API still returns Unit;
-UI-facing reconciliation of uncertain/post-commit outcomes is separate (#22).
+the committed main file. The public update `save` API now returns
+`VaultSaveOutcome`: `NOT_COMMITTED`, `COMMITTED`,
+`COMMITTED_WITH_RECOVERY_ARTIFACTS` or `UNCERTAIN`. Pre-publication failures and
+unsupported atomic moves are not committed; other move exceptions are uncertain.
+Validation/preparation can still throw before publication. `saveNew` keeps its
+create-only exception-based contract; no stored-format migration is involved.
+
+Manual addition checks the result before verification. A successful reload must
+match the complete candidate snapshot; reload failure/mismatch cannot erase a
+known commit. Unknown writer exceptions are treated as uncertain. Only a clean
+commit with matching verification publishes the new writable UI state. Other
+results clear the draft and detach the active vault, directing the user to storage
+review without an automatic write retry. A committed-but-unverified message says
+the account was saved; uncertainty is not presented as proof of failure. Retry
+rechecks existing storage, not the previous addition. See
+[save-outcome checks](testing/save-outcome-regressions.md).
 The conservative #21 restart path offers authenticated **read-only recovery**:
 choose current/backup/pending data, provide its password, then view codes without
 changing any file. Adding accounts is disabled and the recovery password is not

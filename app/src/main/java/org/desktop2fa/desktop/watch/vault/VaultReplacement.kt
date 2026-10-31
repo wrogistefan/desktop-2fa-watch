@@ -5,6 +5,7 @@ import java.io.File
 import java.nio.channels.Channels
 import java.nio.channels.FileChannel
 import java.nio.file.Files
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 
@@ -46,19 +47,23 @@ internal open class VaultReplacementIO {
 
 internal enum class VaultReplacementResult { COMMITTED, COMMITTED_WITH_RECOVERY_ARTIFACTS }
 
+internal class VaultReplacementFailure(val mayHaveCommitted: Boolean, cause: Exception) :
+    VaultIOException("Vault update failed; recovery files have been preserved", cause)
+
 /** Existing-file updates only. Failure never authorizes destructive cleanup/restore. */
 internal fun replaceVaultFile(
     destination: File,
     content: ByteArray,
     io: VaultReplacementIO = VaultReplacementIO(),
 ): VaultReplacementResult {
-    if (VaultFiles.inspect(destination) != VaultPresence.PRESENT) {
-        throw VaultIOException("An existing vault is required for an update")
-    }
     val absolute = destination.absoluteFile
     val temp = File(absolute.parentFile, "${absolute.name}.tmp")
     val backup = File(absolute.parentFile, "${absolute.name}.bak")
+    var publicationAttempted = false
     try {
+        if (VaultFiles.inspect(destination) != VaultPresence.PRESENT) {
+            throw VaultIOException("An existing vault is required for an update")
+        }
         io.openTemp(temp).use { output ->
             output.write(content)
             output.flush()
@@ -69,9 +74,13 @@ internal fun replaceVaultFile(
         // No non-atomic fallback, even for AtomicMoveNotSupportedException.
         // A failed move may have an uncertain outcome; never copy an older
         // backup over a potentially committed destination or erase evidence.
+        publicationAttempted = true
         io.replace(temp, absolute)
     } catch (failure: Exception) {
-        throw VaultIOException("Vault update failed; recovery files have been preserved", failure)
+        throw VaultReplacementFailure(
+            mayHaveCommitted = publicationAttempted && failure !is AtomicMoveNotSupportedException,
+            cause = failure,
+        )
     }
     // A successful move is the commit point. Cleanup cannot roll it back or
     // turn it into a failed write. UI-facing outcomes are handled separately.

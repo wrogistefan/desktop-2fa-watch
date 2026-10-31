@@ -45,9 +45,11 @@ class Vault(val data: VaultData = VaultData()) {
     }
 
     @Synchronized
-    fun save(file: File, password: String) {
-        save(file, password, createOnly = false)
-    }
+    fun save(file: File, password: String): VaultSaveOutcome = save(file, password, createOnly = false)
+
+    @Synchronized
+    internal fun save(file: File, password: String, io: VaultReplacementIO): VaultSaveOutcome =
+        save(file, password, createOnly = false, io = io)
 
     /** Create and sync a new encrypted file without replacing an existing destination. */
     @Synchronized
@@ -58,7 +60,10 @@ class Vault(val data: VaultData = VaultData()) {
         save(file, password, createOnly = true)
     }
 
-    private fun save(file: File, password: String, createOnly: Boolean) {
+    private fun save(
+        file: File, password: String, createOnly: Boolean,
+        io: VaultReplacementIO = VaultReplacementIO(),
+    ): VaultSaveOutcome {
         validatePassword(password)
         // Validate the exact immutable-entry snapshot that will be serialized,
         // before any write, directory mutation or expensive KDF.
@@ -88,10 +93,17 @@ class Vault(val data: VaultData = VaultData()) {
 
             if (createOnly) {
                 VaultFiles.writeNew(absFile, totalBytes)
-                return
+                return VaultSaveOutcome.COMMITTED
             }
 
-            replaceVaultFile(absFile, totalBytes)
+            return try {
+                when (replaceVaultFile(absFile, totalBytes, io)) {
+                    VaultReplacementResult.COMMITTED -> VaultSaveOutcome.COMMITTED
+                    VaultReplacementResult.COMMITTED_WITH_RECOVERY_ARTIFACTS -> VaultSaveOutcome.COMMITTED_WITH_RECOVERY_ARTIFACTS
+                }
+            } catch (failure: VaultReplacementFailure) {
+                if (failure.mayHaveCommitted) VaultSaveOutcome.UNCERTAIN else VaultSaveOutcome.NOT_COMMITTED
+            }
         } catch (e: Exception) {
             if (e is VaultException) throw e
             throw VaultIOException("Failed to save vault: ${e.message}", e)

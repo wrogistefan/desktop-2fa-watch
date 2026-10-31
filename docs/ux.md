@@ -8,11 +8,12 @@ English labels currently shipped by the app.
 | Screen | Behavior | Next state |
 |--------|----------|------------|
 | Splash/loading | Displays `Loading Secure Vault...` during initialization or vault work | Setup, Unlock, Main, storage error, or the originating form after failure |
-| Storage error | Inspection failed or only a recovery backup remains; Retry storage check, no Initialize action | Rechecked startup state |
+| Storage error | Inspection failed, recovery artifacts remain, or a save needs reconciliation; Retry storage check / Review recovery files, no Initialize action | Rechecked startup state or read-only recovery selection |
+| Read-only recovery | Password and explicit current/backup/pending choice; no file promotion/deletion | Authenticated code view with Add Account disabled; Lock returns to storage check |
 | Create Vault | Password field, validation feedback, Remember on watch, Initialize Vault | Main after a successful save |
 | Unlock Vault | Password field, Remember on watch, Unlock, error feedback | Main after a successful load |
 | Main | Scrollable account cards, empty state, Add Account, Lock Vault | Add Account or Unlock |
-| Add Account wizard | Service name → Account name → Setup key; one field per step, Back/Cancel, final Save Account | Main at the new card after save/reload; retains draft on error |
+| Add Account wizard | Service name → Account name → Setup key; one field per step, Back/Cancel, final Save Account | Main after clean commit/matching verification; otherwise clear submitted draft and review storage |
 
 On startup, only confirmed absence of both vault and backup leads to setup.
 Inspection errors block setup; create-only publication also refuses a competing
@@ -58,8 +59,11 @@ All fields remain required. The account step checks name uniqueness and the
 final step rechecks it before saving. Back preserves the draft; Cancel discards
 it. Hardware back follows the same step behavior. Saving claims the draft
 synchronously, disables edits/navigation/submission, and shows Saving… on the
-final action. Failed saves retain the draft with a generic error that does not
-echo provider exceptions or secrets. A successful save resets the draft and
+final action. Input validation preserves the editable draft before a storage
+attempt. A non-clean storage outcome clears the submitted draft, detaches the
+active vault and enters storage review, distinguishing not-committed/committed/
+uncertain results without raw exception text. A post-commit read error must never
+offer blind re-addition. A successful verified save resets the draft and
 opens the list at the new card, which displays Account added.
 
 Drafts remain in memory rather than saved instance state. Activity/process

@@ -35,6 +35,7 @@ class VaultReplacementTest {
             assertArrayEquals(original, destination.readBytes())
             assertEquals(0, io.cleanupCalls)
             assertFalse(failure.message!!.contains("synthetic diagnostic"))
+            assertEquals(stage == "move", (failure as VaultReplacementFailure).mayHaveCommitted)
             if (stage != "create") assertTrue("Output closed at $stage", io.closed)
             if (stage in listOf("backupSync", "move")) {
                 assertArrayEquals(original, File(directory, "vault.d2fa.bak").readBytes())

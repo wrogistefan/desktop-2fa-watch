@@ -31,3 +31,6 @@ physical power-loss durability or complete restart recovery.
 The [restart recovery report](recovery-regressions.md) records #21's conservative
 read-only decision table and separate-process tests. It does not claim automatic
 promotion, writable repair, full-app lifecycle validation or power-loss safety.
+
+The [save-outcome report](save-outcome-regressions.md) records #22's commit/
+verification distinctions and storage-review feedback after post-save errors.
