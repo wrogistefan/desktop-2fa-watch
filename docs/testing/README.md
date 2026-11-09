@@ -1,5 +1,9 @@
 # UI Test Reports
 
+The [dated Wear integration report/checklist](wear-integration-2026-11-09.md)
+records the current #37 emulator pass and explicitly unperformed physical phase.
+It does not close the hardware gate or turn older device reports into new evidence.
+
 The [lookup report](lookup-regressions.md) records #35 exact-name precedence,
 ambiguity-safe removal and reordered/null/duplicate JVM regressions.
 

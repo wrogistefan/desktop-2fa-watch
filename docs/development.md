@@ -179,6 +179,10 @@ See [execution evidence](testing/interop-regressions.md).
 
 ## Install and launch
 
+For current session/Keystore integration and the still-required isolated
+physical-watch phase, use the [C5 report/checklist](testing/wear-integration-2026-11-09.md).
+Do not run a blanket connected-device suite against a personal Watch/profile.
+
 ```bash
 adb devices -l
 adb -s <device-serial> install -r app/build/outputs/apk/debug/app-debug.apk

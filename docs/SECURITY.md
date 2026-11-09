@@ -83,6 +83,11 @@ hides codes and cancels refresh without discarding an unexpired draft. Resume
 reads current wall time before displaying codes. No wake lock or background
 refresh is used. See [lifecycle checks](testing/lifecycle-regressions.md).
 
+Input/deadline and I/O-publication checks also reconcile actual window focus;
+the focus callback remains authoritative during its transition. This fixes a
+stale hidden-code state after Activity recreation without restoring its old
+session. See [integrated checks and physical limits](testing/wear-integration-2026-11-09.md).
+
 There is no guaranteed memory zeroization. Strings captured by running I/O can
 remain until that operation finishes; JVM garbage collection cannot prove
 erasure. The app does not yet block screenshots with `FLAG_SECURE` (#27).
