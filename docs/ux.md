@@ -73,6 +73,14 @@ password field or password-visibility toggle there.
 
 ## Lock behavior
 
+The [accepted session decision (#24)](session-policy.md) plans removal of
+Remember and automatic cached unlock, with manual-password opening after every
+lock/restart. Explicit Lock, screen off/device lock, true departure and 60 seconds
+of inactivity will clear sensitive drafts and invalidate pending operations.
+Fullscreen IME editing remains in the same session and needs native Next/Done
+verification. These changes are not implemented by the documentation decision;
+the current behavior follows.
+
 Lock transitions to Unlock immediately, clears active vault/form references,
 and requests cache removal in the background. Unlock submission waits until the
 attempt completes. Failed cache writes/deletions show a separate warning; cache

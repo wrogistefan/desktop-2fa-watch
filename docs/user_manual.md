@@ -11,6 +11,15 @@ This documentation does not assume a Play Store release is available.
 
 ## Create a vault
 
+**Planned change, not active yet:** the owner-approved [session policy](session-policy.md)
+removes Remember and automatic cached unlock for both new and existing users.
+Each new session will require the original vault password, including after
+restart, screen off, leaving the app or 60 seconds of inactivity. Fullscreen
+keyboard editing will not itself count as leaving the app. Existing remembered
+credentials will be removed with a warning if cleanup fails; the vault will not
+be reset. Keep your original password and service recovery methods. This is a
+policy decision; the current behavior is described below.
+
 On first launch, **Create Vault** asks for a master password. The current UI
 requires at least 8 characters and a heuristic score of at least 3. Mixed case,
 digits, symbols, and length contribute to the score. Use a long, unique password;
