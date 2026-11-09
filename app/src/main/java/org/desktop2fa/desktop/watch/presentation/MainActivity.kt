@@ -102,6 +102,9 @@ open class MainActivity : ComponentActivity() {
     }
 
     internal fun checkSessionDeadline(): Boolean {
+        // A recreated window can already own focus without another Activity
+        // callback. Reconcile before accepting input or publishing I/O results.
+        focused = hasWindowFocus()
         deviceReady = getSystemService(PowerManager::class.java).isInteractive &&
             // Wear OS may keep an insecure Keyguard showing but occluded by the
             // app. That is not an authentication-locked device (isDeviceLocked).
@@ -171,8 +174,9 @@ open class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        focused = hasFocus
         checkSessionDeadline()
+        // The callback is authoritative during the focus transition itself.
+        focused = hasFocus
         if (hasFocus) clockRevision++
     }
 

@@ -27,6 +27,12 @@ unlocking the device never opens the vault automatically. Fullscreen IME entry
 and return are part of editing, not departure. Do not equate onPause, loss of
 window focus or an IME overlay alone with true backgrounding.
 
+After Activity recreation, manual unlock reconciles actual window focus before
+publishing results; a missed Activity focus callback must not leave an active,
+focused screen with hidden codes. This does not restore the old session or
+renew inactivity without qualifying input. Codes still require a resumed,
+focused, interactive and authentication-unlocked device.
+
 ## Transition and storage compatibility
 
 The #24 decision changed no runtime behavior. The #25 implementation applies the

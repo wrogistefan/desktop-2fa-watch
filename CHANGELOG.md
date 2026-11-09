@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🧪 Testing
 
+- Record 15 integrated Wear emulator regressions for lock, actual owned-key loss,
+  native fullscreen IME, late I/O and process termination. Keep the unperformed
+  physical-watch phase and its checklist explicit; #37 remains open.
+
 - Add a pinned actual Desktop Python ↔ Kotlin runner for fields, ordering,
   duplicate/null names, fixed-time TOTP codes, safe rejection and both round-trip
   directions; CI uses pinned Python/dependencies and verifies the bridge ran (#29).
@@ -57,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Samsung's fullscreen editor still hides the wizard heading despite IME hints.
 
 ### 🐛 Fixed
+
+- Reconcile actual window focus before input and I/O publication after Activity
+  recreation, so an explicitly reopened vault can display codes again. Keep
+  pause/focus-loss hiding and all session-lock triggers (#37).
 
 - Invalidate session ownership before Lock/disposal, reject late I/O publication,
   clear sensitive drafts, serialize old/new Activity I/O, and require storage

@@ -1,12 +1,13 @@
 package org.desktop2fa.desktop.watch.presentation
 
-import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.AccessibilityService
 import android.app.KeyguardManager
 import android.content.Intent
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
-import android.view.accessibility.AccessibilityNodeInfo
+import android.os.PowerManager
+import android.view.View
+import android.inputmethodservice.ExtractEditText
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -162,7 +163,12 @@ class SessionLifecycleDeviceTest {
                 shell("locksettings set-disabled false")
                 assertTrue(app.getSystemService(KeyguardManager::class.java).isDeviceSecure)
                 assertTrue("OS lock-screen action accepted", instrumentation.uiAutomation.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN))
-                await { app.getSystemService(KeyguardManager::class.java).isKeyguardLocked }
+                // isKeyguardLocked can already be true for an insecure,
+                // occluded Wear screen. Wait for the actual authentication lock
+                // and sleep before waking, otherwise wake can race lockNow.
+                await { app.getSystemService(KeyguardManager::class.java).isDeviceLocked &&
+                    !app.getSystemService(PowerManager::class.java).isInteractive }
+                await { state(scenario) { _, s -> s.activeVault == null } }
                 shell("input keyevent 224")
                 await { state(scenario) { a, s -> !a.codesActive && s.activeVault == null } }
                 shell("locksettings clear --old 246810")
@@ -205,9 +211,16 @@ class SessionLifecycleDeviceTest {
         val showWithHardware = shell("settings get secure show_ime_with_hard_keyboard")
         require(showWithHardware in setOf("null", "0", "1"))
         val wasEnabled = shell("settings get secure enabled_input_methods").split(':').any { it.substringBefore(';') == ime }
-        val oldFlags = instrumentation.uiAutomation.serviceInfo.flags
-        instrumentation.uiAutomation.serviceInfo = instrumentation.uiAutomation.serviceInfo.apply {
-            flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        fun nativeView(name: String): View? {
+            var found: View? = null
+            instrumentation.runOnMainSync {
+                val root = SyntheticFullscreenIme.extractView
+                val id = root?.resources?.getIdentifier(name, "id", "android") ?: 0
+                if (root?.isShown == true && id != 0) {
+                    found = root.findViewById<View>(id)?.takeIf { it.isShown && it.isEnabled }
+                }
+            }
+            return found
         }
         try {
             shell("ime enable ${quote(ime)}"); shell("ime set ${quote(ime)}")
@@ -225,15 +238,14 @@ class SessionLifecycleDeviceTest {
                     assertTrue("Draft remains inside its pre-edit deadline", it.checkSessionDeadline())
                     assertNotNull(it.currentSession!!.activeVault)
                 }
-                var editor: AccessibilityNodeInfo? = null
+                var editor: ExtractEditText? = null
                 awaitNative {
-                    editor = instrumentation.uiAutomation.windows.asSequence().mapNotNull { it.root }
-                        .flatMap { it.findAccessibilityNodeInfosByViewId("android:id/inputExtractEditText").asSequence() }.firstOrNull()
+                    editor = nativeView("inputExtractEditText") as? ExtractEditText
                     editor != null
                 }
                 // ExtractEditText reports itself focused; ACTION_FOCUS can return
                 // false because no focus change is needed.
-                assertTrue("Native extract editor is editable", editor!!.isEditable)
+                assertNotNull("Android's actual native ExtractEditText is shown", editor)
                 instrumentation.sendStringSync(value)
                 try {
                     compose.waitUntil(timeoutMillis = 60_000) { state(scenario) { _, s -> s.wizardState.value == value } }
@@ -250,13 +262,14 @@ class SessionLifecycleDeviceTest {
                     assertTrue("Native text edit renewed inactivity deadline", it.checkSessionDeadline())
                     assertNotNull(it.currentSession!!.activeVault)
                 }
-                var next: AccessibilityNodeInfo? = null
+                var next: View? = null
                 awaitNative {
-                    next = instrumentation.uiAutomation.windows.asSequence().mapNotNull { it.root }
-                        .flatMap { it.findAccessibilityNodeInfosByViewId("android:id/inputExtractAction").asSequence() }.firstOrNull()
+                    next = nativeView("inputExtractAction")
                     next != null
                 }
-                assertTrue("Native Next/Done accepted", next!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+                instrumentation.runOnMainSync {
+                    assertTrue("Native Next/Done accepted", next!!.performClick())
+                }
                 awaitNative { !SyntheticFullscreenIme.active }
             }
             nativeField("synthetic-service")
@@ -272,7 +285,6 @@ class SessionLifecycleDeviceTest {
             if (!wasEnabled) shell("ime disable ${quote(ime)}")
             if (showWithHardware == "null") shell("settings delete secure show_ime_with_hard_keyboard")
             else shell("settings put secure show_ime_with_hard_keyboard ${quote(showWithHardware)}")
-            instrumentation.uiAutomation.serviceInfo = instrumentation.uiAutomation.serviceInfo.apply { flags = oldFlags }
         }
     }
 

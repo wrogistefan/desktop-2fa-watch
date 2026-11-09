@@ -13,6 +13,9 @@ class SyntheticFullscreenIme : InputMethodService() {
     // framework's real extract editor and actions rather than a mock callback.
     override fun onUpdateExtractingVisibility(info: EditorInfo?) { setExtractViewShown(true) }
     override fun onCreateInputView(): View = TextView(this).apply { text = "Synthetic keyboard" }
+    override fun onCreateExtractTextView(): View = requireNotNull(super.onCreateExtractTextView()).also {
+        extractView = it
+    }
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         fullscreen = isFullscreenMode
@@ -22,8 +25,14 @@ class SyntheticFullscreenIme : InputMethodService() {
         active = false
         super.onFinishInputView(finishingInput)
     }
+    override fun onDestroy() {
+        active = false
+        extractView = null
+        super.onDestroy()
+    }
     companion object {
         @Volatile var active = false
         @Volatile var fullscreen = false
+        @Volatile var extractView: View? = null
     }
 }

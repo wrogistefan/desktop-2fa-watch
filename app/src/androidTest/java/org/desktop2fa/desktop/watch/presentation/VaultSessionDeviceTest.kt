@@ -1,6 +1,7 @@
 package org.desktop2fa.desktop.watch.presentation
 
 import android.content.Intent
+import android.os.SystemClock
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -46,9 +47,28 @@ class VaultSessionDeviceTest {
         compose.onAllNodes(code, useUnmergedTree = true).assertCountEquals(0)
     }
 
+    private fun input(scenario: ActivityScenario<SyntheticMainActivity>, action: VaultSession.() -> Unit) {
+        scenario.onActivity { activity ->
+            // These cases isolate ownership/I/O from inactivity (covered separately).
+            // Every modeled edit/navigation still uses the production input guard.
+            if (activity.monotonicOverride == null) activity.monotonicOverride = SystemClock.elapsedRealtime() + 1_000
+            val session = requireNotNull(activity.currentSession)
+            activity.userAction(session, session.uiToken()) { session.action() }
+        }
+    }
+
     private fun unlock(scenario: ActivityScenario<SyntheticMainActivity>) {
-        scenario.onActivity { it.currentSession!!.apply { passwordInput = PASSWORD; unlock() } }
-        compose.waitUntil(60_000) { compose.onAllNodes(code, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        input(scenario) { passwordInput = PASSWORD; unlock() }
+        try {
+            compose.waitUntil(60_000) { compose.onAllNodes(code, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+            var state = "unbound"
+            scenario.onActivity { a -> a.currentSession?.let { s ->
+                state = "screen=${s.currentScreen}, pending=${s.operationPending}, vault=${s.activeVault != null}, " +
+                    "codesActive=${a.codesActive}, windowFocus=${a.hasWindowFocus()}, lifecycle=${a.lifecycle.currentState}"
+            } }
+            throw AssertionError("Synthetic unlock did not display codes: $state")
+        }
     }
 
     private fun withVault(test: (ActivityScenario<SyntheticMainActivity>, File) -> Unit) {
@@ -78,14 +98,14 @@ class VaultSessionDeviceTest {
         try {
             scenario.onActivity {
                 it.afterIo = { name -> if (name == "unlock") gate.block() }
-                it.currentSession!!.apply { passwordInput = PASSWORD; unlock() }
             }
+            input(scenario) { passwordInput = PASSWORD; unlock() }
             gate.await()
             compose.onNodeWithText("Lock Vault").performClick()
             scenario.onActivity {
                 assertNull(it.currentSession!!.activeVault)
-                assertEquals("", it.currentSession!!.passwordInput)
-                assertEquals(AccountWizardState(), it.currentSession!!.wizardState)
+                assertTrue("Password input cleared", it.currentSession!!.passwordInput.isEmpty())
+                assertTrue("Sensitive draft cleared", it.currentSession!!.wizardState == AccountWizardState())
             }
             compose.onAllNodes(code, useUnmergedTree = true).assertCountEquals(0)
             scenario.recreate()
@@ -103,18 +123,18 @@ class VaultSessionDeviceTest {
         try {
             scenario.onActivity {
                 it.afterIo = { name -> if (name == "add") gate.block() }
-                it.currentSession!!.apply {
-                    addAccount()
-                    wizardState = AccountWizardState(AccountStep.SECRET, "synthetic", "synthetic new", KEY)
-                    submitAccount()
-                }
+            }
+            input(scenario) {
+                addAccount()
+                wizardState = AccountWizardState(AccountStep.SECRET, "synthetic", "synthetic new", KEY)
+                submitAccount()
             }
             gate.await()
             compose.onNodeWithText("Lock Vault").performScrollTo().performClick()
             scenario.onActivity {
                 assertNull(it.currentSession!!.activeVault)
-                assertEquals(AccountWizardState(), it.currentSession!!.wizardState)
-                assertEquals("", it.currentSession!!.passwordInput)
+                assertTrue("Sensitive draft cleared", it.currentSession!!.wizardState == AccountWizardState())
+                assertTrue("Password input cleared", it.currentSession!!.passwordInput.isEmpty())
             }
             compose.onAllNodes(code, useUnmergedTree = true).assertCountEquals(0)
         } finally { gate.release.countDown() }
@@ -132,8 +152,8 @@ class VaultSessionDeviceTest {
         scenario.onActivity {
             assertNull(it.currentSession!!.activeVault)
             assertEquals("Account was saved. Unlock and review before adding it again.", it.currentSession!!.errorMessage)
-            it.currentSession!!.startup()
         }
+        input(scenario) { startup() }
         waitClosed(scenario)
         unlock(scenario)
         scenario.onActivity { assertEquals(2, it.currentSession!!.activeVault!!.entries.size) }
@@ -144,15 +164,13 @@ class VaultSessionDeviceTest {
     @Test fun recreationDropsTheActiveVaultAndSecretDraftWithoutChangingCommittedBytes() = withVault { scenario, file ->
         val original = file.readBytes()
         unlock(scenario)
-        scenario.onActivity {
-            it.currentSession!!.apply { addAccount(); wizardState = AccountWizardState(AccountStep.SECRET, "synthetic", "synthetic draft", KEY) }
-        }
+        input(scenario) { addAccount(); wizardState = AccountWizardState(AccountStep.SECRET, "synthetic", "synthetic draft", KEY) }
         scenario.recreate()
         waitClosed(scenario)
         scenario.onActivity {
             assertNull(it.currentSession!!.activeVault)
-            assertEquals(AccountWizardState(), it.currentSession!!.wizardState)
-            assertEquals("", it.currentSession!!.passwordInput)
+            assertTrue("Sensitive draft cleared", it.currentSession!!.wizardState == AccountWizardState())
+            assertTrue("Password input cleared", it.currentSession!!.passwordInput.isEmpty())
         }
         assertArrayEquals(original, file.readBytes())
     }
@@ -163,11 +181,11 @@ class VaultSessionDeviceTest {
         try {
             scenario.onActivity {
                 it.afterIo = { name -> if (name == "add") gate.block() }
-                it.currentSession!!.apply {
-                    addAccount()
-                    wizardState = AccountWizardState(AccountStep.SECRET, "synthetic", "synthetic new", KEY)
-                    submitAccount()
-                }
+            }
+            input(scenario) {
+                addAccount()
+                wizardState = AccountWizardState(AccountStep.SECRET, "synthetic", "synthetic new", KEY)
+                submitAccount()
             }
             gate.await()
             scenario.recreate()
@@ -187,7 +205,7 @@ class VaultSessionDeviceTest {
         waitReview()
         scenario.recreate()
         waitReview() // Merely displaying/disposing a notice must not consume it.
-        scenario.onActivity { it.currentSession!!.startup() }
+        input(scenario) { startup() }
         waitClosed(scenario)
         unlock(scenario)
         assertEquals(2, Vault.load(file, PASSWORD).entries.size)
