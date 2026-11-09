@@ -5,7 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -27,7 +28,7 @@ class RecoveryScreenDeviceTest {
                 onOpen = { error("Opening must be disabled") },
                 onBack = { error("Navigation must be disabled") }, busy = true)
         }
-        compose.onNode(hasSetTextAction()).assertIsNotEnabled()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText)).assertIsNotEnabled()
         compose.onNodeWithText("Previous backup").performScrollTo().assertIsNotEnabled().performClick()
         compose.onNodeWithText("Back to storage check").performScrollTo().assertIsNotEnabled().performClick()
     }

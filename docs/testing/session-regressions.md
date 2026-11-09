@@ -101,7 +101,10 @@ with `-read-only -no-snapshot -no-window -no-audio -gpu swiftshader`.
 | Merged release manifest | No synthetic component or INTERNET permission |
 | `git diff --check` and relative Markdown links | Passed |
 | First full `.\gradlew.bat :app:connectedDebugAndroidTest --no-configuration-cache --stacktrace` | Passed: 22 tests, zero failures/errors, before review follow-ups |
-| Final full JVM/build and Android reruns after review | In progress; results recorded after completion |
+| Final `.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug --stacktrace` | Passed: 318 JVM tests, zero failures/errors; debug app build passed on runtime `3d82ba0` |
+| Intermediate full Android rerun after review | 24 cases, 22 passed / 2 failed: pending-recovery selector and late-add/Lock/recreation case; not a passing full run |
+| Final targeted RecoveryScreenDeviceTest | Passed: 2 cases, zero failures/errors, including the corrected disabled-field selector |
+| Final targeted VaultSessionDeviceTest | In progress; result recorded after completion |
 
 During development an initial compile caught the not-yet-migrated startup
 signature, and a controlled test caught that disposal cleared secrets but left
@@ -110,6 +113,12 @@ run passed before the full suite was launched. They are not final-pass evidence.
 An intermediate Android rerun stopped at compilation because a newly added test
 imported a member as a top-level function (`onNode`); the import was removed before
 the final rerun. It did not execute device cases and is not counted as a pass.
+The disabled-field test then searched for SetText, an action absent precisely
+because editing was disabled; it now selects the field by EditableText semantics.
+The late-add/recreation regression is checked on the final outcome-retention
+implementation. A comma-separated class filter executed only RecoveryScreen's
+two cases in this local runner, so VaultSession is explicitly run separately;
+Gradle success alone is not treated as proof that all requested cases ran.
 
 No automatic background/screen-off/device-lock/inactivity trigger is implemented
 here (#26). No new physical-watch/fullscreen IME/ambient pass, hardware-backed

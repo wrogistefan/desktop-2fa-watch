@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Invalidate session ownership before Lock/disposal, reject late I/O publication,
   clear sensitive drafts, serialize old/new Activity I/O, and require storage
   review for writes completed after locking. Add Lock during loading/saving (#25).
+- Reject stale manual-add snapshots without replacing newer accounts; retain
+  non-secret review outcomes across Activity recreation until explicit Retry,
+  and show recovery guidance after 30 seconds of pending I/O (#25).
 
 - Distinguish unavailable remembered credentials from an empty cache at startup,
   preserve manual password recovery, and exclude all three known credential
