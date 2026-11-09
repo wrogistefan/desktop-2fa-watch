@@ -34,6 +34,10 @@ writes and deletions are surfaced separately from the vault operation. Clearing
 deletes all three known secure/legacy preference stores without decrypting them;
 all deletion results must succeed. This also permits cleanup of an unreadable
 cache. A failed clear warns that cached unlock may still be possible after restart.
+Startup distinguishes an empty readable cache from inaccessible preferences and
+shows a manual-unlock warning for the latter. Loss of a Keystore key cannot
+recover the cached password: use the original vault password. There is no
+automatic deletion of unreadable preferences or reset of the encrypted vault.
 
 ## Sessions and locking
 
@@ -95,7 +99,9 @@ The app-private parent directory/trustworthy OS boundary remains unchanged.
 
 The configured Android cloud-backup and device-transfer rules exclude
 `vault.d2fa`, `vault.d2fa.bak`, `vault.d2fa.tmp`, and the secure preference file; a legacy fallback
-preference file is excluded too. The application manifest still allows backup
+preference files are excluded too, including `desktop_2fa_secure_prefs_fallback.xml`.
+All three known credential stores are excluded from cloud backup and device
+transfer. The application manifest still allows backup
 for other eligible app data. These rules are not an implemented export feature.
 
 Uninstalling, clearing app storage, watch resets, or loss of the password can

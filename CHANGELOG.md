@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- Distinguish unavailable remembered credentials from an empty cache at startup,
+  preserve manual password recovery, and exclude all three known credential
+  stores from backup/transfer; exercise immediate Lock and owned key loss (#23).
 - Refuse symlink-following vault opens and changed recovery selections; tighten
   the debug process-test directory boundary (review follow-up to #21/#46).
 - Report explicit update/verification outcomes and require storage review after

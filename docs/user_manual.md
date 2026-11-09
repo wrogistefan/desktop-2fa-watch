@@ -110,6 +110,12 @@ compatible reader and keep service recovery methods when repairing original data
 
 ## Lock the vault
 
+If startup reports that the remembered password is unavailable, unlock with
+your original vault password. This can follow corrupted preferences or loss of
+the device's Keystore key. The warning does not mean the vault was reset, and
+the cached password cannot be recovered without its key. Keep your password
+and independent service recovery methods; do not clear app data to fix this.
+
 Scroll to **Lock Vault**. The app immediately leaves the account view, clears
 its active vault reference and form inputs, and requests removal of the cached
 password in the background. This does not delete the encrypted vault.

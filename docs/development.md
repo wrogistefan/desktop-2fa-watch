@@ -148,6 +148,11 @@ No root or bootloader unlock is needed. Disable debugging after testing.
 
 ## Manual UI checklist
 
+Cache/Keystore loss and immediate Lock checks for #23 are described in the
+[focused regression report](testing/cache-outcome-regressions.md). The debug
+UI host uses only validated synthetic cache directories and prefixed preferences;
+key-loss tests delete only their own randomly named Keystore alias.
+
 Recorded results: [emulator](testing/wear-os-emulator.md) and
 [Galaxy Watch Ultra](testing/galaxy-watch-ultra.md). See the
 [report index](testing/README.md) for scope and limitations.

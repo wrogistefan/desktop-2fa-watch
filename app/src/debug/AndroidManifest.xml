@@ -5,5 +5,7 @@
              This private process is dedicated to this component; no other host should join it. -->
         <activity android:name=".testing.SyntheticRecoveryProcessActivity"
             android:exported="false" android:process=":synthetic_recovery" />
+        <activity android:name=".testing.SyntheticMainActivity"
+            android:exported="false" android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

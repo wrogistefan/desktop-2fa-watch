@@ -6,6 +6,14 @@ internal interface PasswordStore {
     fun write(password: String): Boolean
 }
 
+internal sealed interface PasswordCacheRead {
+    class Available(val password: String) : PasswordCacheRead {
+        override fun toString() = "PasswordCacheRead.Available(redacted)"
+    }
+    data object Missing : PasswordCacheRead
+    data object Unavailable : PasswordCacheRead
+}
+
 internal class PasswordCache(
     private val openStore: () -> PasswordStore?,
     private val deleteStore: (String) -> Boolean,
@@ -19,11 +27,22 @@ internal class PasswordCache(
         }
     }
 
-    fun read(): String? = try {
-        openStore()?.read()
+    fun readResult(): PasswordCacheRead = try {
+        val store = openStore()
+        if (store == null) PasswordCacheRead.Unavailable
+        else {
+            val password = store.read()
+            when {
+                password == null -> PasswordCacheRead.Missing
+                password.isBlank() -> PasswordCacheRead.Unavailable
+                else -> PasswordCacheRead.Available(password)
+            }
+        }
     } catch (_: Exception) {
-        null
+        PasswordCacheRead.Unavailable
     }
+
+    fun read(): String? = (readResult() as? PasswordCacheRead.Available)?.password
 
     fun clear(): Boolean {
         var success = true

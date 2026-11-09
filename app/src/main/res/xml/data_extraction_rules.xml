@@ -3,6 +3,7 @@
     <cloud-backup>
         <exclude domain="sharedpref" path="desktop_2fa_secure_prefs.xml" />
         <exclude domain="sharedpref" path="desktop_2fa_fallback_prefs.xml" />
+        <exclude domain="sharedpref" path="desktop_2fa_secure_prefs_fallback.xml" />
         <exclude domain="file" path="vault.d2fa" />
         <exclude domain="file" path="vault.d2fa.bak" />
         <exclude domain="file" path="vault.d2fa.tmp" />
@@ -10,6 +11,7 @@
     <device-transfer>
         <exclude domain="sharedpref" path="desktop_2fa_secure_prefs.xml" />
         <exclude domain="sharedpref" path="desktop_2fa_fallback_prefs.xml" />
+        <exclude domain="sharedpref" path="desktop_2fa_secure_prefs_fallback.xml" />
         <exclude domain="file" path="vault.d2fa" />
         <exclude domain="file" path="vault.d2fa.bak" />
         <exclude domain="file" path="vault.d2fa.tmp" />
