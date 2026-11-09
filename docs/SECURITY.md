@@ -17,9 +17,9 @@ for an offline attack. Encryption cannot make a weak password strong.
 
 ## Password policy and caching
 
-The password-only part of the [accepted session policy](session-policy.md) is
-implemented by #25. Automatic background/screen-off/device-lock and 60-second
-inactivity triggers remain #26 work; they are not active yet.
+The [accepted session policy](session-policy.md) is implemented by #25/#26:
+password-only sessions with screen-off/device-lock, Activity-stop and 60-second
+inactivity locking.
 
 Creation requires at least 8 characters and a heuristic score of 3 or more.
 Mixed case, digits, symbols, and length of at least 12 add points. This is not
@@ -73,11 +73,19 @@ notice. It never releases the writer mutex on timeout: if I/O cannot finish,
 force stop/reopen the app or restart the watch without clearing app data, then
 inspect storage. A completed write cannot be assumed rolled back.
 
-There is still no inactivity/background lock or guaranteed memory zeroization.
-Returning to the watch face is not an explicit lock. Strings captured by running
-I/O can remain until that operation finishes; JVM garbage collection cannot
-prove erasure. The app does not yet block screenshots with `FLAG_SECURE` (#27).
-Fullscreen IME/lifecycle triggers need the separate #26/#37 verification.
+Screen off/device lock, Activity stop and 60 seconds without qualifying input
+invalidate the session, including opening/recovery/wizard operations. The timeout
+uses elapsed realtime, checked before input and I/O publication: a late edit
+cannot extend an already expired session. Touch, rotary/key input and UI/IME
+callbacks renew it; ticks, focus changes and I/O do not. Pause or focus loss alone
+hides codes and cancels refresh without discarding an unexpired draft. Resume
+reads current wall time before displaying codes. No wake lock or background
+refresh is used. See [lifecycle checks](testing/lifecycle-regressions.md).
+
+There is no guaranteed memory zeroization. Strings captured by running I/O can
+remain until that operation finishes; JVM garbage collection cannot prove
+erasure. The app does not yet block screenshots with `FLAG_SECURE` (#27).
+Physical-watch/OEM fullscreen IME integration still needs #37 verification.
 
 ## File integrity and persistence
 
@@ -109,8 +117,8 @@ A failed initial write can leave a partial file that blocks setup. Creation is
 not an atomic write of the entire vault and never automatically discards such a file.
 Startup never reads cached credentials or authenticates a file. A present file
 requires manual unlock; a rejected load never permits setup. Cancelled or
-invalidated startup work cannot publish a navigation result. Automatic lifecycle
-triggers remain #26 work.
+invalidated startup work cannot publish a navigation result. Lifecycle locking
+uses the same session invalidation path.
 
 Vault reads refuse a final-component symlink at open time. Recovery also checks
 the listed file's temporary metadata fingerprint before and after loading; a

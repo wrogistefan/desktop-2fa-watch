@@ -1,7 +1,7 @@
 # Session and remembered-password decision (#24 / C2)
 
 Status: **accepted product policy; password-only sessions and explicit Lock
-implemented in #25; automatic triggers remain #26**. Approved by the repository
+implemented in #25; automatic triggers implemented in #26**. Approved by the repository
 owner on 2026-11-09 under #24. The original decision was documentation-only at
 `18b7804`; #23 cache-outcome work has since merged as #49. Current implementation
 evidence is separate in [session regressions](testing/session-regressions.md).
@@ -124,9 +124,10 @@ and stopping refresh are not a secure-erasure claim or security audit.
 - #25 / C3: implements session ownership, explicit Lock, rejection of late
   completions, disabled cache unlock/write and legacy cleanup. Updated warnings
   distinguish this version from older builds that may reuse leftover cache.
-- #26 / C4: enforce the approved 60-second/background/screen/device-lock events,
-  stop inactive code refresh and preserve IME editing. Do not treat this decision
-  as evidence that any trigger works already.
+- #26 / C4: implements the approved 60-second/Activity-stop/screen/device-lock
+  events and stops inactive code refresh. Pause/focus loss alone preserves
+  unexpired editing. See [implementation evidence](testing/lifecycle-regressions.md)
+  separately from this original policy decision.
 - #37 / C5: current emulator and physical-watch evidence, using synthetic data.
 
 Review/test traces must cover fresh/existing users with Remember previously on

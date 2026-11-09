@@ -89,9 +89,12 @@ success also clears trailing password edits.
 
 Legacy cleanup warnings remain visible through manual unlock and distinguish
 unconfirmed deletion from the locked session. Current code never reuses leftover
-cache; older versions may after downgrade. Screen-off/background/device-lock and
-60-second inactivity triggers are still #26 work. Native fullscreen IME behavior
-and physical-watch integration still need #37 evidence.
+cache; older versions may after downgrade. Screen off/device lock, Activity stop
+and 60 seconds without input now clear the session and drafts. Pause/focus loss
+alone hides codes, preserving an unexpired draft. Native text edits count as
+activity; merely opening an editor does not disable timeout. Resume uses current
+wall time. Physical-watch/OEM IME integration still needs #37 evidence; see the
+[current emulator report](testing/lifecycle-regressions.md).
 
 ## Validation status
 

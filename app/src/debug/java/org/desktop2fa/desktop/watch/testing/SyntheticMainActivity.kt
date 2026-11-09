@@ -36,6 +36,12 @@ internal class SyntheticWatchContext(base: Context, val directory: File) : Conte
 
 /** Non-exported debug host uses the production screen and callbacks unchanged. */
 open class SyntheticMainActivity : MainActivity() {
+    internal var monotonicOffset = 0L
+    internal var monotonicOverride: Long? = null
+    internal var wallClockOverride: Long? = null
+    override fun monotonicMillis(): Long = monotonicOverride ?: (super.monotonicMillis() + monotonicOffset)
+    override fun wallClockMillis(): Long = wallClockOverride ?: super.wallClockMillis()
+    internal fun clockChangedForTest() = notifyWallClockChanged()
     internal var beforeIo: (String) -> Unit = {}
     internal var afterIo: (String) -> Unit = {}
     internal val syntheticContext by lazy {

@@ -50,13 +50,16 @@ class VaultSessionTest {
         }
     }
 
-    private class Fixture(val storage: Storage = Storage(), stallDelay: Long = 30_000) : AutoCloseable {
+    private class Fixture(val storage: Storage = Storage(), stallDelay: Long = 30_000,
+        publishCheck: (VaultSession) -> Unit = {}) : AutoCloseable {
         val ui = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
         val ioExecutor = Executors.newSingleThreadExecutor()
         val io = ioExecutor.asCoroutineDispatcher()
         val job = SupervisorJob()
         val scope = CoroutineScope(job + ui)
-        val session = VaultSession(scope, storage, io, stallDelay)
+        lateinit var session: VaultSession
+            private set
+        init { session = VaultSession(scope, storage, io, stallDelay, beforePublish = { publishCheck(session) }) }
         fun <T> ui(action: VaultSession.() -> T): T = runBlocking { withContext(ui) { session.action() } }
         fun idle() = runBlocking {
             withTimeout(5_000) { while (ui { operationPending }) delay(1) }
@@ -112,6 +115,33 @@ class VaultSessionTest {
         }
         assertEquals(1, original.entries.size)
         assertEquals(2, f.storage.current.entries.size)
+    }
+
+    @Test fun staleUiCallbacksCannotBelongToANewlyUnlockedSession() = Fixture().use { f ->
+        f.unlock()
+        val old = f.ui { uiToken() }
+        f.ui { lock(); assertFalse(acceptsUiToken(old)) }; f.idle()
+        f.unlock()
+        f.ui {
+            assertFalse(acceptsUiToken(old))
+            assertTrue(acceptsUiToken(uiToken()))
+            dispose()
+            assertFalse(acceptsUiToken(uiToken()))
+        }
+    }
+
+    @Test fun deadlineCheckBeforePublicationInvalidatesLoadsAndHandsOffCommittedData() {
+        for (kind in listOf("unlock", "add")) {
+            var expired = false
+            Fixture(publishCheck = { if (expired) { expired = false; it.lock() } }).use { f ->
+                f.prepare(kind)
+                expired = true
+                f.ui { start(kind) }; f.idle()
+                f.ui { assertClosed() }
+                assertEquals(if (kind == "add") 2 else 1, f.storage.current.entries.size)
+                if (kind == "add") assertNotNull(f.storage.pendingNotice())
+            }
+        }
     }
 
     @Test fun allLateSuccessesStayClosedAndClearDraftsBeforeIoReturns() {

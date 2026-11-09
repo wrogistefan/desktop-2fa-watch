@@ -1,6 +1,18 @@
 package org.desktop2fa.desktop.watch.presentation
 
 import android.os.Bundle
+import android.os.Build
+import android.os.PowerManager
+import android.os.SystemClock
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
+import android.view.MotionEvent
+import android.view.KeyEvent
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import android.content.Context
 import android.view.View
 import androidx.activity.ComponentActivity
@@ -54,17 +66,163 @@ open class MainActivity : ComponentActivity() {
     internal open fun createSessionStorage(context: Context): VaultSessionStorage =
         VaultSessionStorage(File(context.filesDir, "vault.d2fa")) { VaultSecurityManager.clearPassword(context) }
 
+    protected open fun monotonicMillis(): Long = SystemClock.elapsedRealtime()
+    protected open fun wallClockMillis(): Long = System.currentTimeMillis()
+    private val lockPolicy = SessionLockPolicy({ monotonicMillis() })
+    private var timeoutJob: Job? = null
+    private var started = false
+    private var resumed by mutableStateOf(false)
+    private var focused by mutableStateOf(false)
+    private var deviceReady by mutableStateOf(false)
+    private var clockRevision by mutableStateOf(0)
+    private var lockBeforeBinding = false
+    private var receiverRegistered = false
+    private var unavailableLocked = false
+    internal val codesActive: Boolean get() = resumed && focused && deviceReady
+    internal fun notifyWallClockChanged() { checkSessionDeadline(); clockRevision++ }
+
+    private val systemEvents = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                deviceReady = false
+                unavailableLocked = true
+                invalidateSession()
+            } else {
+                checkSessionDeadline()
+                clockRevision++
+            }
+        }
+    }
+
+    private fun invalidateSession() {
+        lockPolicy.locked()
+        timeoutJob?.cancel()
+        val session = currentSession
+        if (session == null) lockBeforeBinding = true else session.lock()
+    }
+
+    internal fun checkSessionDeadline(): Boolean {
+        deviceReady = getSystemService(PowerManager::class.java).isInteractive &&
+            !getSystemService(KeyguardManager::class.java).isKeyguardLocked
+        if (!deviceReady) {
+            // Cleanup may finish while the display stays off. Do not repeatedly
+            // invalidate its new generation and schedule another cleanup.
+            if (!unavailableLocked) { unavailableLocked = true; invalidateSession() }
+            return false
+        }
+        unavailableLocked = false
+        if (lockPolicy.expired()) { invalidateSession(); return false }
+        return true
+    }
+
+    private fun scheduleDeadline() {
+        timeoutJob?.cancel()
+        val remaining = lockPolicy.remainingMillis() ?: return
+        timeoutJob = lifecycleScope.launch {
+            delay(remaining.coerceAtLeast(1))
+            checkSessionDeadline()
+            scheduleDeadline()
+        }
+    }
+
+    private fun input(): Boolean {
+        if (!checkSessionDeadline()) return false
+        if (!started || !deviceReady) return false
+        if (!lockPolicy.input()) { invalidateSession(); return false }
+        scheduleDeadline()
+        return true
+    }
+
+    internal fun userAction(session: VaultSession, token: Any, action: () -> Unit) {
+        if (currentSession === session && session.acceptsUiToken(token) && input() && session.acceptsUiToken(token)) action()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        started = true
+        lockPolicy.start()
+        checkSessionDeadline()
+        scheduleDeadline()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkSessionDeadline()
+        clockRevision++
+        resumed = true
+        scheduleDeadline()
+    }
+
+    override fun onPause() {
+        resumed = false // Pause/focus loss alone is not departure, including extract IME.
+        checkSessionDeadline() // Device lock/expired time still wins over an IME transition.
+        super.onPause()
+    }
+
+    override fun onStop() {
+        resumed = false
+        started = false
+        lockPolicy.stop()
+        invalidateSession()
+        super.onStop()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        focused = hasFocus
+        checkSessionDeadline()
+        if (hasFocus) clockRevision++
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked in setOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE) && !input()) return true
+        return super.dispatchTouchEvent(event)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && !input()) return true
+        return super.dispatchKeyEvent(event)
+    }
+
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_SCROLL && !input()) return true
+        return super.dispatchGenericMotionEvent(event)
+    }
+
+    override fun onDestroy() {
+        timeoutJob?.cancel()
+        if (receiverRegistered) unregisterReceiver(systemEvents)
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.decorView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
+        }
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(systemEvents, filter, Context.RECEIVER_NOT_EXPORTED)
+        else @Suppress("DEPRECATION") registerReceiver(systemEvents, filter)
+        receiverRegistered = true
 
         setContent {
             val context = vaultContext()
             val coroutineScope = rememberCoroutineScope()
 
-            val session = remember { VaultSession(coroutineScope, createSessionStorage(context)) }
+            val session = remember {
+                VaultSession(coroutineScope, createSessionStorage(context), beforePublish = { checkSessionDeadline() },
+                    onLocked = { lockPolicy.locked(); timeoutJob?.cancel() })
+            }
+            val uiToken = session.uiToken()
+            val act: (() -> Unit) -> Unit = { action -> userAction(session, uiToken, action) }
             DisposableEffect(session) {
                 currentSession = session
+                if (lockBeforeBinding) { lockBeforeBinding = false; session.lock() }
                 onDispose {
                     session.dispose()
                     if (currentSession === session) currentSession = null
@@ -86,7 +244,7 @@ open class MainActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(text = "Loading Secure Vault...", color = Color(0xFF3B82F6))
                         operationNotice?.let { Text(it, color = Color(0xFFFCA5A5)) }
-                        Button(onClick = { lock() }) { Text("Lock Vault") }
+                        Button(onClick = { act { lock() } }) { Text("Lock Vault") }
                     }
                 } else {
                     when (currentScreen) {
@@ -94,16 +252,16 @@ open class MainActivity : ComponentActivity() {
 
                         Screen.STORAGE_ERROR -> StorageErrorScreen(
                             listOfNotNull(errorMessage, cacheWarning, operationNotice).joinToString("\n").ifBlank { null },
-                            onRetry = { startup() }, onRecovery = { listRecovery() }, busy = operationPending,
+                            onRetry = { act { startup() } }, onRecovery = { act { listRecovery() } }, busy = operationPending,
                         )
 
                         Screen.RECOVERY -> RecoveryScreen(
                             candidates = recoveryCandidates,
                             password = passwordInput,
                             error = listOfNotNull(errorMessage, cacheWarning).joinToString("\n").ifBlank { null },
-                            onPasswordChange = { if (!operationPending) { passwordInput = it; errorMessage = null } },
-                            onOpen = { openRecovery(it) },
-                            onBack = { leaveRecovery() },
+                            onPasswordChange = { value -> act { if (!operationPending) { passwordInput = value; errorMessage = null } } },
+                            onOpen = { candidate -> act { openRecovery(candidate) } },
+                            onBack = { act { leaveRecovery() } },
                             busy = operationPending,
                         )
 
@@ -122,13 +280,13 @@ open class MainActivity : ComponentActivity() {
                                 OutlinedTextField(
                                     value = passwordInput,
                                     enabled = !operationPending,
-                                    onValueChange = {
+                                    onValueChange = { value -> act {
                                         if (!operationPending) {
-                                            passwordInput = it
-                                            val res = PasswordStrengthValidator.evaluate(it)
+                                            passwordInput = value
+                                            val res = PasswordStrengthValidator.evaluate(value)
                                             errorMessage = if (!res.isValid) res.feedback else null
                                         }
-                                    },
+                                    } },
                                     label = { Text("Master Password") },
                                     singleLine = true,
                                     visualTransformation = PasswordVisualTransformation(),
@@ -138,7 +296,7 @@ open class MainActivity : ComponentActivity() {
                                         imeAction = ImeAction.Done
                                     ),
                                     keyboardActions = KeyboardActions(
-                                        onDone = { setup() }
+                                        onDone = { act { setup() } }
                                     ),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedTextColor = Color.White,
@@ -157,7 +315,7 @@ open class MainActivity : ComponentActivity() {
                                 Text("Password required for every session. Remember is no longer available.", color = Color.White)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Button(
-                                    onClick = { setup() }
+                                    onClick = { act { setup() } }
                                 ) {
                                     Text("Initialize Vault")
                                 }
@@ -185,7 +343,7 @@ open class MainActivity : ComponentActivity() {
                                 OutlinedTextField(
                                     value = passwordInput,
                                     enabled = !operationPending,
-                                    onValueChange = { if (!operationPending) passwordInput = it },
+                                    onValueChange = { value -> act { if (!operationPending) passwordInput = value } },
                                     label = { Text("Password") },
                                     singleLine = true,
                                     visualTransformation = PasswordVisualTransformation(),
@@ -195,7 +353,7 @@ open class MainActivity : ComponentActivity() {
                                         imeAction = ImeAction.Done
                                     ),
                                     keyboardActions = KeyboardActions(
-                                        onDone = { unlock() }
+                                        onDone = { act { unlock() } }
                                     ),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedTextColor = Color.White,
@@ -210,7 +368,7 @@ open class MainActivity : ComponentActivity() {
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Button(
-                                    onClick = { unlock() },
+                                    onClick = { act { unlock() } },
                                     enabled = !operationPending
                                 ) {
                                     Text("Unlock")
@@ -219,11 +377,14 @@ open class MainActivity : ComponentActivity() {
                         }
 
                         Screen.MAIN -> {
-                            var currentTime by remember { mutableStateOf(System.currentTimeMillis() / 1000) }
-                            LaunchedEffect(Unit) {
-                                while (true) {
-                                    delay(1000L)
-                                    currentTime = System.currentTimeMillis() / 1000
+                            var tick by remember { mutableStateOf(0L) }
+                            val currentTime = remember(tick, codesActive, clockRevision) {
+                                if (codesActive) wallClockMillis() / 1000 else 0L
+                            }
+                            LaunchedEffect(codesActive, clockRevision) {
+                                if (codesActive) while (true) {
+                                    delay(1000L - Math.floorMod(wallClockMillis(), 1000L))
+                                    tick++
                                 }
                             }
 
@@ -264,7 +425,6 @@ open class MainActivity : ComponentActivity() {
                                         // Legacy vaults may contain duplicate names and secrets. The
                                         // current list only appends entries, so positions stay stable.
                                         itemsIndexed(entries, key = { index, _ -> "entry-$index" }) { index, entry ->
-                                            val codeState = accountCodeState(entry, currentTime)
 
                                             Column(
                                                 modifier = Modifier
@@ -280,7 +440,8 @@ open class MainActivity : ComponentActivity() {
                                                 Text(text = entry.issuer ?: "Service", color = Color(0xFF3B82F6))
                                                 Text(text = entry.accountName ?: "", color = Color(0xFF9CA3AF))
                                                 Spacer(modifier = Modifier.height(4.dp))
-                                                AccountCode(codeState)
+                                                if (codesActive) AccountCode(accountCodeState(entry, currentTime))
+                                                else Text("Codes paused", color = Color(0xFF9CA3AF))
                                             }
                                         }
                                     }
@@ -291,9 +452,9 @@ open class MainActivity : ComponentActivity() {
                                             horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
                                             Spacer(modifier = Modifier.height(8.dp))
-                                            AddAccountAction(recoveryReadOnly = recoverySource != null, onAdd = { addAccount() })
+                                            AddAccountAction(recoveryReadOnly = recoverySource != null, onAdd = { act { addAccount() } })
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            Button(onClick = { lock() }) { Text("Lock Vault") }
+                                            Button(onClick = { act { lock() } }) { Text("Lock Vault") }
                                             if (successMessage != null) {
                                                 Spacer(modifier = Modifier.height(4.dp))
                                                 Text(text = successMessage!!, color = Color(0xFF10B981))
@@ -313,11 +474,11 @@ open class MainActivity : ComponentActivity() {
                         Screen.ADD_ACCOUNT -> {
                             AccountWizard(
                                 state = wizardState,
-                                onEdit = { if (!operationPending) wizardState = wizardState.edit(it) },
-                                onSubmit = { submitAccount() },
-                                onBack = { if (!operationPending) wizardState = wizardState.back() },
-                                onCancel = { cancelDraft() },
-                                onLock = { lock() },
+                                onEdit = { value -> act { if (!operationPending) wizardState = wizardState.edit(value) } },
+                                onSubmit = { act { submitAccount() } },
+                                onBack = { act { if (!operationPending) wizardState = wizardState.back() } },
+                                onCancel = { act { cancelDraft() } },
+                                onLock = { act { lock() } },
                                 notice = operationNotice,
                             )
                         }

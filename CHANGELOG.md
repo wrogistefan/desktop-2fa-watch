@@ -7,13 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned policy (not implemented)
-
-- Lock on screen off/device lock, true departure or 60 seconds of inactivity,
-  preserving fullscreen IME editing (#24/#26). These automatic triggers remain
-  unimplemented; password-only sessions and explicit Lock ship in #25 below.
-
 ### ✨ Changed
+
+- Lock on screen off/device lock, Activity stop or 60 seconds without user input.
+  Pause/focus loss hides codes without discarding an unexpired editing session;
+  native IME edits renew the deadline. Returning always requires a password
+  after a genuine lock. Refresh TOTP from current wall time on resume (#26).
 
 - Require explicit vault-password sessions for new and existing users; remove
   Remember and cached auto-unlock. Startup/Lock remove old credential stores;

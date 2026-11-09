@@ -64,6 +64,8 @@ internal class VaultSession(
     private val storage: VaultSessionStorage,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val stallNoticeDelayMillis: Long = 30_000,
+    private val beforePublish: () -> Unit = {},
+    private val onLocked: () -> Unit = {},
 ) {
     var activeVault by mutableStateOf<Vault?>(null)
         private set
@@ -99,6 +101,8 @@ internal class VaultSession(
     @Volatile private var mutationInFlight = false
 
     private fun owns(token: Any) = !disposed && generation === token
+    fun uiToken(): Any = generation
+    fun acceptsUiToken(token: Any): Boolean = owns(token)
 
     private fun clearSensitiveState() {
         activeVault = null
@@ -121,6 +125,7 @@ internal class VaultSession(
         isLoading = false
         currentScreen = if (manualUnlock) Screen.UNLOCK else Screen.STORAGE_ERROR
         errorMessage = if (mutationInFlight) LATE_SAVE_REVIEW else null
+        onLocked()
         cleanupRequested = true
         if (!operationPending) cleanup()
     }
@@ -181,6 +186,7 @@ internal class VaultSession(
                         work().also { if (mutation) completionNotice = storage.recordNotice(late(it)) }
                     }
                 }
+                if (!disposed) beforePublish()
                 if (owns(token)) success(result)
                 else if (!disposed && mutation) review(late(result))
                 settleNotice(completionNotice)
@@ -192,6 +198,7 @@ internal class VaultSession(
                 settleNotice(completionNotice)
                 throw cancelled
             } catch (caught: Exception) {
+                if (!disposed) beforePublish()
                 if (owns(token)) failure(caught)
                 else if (!disposed && mutation) review(LATE_SAVE_REVIEW)
                 settleNotice(completionNotice)
