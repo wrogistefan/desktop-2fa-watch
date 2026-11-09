@@ -123,9 +123,10 @@ See the [compatibility assessment](docs/compatibility.md) for current boundaries
   configured Android cloud-backup and device-transfer rules.
 
 The watch password-strength check is a local character/length heuristic, not
-the desktop app's zxcvbn evaluation. Unlock sessions are held in memory; there
-is no automatic inactivity lock yet; every new session requires a vault
-password. See the [security model](docs/SECURITY.md) for limitations.
+the desktop app's zxcvbn evaluation. Unlock sessions are held in memory and lock
+on screen off/device lock, Activity stop or 60 seconds without user input.
+Every new session requires a vault password.
+See the [security model](docs/SECURITY.md) for limitations.
 
 Legacy cache removal failures show a separate warning without keeping the
 vault open. Setup refuses uncertain storage and cannot replace an existing file.

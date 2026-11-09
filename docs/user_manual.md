@@ -18,8 +18,11 @@ credentials are scheduled for removal without resetting the vault. If cleanup
 fails, deletion is unconfirmed: data may remain and older app versions could use
 it. This version ignores it for unlocking. There is no password-reset or
 cached-password recovery feature. See the [session decision](session-policy.md).
-Automatic screen-off/background and 60-second inactivity locking are planned in
-#26 and are not implemented yet.
+Screen off/device lock, leaving the app (Activity stop) or 60 seconds without
+input locks the vault and clears unfinished input. Returning or waking the
+watch requires the vault password. Opening the keyboard alone preserves an
+unexpired draft; edits renew the deadline, but merely leaving the keyboard open
+does not. Codes pause while the app is paused or lacks window focus.
 
 On first launch, **Create Vault** asks for a master password. The current UI
 requires at least 8 characters and a heuristic score of at least 3. Mixed case,
@@ -130,9 +133,9 @@ After 30 seconds of pending I/O a notice explains that storage is still busy.
 Lock still hides codes immediately. If it never finishes, force stop and reopen
 the app or restart the watch; do not clear app data. The write may have completed.
 
-There is no automatic inactivity lock. Returning to the watch face is not an
-explicit lock action. Clearing references does not guarantee memory erasure;
-see the [security model](SECURITY.md).
+Screen off/device lock, Activity stop and 60 seconds without input lock the
+session. Manual Lock remains available at any time. Clearing references does
+not guarantee memory erasure; see the [security model](SECURITY.md).
 
 ## Storage, updates, and recovery
 

@@ -4,6 +4,8 @@ import android.app.ActivityManager
 import android.content.Intent
 import android.os.Process
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.core.app.ActivityScenario
+import org.desktop2fa.desktop.watch.testing.SyntheticMainActivity
 import org.desktop2fa.desktop.watch.testing.SyntheticSessionProcessActivity
 import org.desktop2fa.desktop.watch.testing.SyntheticWatchContext
 import org.desktop2fa.desktop.watch.vault.Vault
@@ -20,6 +22,7 @@ class VaultSessionProcessDeviceTest {
         val directory = File(context.cacheDir, "synthetic-restart-${System.nanoTime()}").apply { check(mkdir()) }
         val file = File(directory, "vault.d2fa")
         var childPid: Int? = null
+        var foregroundHost: ActivityScenario<SyntheticMainActivity>? = null
         fun killOwnedChild() {
             childPid?.let { pid ->
                 assertNotEquals(Process.myPid(), pid)
@@ -57,6 +60,10 @@ class VaultSessionProcessDeviceTest {
             val password = "Synthetic-DeviceSession-42!"
             Vault.create().apply { addEntry("synthetic persisted", "synthetic", "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ") }.saveNew(file, password)
             val original = file.readBytes()
+            // Keep the test UID in the foreground when launching another process.
+            // Modern Android may create a background Activity without resuming it.
+            foregroundHost = ActivityScenario.launch(Intent(context, SyntheticMainActivity::class.java)
+                .putExtra("syntheticDirectory", directory.name))
             assertEquals("ACTIVE_DRAFT", child("active"))
             killOwnedChild() // No finish/onDestroy or orderly draft cleanup.
             assertEquals("LOCKED_CLEAN", child("inspect"))
@@ -66,6 +73,7 @@ class VaultSessionProcessDeviceTest {
             assertArrayEquals(original, file.readBytes())
         } finally {
             killOwnedChild()
+            foregroundHost?.close()
             check(VaultSecurityManager.clearPassword(SyntheticWatchContext(context, directory)))
             Files.newDirectoryStream(directory.toPath()).use { files -> files.forEach { Files.delete(it) } }
             Files.delete(directory.toPath())
