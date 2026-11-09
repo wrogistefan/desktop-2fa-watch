@@ -123,6 +123,12 @@ class VaultSessionDeviceTest {
             scenario.onActivity { ready = it.currentSession?.let { s -> !s.operationPending && s.currentScreen == Screen.STORAGE_ERROR } == true }
             ready
         }
+        scenario.recreate() // A displayed late-Lock outcome is not yet acknowledged.
+        compose.waitUntil(60_000) {
+            var ready = false
+            scenario.onActivity { ready = it.currentSession?.let { s -> !s.operationPending && s.currentScreen == Screen.STORAGE_ERROR } == true }
+            ready
+        }
         scenario.onActivity {
             assertNull(it.currentSession!!.activeVault)
             assertEquals("Account was saved. Unlock and review before adding it again.", it.currentSession!!.errorMessage)

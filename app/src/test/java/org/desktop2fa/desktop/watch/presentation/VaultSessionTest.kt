@@ -133,7 +133,10 @@ class VaultSessionTest {
                 } finally { gate.release.countDown() }
                 f.idle()
                 f.ui { assertClosed(); assertFalse(operationPending) }
-                if (kind in listOf("setup", "add")) f.ui { assertEquals(Screen.STORAGE_ERROR, currentScreen) }
+                if (kind in listOf("setup", "add")) {
+                    f.ui { assertEquals(Screen.STORAGE_ERROR, currentScreen) }
+                    assertNotNull(f.storage.pendingNotice())
+                }
                 if (kind == "add") {
                     assertEquals(2, f.storage.current.entries.size)
                     f.unlock()

@@ -141,6 +141,12 @@ internal class VaultSession(
         errorMessage = message
     }
 
+    private fun settleNotice(notice: LateSessionNotice?) {
+        if (disposed || notice == null) return
+        if (currentScreen == Screen.STORAGE_ERROR) presentedNotice = notice
+        else storage.acknowledgeNotice(notice)
+    }
+
     private fun <T> operation(
         loading: Boolean = true,
         mutation: Boolean = false,
@@ -177,17 +183,18 @@ internal class VaultSession(
                 }
                 if (owns(token)) success(result)
                 else if (!disposed && mutation) review(late(result))
-                if (!disposed) completionNotice?.let { storage.acknowledgeNotice(it) }
+                settleNotice(completionNotice)
             } catch (cancelled: CancellationException) {
                 if (owns(token)) {
                     generation = Any()
                     review("Operation cancelled. Review storage before trying again.")
-                }
+                } else if (!disposed && completionNotice != null) review(LATE_SAVE_REVIEW)
+                settleNotice(completionNotice)
                 throw cancelled
             } catch (caught: Exception) {
                 if (owns(token)) failure(caught)
                 else if (!disposed && mutation) review(LATE_SAVE_REVIEW)
-                if (!disposed) completionNotice?.let { storage.acknowledgeNotice(it) }
+                settleNotice(completionNotice)
             } finally {
                 notice.cancel()
                 if (!disposed) {
