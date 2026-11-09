@@ -9,3 +9,6 @@ class CorruptedVaultException(message: String = "Vault contains invalid data", c
 class UnsupportedFormatException(message: String = "Unsupported vault format", cause: Throwable? = null) : VaultException(message, cause)
 
 open class VaultIOException(message: String = "Vault IO error", cause: Throwable? = null) : VaultException(message, cause)
+
+/** Name selection must not choose an arbitrary historical duplicate. */
+class AmbiguousEntryException : IllegalArgumentException("Multiple accounts match; select explicitly")

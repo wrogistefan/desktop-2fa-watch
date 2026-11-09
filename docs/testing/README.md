@@ -1,5 +1,8 @@
 # UI Test Reports
 
+The [lookup report](lookup-regressions.md) records #35 exact-name precedence,
+ambiguity-safe removal and reordered/null/duplicate JVM regressions.
+
 The [batch report](batch-regressions.md) describes #36 immutable proposals,
 serialized competing sessions and encrypted whole-batch save/failure checks.
 

@@ -107,6 +107,18 @@ separate supported copy; no automatic Watch repair or lossy conversion is added.
 
 ## Import/export plan
 
+Name lookup now matches the pinned Desktop 0.10.0 resolution tiers (#35): exact
+case-sensitive `account_name` matches take precedence over issuer fallback. More
+than one match at the selected tier throws `AmbiguousEntryException` (an
+`IllegalArgumentException`); it never chooses by order or falls back from an
+ambiguous account name to an issuer. Missing matches still throw
+`IllegalArgumentException`, with a generic message. `removeEntry` resolves first
+and changes nothing on ambiguity/missing selection. Unique callers keep their
+signatures/behavior. `findEntries` remains an enumeration of both labels, not an
+implicit selector. Historical duplicate/null/empty records still load/display;
+there is no format/ID migration or edit/remove UI. Future additive transfer uses
+E2 explicit collision/operation semantics and must not use first-match lookup.
+
 The [selected-account package v1 proposal](transfer/package-v1.md) is a bounded,
 additive application contract, separate from D2FA v1 and any transport. It carries
 only user-selected explicit parameters, preserves nullable names and requires
