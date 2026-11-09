@@ -67,7 +67,28 @@ was also confirmed to be a disposable read-only/no-snapshot instance before
 termination. No saved AVD data was intentionally changed. Emulator checks remain
 **blocked by the environment**, not passed. The new instrumented suite must run
 successfully before this PR is merged; do not infer a pass from Gradle's exit
-code alone. Both disposable emulator processes were stopped after the attempts.
+code alone.
+
+After stopping the old instance, starting port 5582 alone with software GPU
+eventually brought Android online. The complete run then executed 18 tests:
+17 passed, one failed while scrolling to Lock before the cleanup assertion.
+All key-loss, backup-policy, corrupt-cache, storage and recovery cases passed.
+An isolated diagnostic rerun of the Lock case passed (1/1); this alone does not
+establish that the original gesture was reliable. The test now waits for actual
+decrypted content (the title is also on the splash) and keeps scroll gestures
+in the center of the round display, away from lower actions/system edges.
+
+### Review follow-up
+
+Late review of the #24 documentation raised three points. The third legacy
+store's missing backup exclusions are addressed in this PR and checked against
+packaged resources. The manual now explicitly states that failed cleanup leaves
+deletion unconfirmed and older builds may reuse leftover credentials. The claim
+that absent stores necessarily make `deleteSharedPreferences` return false is
+not supported by the local Android 34 ContextImpl source (which returns true
+when main and backup files are absent) or by the passing Android 17 cleanup
+cases with absent legacy stores. No check-then-delete workaround or false-success
+fallback is added; actual false/exception outcomes remain failures.
 
 No physical watch, authentication-bound key invalidation, device-lock policy,
 inactivity/background lock, IME or process-death session verification is claimed

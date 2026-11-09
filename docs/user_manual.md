@@ -16,7 +16,9 @@ removes Remember and automatic cached unlock for both new and existing users.
 Each new session will require the original vault password, including after
 restart, screen off, leaving the app or 60 seconds of inactivity. Fullscreen
 keyboard editing will not itself count as leaving the app. Existing remembered
-credentials will be removed with a warning if cleanup fails; the vault will not
+credentials will be scheduled for removal. If cleanup fails, deletion is not
+confirmed: credentials may remain in storage and older app builds could reuse
+them. The planned new runtime will ignore them for unlocking. The vault will not
 be reset. Keep your original password and service recovery methods. This is a
 policy decision; the current behavior is described below.
 

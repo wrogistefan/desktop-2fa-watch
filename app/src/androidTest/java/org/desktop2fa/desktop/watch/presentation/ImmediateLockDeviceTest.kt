@@ -46,8 +46,10 @@ class ImmediateLockDeviceTest {
             } catch (_: AssertionError) {
                 val bounds = compose.onRoot().fetchSemanticsNode().boundsInRoot
                 val x = bounds.center.x.toInt()
-                val start = (bounds.top + bounds.height * 0.75f).toInt()
-                val end = (bounds.top + bounds.height * 0.45f).toInt()
+                // Keep gestures in the central content, away from bottom actions
+                // and system edge gestures on a round Wear display.
+                val start = (bounds.top + bounds.height * 0.60f).toInt()
+                val end = (bounds.top + bounds.height * 0.30f).toInt()
                 // Platform input uses real event timing for this Wear list version.
                 ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation
                     .executeShellCommand("input swipe $x $start $x $end 500")).use { it.readBytes() }
@@ -57,7 +59,7 @@ class ImmediateLockDeviceTest {
         try {
             compose.onNode(matcher, useUnmergedTree = true).assertIsDisplayed()
         } catch (failure: AssertionError) {
-            val markers = listOf("synthetic account", "Code unavailable", "No accounts", "Add Account", "Lock Vault")
+            val markers = listOf("synthetic account", "Code unavailable", "No accounts", "Add Account", "Lock Vault", "Service name", "Unlock Vault", "Loading Secure Vault...")
                 .map { label -> compose.onAllNodesWithText(label, useUnmergedTree = true).fetchSemanticsNodes().size }
             throw AssertionError("Synthetic layout positions: $positions; marker counts=$markers; root=${compose.onRoot().fetchSemanticsNode().boundsInRoot}", failure)
         }
