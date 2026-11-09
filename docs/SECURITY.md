@@ -49,8 +49,8 @@ callbacks check ownership before publishing. An old completion cannot open Main,
 restore plaintext or repopulate an invalidated draft.
 
 A single process-local coroutine mutex prevents a new Activity owner from reading
-while the old owner's I/O is still finishing. This is not a multi-process lock or
-the future shared batch mutation API (#36). Work queued after invalidation or
+while the old owner's I/O is still finishing. This is process-local coordination,
+not a multi-process lock. Work queued after invalidation or
 cancellation is skipped. A synchronous write already started runs through the
 existing atomic-save protocol in an I/O non-cancellable section; cancelling its
 caller cannot undo a known commit. Lock does not wait for it to hide codes.

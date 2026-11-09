@@ -1,6 +1,7 @@
 # Shared manual/batch commit (#36)
 
-Baseline: `c431286` (#51), branch `refactor/36-serialized-additions`.
+Initial baseline: `c431286` (#51), rebased onto `ef3228b` (#52) before final checks;
+branch `refactor/36-serialized-additions`.
 Only public synthetic accounts, keys/passwords and temporary files are used.
 
 ## Scope and threat review
@@ -36,6 +37,27 @@ The writer assumption and internal APIs are documented in
   on failure and unchanged existing accounts/parameters on success. The existing
   B4 fault matrix remains responsible for detailed commit/uncertain outcomes.
 
-JVM success does not establish Android lifecycle, Keystore, physical power-loss
-durability or a transport security audit. Exact execution results are recorded
-after verification; the case descriptions above are not a claim of passing tests.
+## Executed results (2026-11-09)
+
+Initial targeted candidate/session/storage checks passed **20/20**, with debug
+assembly. After rebasing onto merged #26, the full JVM suite passed **333/333**;
+debug and instrumentation APK assembly passed:
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
+```
+
+On the owned Large Round API 37 emulator (`emulator-5582`), the unchanged native
+extract-editor manual wizard ran through the new commit API: three fields,
+Next/Done, inactivity renewal and one persisted addition preserving the original
+entry. **1/1 passed**, without failures/errors/skips:
+
+```powershell
+.\gradlew.bat :app:connectedDebugAndroidTest '-Pandroid.testInstrumentationRunnerArguments.class=org.desktop2fa.desktop.watch.presentation.SessionLifecycleDeviceTest#nativeFullscreenExtractEditorKeepsDraftAndDeliversNextAndDone' --no-configuration-cache --stacktrace
+```
+
+Commands ran from this branch's worktree with local Gradle cache/SDK configuration.
+GitHub CI failed before test execution on the external Gradle distribution
+download timeout, as also seen for #26/#28; it is not reported green. Local full
+Wrapper checks above are the runtime evidence. JVM/emulator success does not
+establish physical Keystore behavior, power-loss durability or transport security.
