@@ -17,6 +17,13 @@ for an offline attack. Encryption cannot make a weak password strong.
 
 ## Password policy and caching
 
+**Accepted future policy (#24, not implemented here):** require a manually
+entered vault password for every session, remove Remember and ignore old cache
+for unlocking, including after restart. The [decision and transition plan](session-policy.md)
+specifies legacy cleanup, honest failure warnings and the 60-second/screen-off/
+true-background lock policy. The current runtime behavior below remains until
+the implementation tasks #25/#26 are completed and verified.
+
 Creation requires at least 8 characters and a heuristic score of 3 or more.
 Mixed case, digits, symbols, and length of at least 12 add points. This is not
 zxcvbn, an entropy estimate, or equivalent to the desktop password policy.
