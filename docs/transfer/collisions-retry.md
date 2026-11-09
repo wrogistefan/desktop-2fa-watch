@@ -1,8 +1,11 @@
 # Additive collisions and retries (#32 / E2)
 
-Status: **proposed; owner decision required for receipt policy**. Recommended
-first profile: no durable receipt/schema migration, bounded session-memory
-receipts, explicit reconciliation after Lock/restart/expiry. This document adds
+Status: **manual reconciliation/no durable receipts accepted by the owner on
+2026-11-09**. No durable receipt/schema migration; bounded session-memory
+receipts and explicit reconciliation after Lock/restart/expiry. Communication
+and transfer protocol design are deferred to a separate owner-provided model;
+session binding and numeric budgets below remain preparation proposals, not
+approval of a transport or wire protocol. This document adds
 no receiver, persistence, account IDs or edit/delete capability.
 
 The [E1 package](package-v1.md) is independent of the local vault. Operation IDs
@@ -126,7 +129,7 @@ cancel without a write. No globally stable account IDs are introduced.
 
 ## Persistence alternatives and decision
 
-**Recommended:** retain the memory-only policy above. It adds no files, preference
+**Accepted storage direction:** retain the memory-only policy above. It adds no files, preference
 stores, keys, backup changes or D2FA v1 migration. Existing B4 process-local
 notices remain conservative storage guidance, not durable retry receipts. The
 cost is user reconciliation after restart/Lock/expiry, rather than seamless retry.
@@ -141,8 +144,11 @@ would need migration, backup/transfer exclusion, missing-key handling, receipt
 expiry/cleanup, rollback/recovery and multi-file fault tests in separately scoped
 work. Losing a receipt/key must never reset the vault.
 
-Owner choice is pending; this proposal must not be mistaken for an approved
-durable delivery guarantee or permission to implement networking.
+The owner accepted explicit manual reconciliation after lost confirmation and
+restart, without durable receipts or a vault-format change. This is not a
+durable delivery guarantee or permission to implement networking; the separate
+communication/transfer model must still resolve authenticated session binding
+and final control-message semantics.
 
 ## Synthetic review traces
 
