@@ -25,23 +25,24 @@ internal fun RecoveryScreen(
     onPasswordChange: (String) -> Unit,
     onOpen: (RecoveryCandidate) -> Unit,
     onBack: () -> Unit,
+    busy: Boolean = false,
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)) {
         Text("Recovery: read only")
         Text("Choose a file to view codes. No files will be replaced or removed. Adding accounts is disabled.")
         if (candidates.isEmpty()) Text("No recovery files available. Retry storage check.")
         else {
-            OutlinedTextField(value = password, onValueChange = onPasswordChange,
+            OutlinedTextField(value = password, onValueChange = onPasswordChange, enabled = !busy,
                 label = { Text("Vault password") }, visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true)
             candidates.forEach { candidate ->
                 key(candidate.file.path) {
-                    Button(onClick = { onOpen(candidate) }, enabled = password.isNotBlank()) { Text(candidate.label) }
+                    Button(onClick = { onOpen(candidate) }, enabled = !busy && password.isNotBlank()) { Text(candidate.label) }
                 }
             }
         }
         error?.let { Text(it) }
-        Button(onClick = onBack) { Text("Back to storage check") }
+        Button(onClick = onBack, enabled = !busy) { Text("Back to storage check") }
     }
 }
 

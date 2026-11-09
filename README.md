@@ -26,8 +26,8 @@ guided account setup. Watch import/export and synchronization are not available 
 | ⏱️ **Live TOTP Codes** | Account cards with codes and countdowns refreshed every second |
 | ⌚ **Wear OS Interface** | Native scrolling list with rounded account cards |
 | ➕ **Manual Account Setup** | Three-step wizard with one field per screen, secret visibility, and Base32 validation |
-| 🔓 **Optional Password Storage** | Remember the password using encrypted preferences protected by Android Keystore |
-| 🔒 **Manual Lock** | Leave the account view and request removal of the remembered password |
+| 🔓 **Password-only Sessions** | Enter the vault password for every session; Lock clears active access immediately |
+| 🔒 **Manual Lock** | Immediately clear active access and attempt cleanup of leftover legacy credentials |
 | 📴 **Offline Operation** | No registration, cloud service, or phone companion required |
 | 📁 **Versioned Vault** | `.d2fa` v1 layout and cryptographic parameters match the desktop implementation |
 
@@ -86,7 +86,7 @@ Android SDK Platform-Tools, or run the app directly from Android Studio.
 ### First use
 
 1. Open **desktop-2fa for Wear OS** and create a vault with a strong password.
-2. Choose whether to enable **Remember on watch** (enabled by default).
+2. Keep your original vault password: Remember and automatic cached unlock are removed.
 3. Tap **Add Account** and follow three steps: service name, account name,
    and setup key. Each step has one field, with Back and Cancel actions.
 4. Read the current code and countdown from the account card.
@@ -116,17 +116,18 @@ See the [compatibility assessment](docs/compatibility.md) for current boundaries
 
 - **AES-256-GCM** authenticates and encrypts the vault payload.
 - **Argon2id** derives the key with 4 iterations, 128 MiB memory, and parallelism 2.
-- **Android Keystore** protects the encrypted preferences used by the optional
-  password cache. The vault itself remains password encrypted.
+- Legacy Keystore-protected credential preferences are scheduled for cleanup;
+  this version never reads them for unlock or stores new passwords there.
+  The vault itself remains password encrypted.
 - **Backup exclusions** cover the vault and credential preferences in the
   configured Android cloud-backup and device-transfer rules.
 
 The watch password-strength check is a local character/length heuristic, not
 the desktop app's zxcvbn evaluation. Unlock sessions are held in memory; there
-is no automatic inactivity lock or device-authentication prompt for cached
-password use. See the [security model](docs/SECURITY.md) for limitations.
+is no automatic inactivity lock yet; every new session requires a vault
+password. See the [security model](docs/SECURITY.md) for limitations.
 
-Cache write/removal failures now show a separate warning without keeping the
+Legacy cache removal failures show a separate warning without keeping the
 vault open. Setup refuses uncertain storage and cannot replace an existing file.
 Vaults with unknown JSON fields are rejected unchanged instead of losing metadata.
 

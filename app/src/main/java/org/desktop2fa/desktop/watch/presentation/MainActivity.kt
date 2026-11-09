@@ -8,7 +8,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,15 +18,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,30 +39,20 @@ import androidx.wear.compose.foundation.lazy.itemsIndexed
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.Text
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.desktop2fa.desktop.watch.model.VaultData
-import org.desktop2fa.desktop.watch.vault.CorruptedVaultException
-import org.desktop2fa.desktop.watch.vault.InvalidPasswordException
 import org.desktop2fa.desktop.watch.vault.PasswordStrengthValidator
-import org.desktop2fa.desktop.watch.vault.UnsupportedFormatException
-import org.desktop2fa.desktop.watch.vault.Vault
-import org.desktop2fa.desktop.watch.vault.VaultIOException
 import org.desktop2fa.desktop.watch.vault.VaultSecurityManager
-import org.desktop2fa.desktop.watch.vault.VaultFiles
-import org.desktop2fa.desktop.watch.vault.RecoveryCandidate
-import org.desktop2fa.desktop.watch.vault.openRecoveryView
-import org.desktop2fa.desktop.watch.vault.VaultSaveOutcome
-import org.desktop2fa.desktop.watch.vault.PasswordCacheRead
 import java.io.File
 
 open class MainActivity : ComponentActivity() {
     /** Debug test hosts can isolate storage; production always uses the application context. */
     protected open fun vaultContext(): Context = applicationContext
+
+    internal var currentSession: VaultSession? = null
+        private set
+
+    internal open fun createSessionStorage(context: Context): VaultSessionStorage =
+        VaultSessionStorage(File(context.filesDir, "vault.d2fa")) { VaultSecurityManager.clearPassword(context) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,533 +60,267 @@ open class MainActivity : ComponentActivity() {
 
         setContent {
             val context = vaultContext()
-            val vaultFile = remember { File(context.filesDir, "vault.d2fa") }
             val coroutineScope = rememberCoroutineScope()
 
-            var activeVault by remember { mutableStateOf<Vault?>(null) }
-            var errorMessage by remember { mutableStateOf<String?>(null) }
-            var successMessage by remember { mutableStateOf<String?>(null) }
-            var passwordInput by remember { mutableStateOf("") }
-            var saveToKeystore by remember { mutableStateOf(true) }
-            var isLoading by remember { mutableStateOf(true) }
-            var startupAttempt by remember { mutableStateOf(0) }
-            var cacheWarning by remember { mutableStateOf<String?>(null) }
-            var clearingCache by remember { mutableStateOf(false) }
-            var recoverySource by remember { mutableStateOf<String?>(null) }
-            var recoveryCandidates by remember { mutableStateOf(emptyList<RecoveryCandidate>()) }
-
-            var wizardState by remember { mutableStateOf(AccountWizardState()) }
-            var addedAccountIndex by remember { mutableStateOf<Int?>(null) }
-
-            var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
-
-            // Asynchronous startup check off main thread
-            LaunchedEffect(startupAttempt) {
-                withContext(Dispatchers.IO) {
-                    var cacheUnavailable = false
-                    val startup = resolveVaultStartup(vaultFile, readCachedPassword = {
-                        when (val cached = VaultSecurityManager.readPassword(context)) {
-                            is PasswordCacheRead.Available -> cached.password
-                            PasswordCacheRead.Missing -> null
-                            PasswordCacheRead.Unavailable -> { cacheUnavailable = true; null }
-                        }
-                    })
-                    withContext(Dispatchers.Main) {
-                        activeVault = startup.vault
-                        recoverySource = null
-                        currentScreen = startup.screen
-                        errorMessage = startup.errorMessage
-                        cacheWarning = if (cacheUnavailable) {
-                            "Remembered password is unavailable. Unlock with your vault password; existing data has not been reset."
-                        } else null
-                        isLoading = false
-                    }
+            val session = remember { VaultSession(coroutineScope, createSessionStorage(context)) }
+            DisposableEffect(session) {
+                currentSession = session
+                onDispose {
+                    session.dispose()
+                    if (currentSession === session) currentSession = null
                 }
             }
-
+            LaunchedEffect(session) { session.startup() }
             val scrollState = rememberScrollState()
-
-            // Helper action for setup
-            val handleSetup = setup@{
-                if (isLoading) return@setup
-                if (passwordInput.isBlank()) {
-                    errorMessage = "Password cannot be empty"
+            with(session) {
+                if (isLoading || currentScreen == Screen.SPLASH) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF0F172A))
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "desktop-2fa", color = Color.White)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = "Loading Secure Vault...", color = Color(0xFF3B82F6))
+                        operationNotice?.let { Text(it, color = Color(0xFFFCA5A5)) }
+                        Button(onClick = { lock() }) { Text("Lock Vault") }
+                    }
                 } else {
-                    val res = PasswordStrengthValidator.evaluate(passwordInput)
-                    if (res.score >= 3 && res.isValid) {
-                        isLoading = true
-                        coroutineScope.launch(Dispatchers.IO) {
-                            try {
-                                val newVault = Vault.create()
-                                newVault.saveNew(vaultFile, passwordInput)
-                                val cacheSaved = if (saveToKeystore) {
-                                    VaultSecurityManager.savePassword(context, passwordInput)
-                                } else {
-                                    VaultSecurityManager.clearPassword(context)
-                                }
-                                withContext(Dispatchers.Main) {
-                                    activeVault = newVault
-                                    currentScreen = Screen.MAIN
-                                    errorMessage = null
-                                    cacheWarning = cacheFailureMessage(cacheSaved, saveToKeystore)
-                                    isLoading = false
-                                }
-                            } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    errorMessage = "Could not create a new vault. Existing data has not been replaced."
-                                    currentScreen = Screen.STORAGE_ERROR
-                                    isLoading = false
-                                }
-                            }
-                        }
-                    } else {
-                        errorMessage = res.feedback
-                    }
-                }
-            }
+                    when (currentScreen) {
+                        Screen.SPLASH -> {}
 
-            val handleUnlock = unlock@{
-                if (isLoading || clearingCache) return@unlock
-                if (passwordInput.isBlank()) {
-                    errorMessage = "Password cannot be empty"
-                } else {
-                    isLoading = true
-                    coroutineScope.launch(Dispatchers.IO) {
-                        try {
-                            val loaded = Vault.load(vaultFile, passwordInput)
-                            val cacheSaved = if (saveToKeystore) {
-                                VaultSecurityManager.savePassword(context, passwordInput)
-                            } else {
-                                VaultSecurityManager.clearPassword(context)
-                            }
-                            withContext(Dispatchers.Main) {
-                                activeVault = loaded
-                                currentScreen = Screen.MAIN
-                                errorMessage = null
-                                cacheWarning = cacheFailureMessage(cacheSaved, saveToKeystore)
-                                isLoading = false
-                            }
-                        } catch (_: InvalidPasswordException) {
-                            withContext(Dispatchers.Main) {
-                                errorMessage = "Invalid password"
-                                isLoading = false
-                            }
-                        } catch (_: CorruptedVaultException) {
-                            withContext(Dispatchers.Main) {
-                                errorMessage = "Vault contains invalid or unsupported data"
-                                isLoading = false
-                            }
-                        } catch (_: UnsupportedFormatException) {
-                            withContext(Dispatchers.Main) {
-                                errorMessage = "Unsupported vault format"
-                                isLoading = false
-                            }
-                        } catch (e: VaultIOException) {
-                            withContext(Dispatchers.Main) {
-                                errorMessage = "IO error: ${e.message}"
-                                isLoading = false
-                            }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                errorMessage = "Unlock failed: ${e.message}"
-                                isLoading = false
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (isLoading || currentScreen == Screen.SPLASH) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFF0F172A))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(text = "desktop-2fa", color = Color.White)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "Loading Secure Vault...", color = Color(0xFF3B82F6))
-                }
-            } else {
-                when (currentScreen) {
-                    Screen.SPLASH -> {}
-
-                    Screen.STORAGE_ERROR -> StorageErrorScreen(errorMessage, onRetry = {
-                        isLoading = true
-                        startupAttempt += 1
-                    }, onRecovery = {
-                        isLoading = true
-                        coroutineScope.launch {
-                            try {
-                                recoveryCandidates = withContext(Dispatchers.IO) { VaultFiles.inventory(vaultFile).candidates }
-                                passwordInput = ""
-                                errorMessage = null
-                                currentScreen = Screen.RECOVERY
-                            } catch (cancelled: CancellationException) {
-                                throw cancelled
-                            } catch (_: Exception) {
-                                errorMessage = "Recovery files could not be inspected. No files were changed."
-                            } finally {
-                                isLoading = false
-                            }
-                        }
-                    })
-
-                    Screen.RECOVERY -> RecoveryScreen(
-                        candidates = recoveryCandidates,
-                        password = passwordInput,
-                        error = errorMessage,
-                        onPasswordChange = { passwordInput = it; errorMessage = null },
-                        onOpen = { candidate ->
-                            val suppliedPassword = passwordInput
-                            isLoading = true
-                            coroutineScope.launch {
-                                try {
-                                    val view = withContext(Dispatchers.IO) {
-                                        openRecoveryView(vaultFile, candidate, suppliedPassword)
-                                    }
-                                    activeVault = view.vault
-                                    recoverySource = view.sourceLabel
-                                    passwordInput = ""
-                                    recoveryCandidates = emptyList()
-                                    errorMessage = null
-                                    successMessage = null
-                                    addedAccountIndex = null
-                                    currentScreen = Screen.MAIN
-                                } catch (cancelled: CancellationException) {
-                                    throw cancelled
-                                } catch (_: Exception) {
-                                    errorMessage = "Cannot open this file. Check its password and supported data. No files were changed."
-                                } finally {
-                                    isLoading = false
-                                }
-                            }
-                        },
-                        onBack = {
-                            passwordInput = ""
-                            recoveryCandidates = emptyList()
-                            recoverySource = null
-                            errorMessage = null
-                            currentScreen = Screen.STORAGE_ERROR
-                        },
-                    )
-
-                    Screen.SETUP -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color(0xFF0F172A))
-                                .verticalScroll(scrollState)
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(text = "Create Vault", color = Color.White)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = passwordInput,
-                                onValueChange = {
-                                    passwordInput = it
-                                    val res = PasswordStrengthValidator.evaluate(it)
-                                    errorMessage = if (!res.isValid) res.feedback else null
-                                },
-                                label = { Text("Master Password") },
-                                singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Password,
-                                    autoCorrectEnabled = false,
-                                    imeAction = ImeAction.Done
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onDone = { handleSetup() }
-                                ),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedBorderColor = Color(0xFF3B82F6),
-                                    unfocusedBorderColor = Color(0xFF9CA3AF)
-                                )
-                            )
-                            if (errorMessage != null) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = errorMessage!!, color = Color(0xFFEF4444))
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            ) {
-                                Checkbox(
-                                    checked = saveToKeystore,
-                                    onCheckedChange = { saveToKeystore = it }
-                                )
-                                Spacer(modifier = Modifier.height(0.dp))
-                                Text(text = "Remember on watch", color = Color.White)
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = { handleSetup() }
-                            ) {
-                                Text("Initialize Vault")
-                            }
-                        }
-                    }
-
-                    Screen.UNLOCK -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color(0xFF0F172A))
-                                .verticalScroll(scrollState)
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(text = "Unlock Vault", color = Color.White)
-                            if (clearingCache) {
-                                Text("Removing remembered password…", color = Color.White)
-                            }
-                            cacheWarning?.let { Text(it, color = Color(0xFFFCA5A5)) }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = passwordInput,
-                                onValueChange = { passwordInput = it },
-                                label = { Text("Password") },
-                                singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Password,
-                                    autoCorrectEnabled = false,
-                                    imeAction = ImeAction.Done
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onDone = { handleUnlock() }
-                                ),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedBorderColor = Color(0xFF3B82F6),
-                                    unfocusedBorderColor = Color(0xFF9CA3AF)
-                                )
-                            )
-                            if (errorMessage != null) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = errorMessage!!, color = Color(0xFFEF4444))
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            ) {
-                                Checkbox(
-                                    checked = saveToKeystore,
-                                    onCheckedChange = { saveToKeystore = it }
-                                )
-                                Text(text = "Remember on watch", color = Color.White)
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = { handleUnlock() },
-                                enabled = !clearingCache
-                            ) {
-                                Text("Unlock")
-                            }
-                        }
-                    }
-
-                    Screen.MAIN -> {
-                        var currentTime by remember { mutableStateOf(System.currentTimeMillis() / 1000) }
-                        LaunchedEffect(Unit) {
-                            while (true) {
-                                delay(1000L)
-                                currentTime = System.currentTimeMillis() / 1000
-                            }
-                        }
-
-                        val listState = rememberTransformingLazyColumnState(
-                            initialAnchorItemIndex = addedAccountIndex?.plus(1) ?: 0
+                        Screen.STORAGE_ERROR -> StorageErrorScreen(
+                            listOfNotNull(errorMessage, cacheWarning, operationNotice).joinToString("\n").ifBlank { null },
+                            onRetry = { startup() }, onRecovery = { listRecovery() }, busy = operationPending,
                         )
-                        val entries = activeVault?.entries ?: emptyList()
 
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color(0xFF0F172A))
-                                .padding(4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            TransformingLazyColumn(
-                                state = listState,
+                        Screen.RECOVERY -> RecoveryScreen(
+                            candidates = recoveryCandidates,
+                            password = passwordInput,
+                            error = listOfNotNull(errorMessage, cacheWarning).joinToString("\n").ifBlank { null },
+                            onPasswordChange = { if (!operationPending) { passwordInput = it; errorMessage = null } },
+                            onOpen = { openRecovery(it) },
+                            onBack = { leaveRecovery() },
+                            busy = operationPending,
+                        )
+
+                        Screen.SETUP -> {
+                            Column(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
+                                    .fillMaxSize()
+                                    .background(Color(0xFF0F172A))
+                                    .verticalScroll(scrollState)
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                item {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text(text = "desktop-2fa", color = Color.White)
-                                        recoverySource?.let { source ->
-                                            Text("Recovery view: $source. Read only; no files changed.", color = Color(0xFFFCA5A5))
+                                Text(text = "Create Vault", color = Color.White)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = passwordInput,
+                                    enabled = !operationPending,
+                                    onValueChange = {
+                                        if (!operationPending) {
+                                            passwordInput = it
+                                            val res = PasswordStrengthValidator.evaluate(it)
+                                            errorMessage = if (!res.isValid) res.feedback else null
                                         }
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
+                                    },
+                                    label = { Text("Master Password") },
+                                    singleLine = true,
+                                    visualTransformation = PasswordVisualTransformation(),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Password,
+                                        autoCorrectEnabled = false,
+                                        imeAction = ImeAction.Done
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onDone = { setup() }
+                                    ),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedBorderColor = Color(0xFF3B82F6),
+                                        unfocusedBorderColor = Color(0xFF9CA3AF)
+                                    )
+                                )
+                                if (errorMessage != null) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(text = errorMessage!!, color = Color(0xFFEF4444))
                                 }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                cacheWarning?.let { Text(it, color = Color(0xFFFCA5A5)) }
+                                operationNotice?.let { Text(it, color = Color(0xFFFCA5A5)) }
+                                Text("Password required for every session. Remember is no longer available.", color = Color.White)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { setup() }
+                                ) {
+                                    Text("Initialize Vault")
+                                }
+                            }
+                        }
 
-                                if (entries.isEmpty()) {
+                        Screen.UNLOCK -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color(0xFF0F172A))
+                                    .verticalScroll(scrollState)
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(text = "Unlock Vault", color = Color.White)
+                                if (operationPending) {
+                                    Text(if (clearingCache) "Removing remembered password…" else "Finishing previous operation…", color = Color.White)
+                                }
+                                operationNotice?.let { Text(it, color = Color(0xFFFCA5A5)) }
+                                Text("Password required for every session. Remember is no longer available.", color = Color.White)
+                                cacheWarning?.let { Text(it, color = Color(0xFFFCA5A5)) }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = passwordInput,
+                                    enabled = !operationPending,
+                                    onValueChange = { if (!operationPending) passwordInput = it },
+                                    label = { Text("Password") },
+                                    singleLine = true,
+                                    visualTransformation = PasswordVisualTransformation(),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Password,
+                                        autoCorrectEnabled = false,
+                                        imeAction = ImeAction.Done
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onDone = { unlock() }
+                                    ),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedBorderColor = Color(0xFF3B82F6),
+                                        unfocusedBorderColor = Color(0xFF9CA3AF)
+                                    )
+                                )
+                                if (errorMessage != null) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(text = errorMessage!!, color = Color(0xFFEF4444))
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { unlock() },
+                                    enabled = !operationPending
+                                ) {
+                                    Text("Unlock")
+                                }
+                            }
+                        }
+
+                        Screen.MAIN -> {
+                            var currentTime by remember { mutableStateOf(System.currentTimeMillis() / 1000) }
+                            LaunchedEffect(Unit) {
+                                while (true) {
+                                    delay(1000L)
+                                    currentTime = System.currentTimeMillis() / 1000
+                                }
+                            }
+
+                            val listState = rememberTransformingLazyColumnState(
+                                initialAnchorItemIndex = addedAccountIndex?.plus(1) ?: 0
+                            )
+                            val entries = activeVault?.entries ?: emptyList()
+
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color(0xFF0F172A))
+                                    .padding(4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                TransformingLazyColumn(
+                                    state = listState,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                ) {
                                     item {
-                                        Text(text = "No accounts", color = Color(0xFF9CA3AF))
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Spacer(modifier = Modifier.height(16.dp))
+                                            Text(text = "desktop-2fa", color = Color.White)
+                                            recoverySource?.let { source ->
+                                                Text("Recovery view: $source. Read only; no files changed.", color = Color(0xFFFCA5A5))
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                        }
                                     }
-                                } else {
-                                    // Legacy vaults may contain duplicate names and secrets. The
-                                    // current list only appends entries, so positions stay stable.
-                                    itemsIndexed(entries, key = { index, _ -> "entry-$index" }) { index, entry ->
-                                        val codeState = accountCodeState(entry, currentTime)
 
+                                    if (entries.isEmpty()) {
+                                        item {
+                                            Text(text = "No accounts", color = Color(0xFF9CA3AF))
+                                        }
+                                    } else {
+                                        // Legacy vaults may contain duplicate names and secrets. The
+                                        // current list only appends entries, so positions stay stable.
+                                        itemsIndexed(entries, key = { index, _ -> "entry-$index" }) { index, entry ->
+                                            val codeState = accountCodeState(entry, currentTime)
+
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                                    .background(Color(0xFF1E293B), shape = RoundedCornerShape(16.dp))
+                                                    .padding(12.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                if (index == addedAccountIndex && successMessage != null) {
+                                                    Text("Account added", color = Color(0xFF10B981))
+                                                }
+                                                Text(text = entry.issuer ?: "Service", color = Color(0xFF3B82F6))
+                                                Text(text = entry.accountName ?: "", color = Color(0xFF9CA3AF))
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                AccountCode(codeState)
+                                            }
+                                        }
+                                    }
+
+                                    item {
                                         Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                                .background(Color(0xFF1E293B), shape = RoundedCornerShape(16.dp))
-                                                .padding(12.dp),
+                                            modifier = Modifier.fillMaxWidth(),
                                             horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
-                                            if (index == addedAccountIndex && successMessage != null) {
-                                                Text("Account added", color = Color(0xFF10B981))
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            AddAccountAction(recoveryReadOnly = recoverySource != null, onAdd = { addAccount() })
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Button(onClick = { lock() }) { Text("Lock Vault") }
+                                            if (successMessage != null) {
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text(text = successMessage!!, color = Color(0xFF10B981))
                                             }
-                                            Text(text = entry.issuer ?: "Service", color = Color(0xFF3B82F6))
-                                            Text(text = entry.accountName ?: "", color = Color(0xFF9CA3AF))
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            AccountCode(codeState)
-                                        }
-                                    }
-                                }
-
-                                item {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        AddAccountAction(recoveryReadOnly = recoverySource != null, onAdd = {
-                                            wizardState = AccountWizardState()
-                                            addedAccountIndex = null
-                                            errorMessage = null
-                                            successMessage = null
-                                            currentScreen = Screen.ADD_ACCOUNT
-                                        })
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Button(
-                                            onClick = {
-                                                activeVault = null
-                                                passwordInput = ""
-                                                wizardState = AccountWizardState()
-                                                addedAccountIndex = null
-                                                errorMessage = null
-                                                successMessage = null
-                                                currentScreen = if (recoverySource == null) Screen.UNLOCK else Screen.STORAGE_ERROR
-                                                recoverySource = null
-                                                recoveryCandidates = emptyList()
-                                                cacheWarning = null
-                                                clearingCache = true
-
-                                                coroutineScope.launch {
-                                                    val cleared = withContext(Dispatchers.IO + NonCancellable) {
-                                                        VaultSecurityManager.clearPassword(context)
-                                                    }
-                                                    clearingCache = false
-                                                    cacheWarning = cacheFailureMessage(cleared, remember = false)
-                                                }
+                                            if (errorMessage != null) {
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text(text = errorMessage!!, color = Color(0xFFEF4444))
                                             }
-                                        ) {
-                                            Text("Lock Vault")
+                                            cacheWarning?.let { Text(it, color = Color(0xFFFCA5A5)) }
+                                            Spacer(modifier = Modifier.height(16.dp))
                                         }
-                                        if (successMessage != null) {
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(text = successMessage!!, color = Color(0xFF10B981))
-                                        }
-                                        if (errorMessage != null) {
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(text = errorMessage!!, color = Color(0xFFEF4444))
-                                        }
-                                        cacheWarning?.let { Text(it, color = Color(0xFFFCA5A5)) }
-                                        Spacer(modifier = Modifier.height(16.dp))
                                     }
                                 }
                             }
                         }
-                    }
 
-                    Screen.ADD_ACCOUNT -> {
-                        val handleSubmit = submit@{
-                            if (wizardState.isSaving || recoverySource != null) return@submit
-                            val vault = activeVault
-                            if (vault == null) {
-                                wizardState = wizardState.copy(error = "Unlock the vault before adding an account")
-                                return@submit
-                            }
-                            val draft = wizardState.submit(vault.entries.map { it.accountName })
-                            wizardState = draft
-                            if (!draft.isSaving) return@submit
-
-                            // Capture the validated draft and fallback password on the UI thread.
-                            val fallbackPassword = passwordInput
-                            coroutineScope.launch {
-                                val result = withContext(Dispatchers.IO) {
-                                    val prepared = try {
-                                        val updated = Vault(VaultData(
-                                            version = vault.data.version,
-                                            entries = vault.data.entries.toMutableList()
-                                        ))
-                                        updated.addEntry(draft.account, draft.issuer, draft.secret)
-                                        val password = fallbackPassword.takeIf { it.isNotBlank() }
-                                            ?: VaultSecurityManager.getPassword(context)
-                                            ?: throw IllegalStateException("Unlock required")
-                                        updated to password
-                                    } catch (cancelled: CancellationException) {
-                                        throw cancelled
-                                    } catch (_: Exception) {
-                                        null
-                                    }
-                                    if (prepared == null) AccountSaveResult(VaultSaveOutcome.NOT_COMMITTED)
-                                    else persistAccountCandidate(prepared.first, vaultFile, prepared.second)
-                                }
-                                // No generic exception handler can turn a committed result into
-                                // a retryable draft after this point. Reconcile storage first.
-                                wizardState = AccountWizardState()
-                                if (result.requiresReview) {
-                                    activeVault = null
-                                    passwordInput = ""
-                                    recoverySource = null
-                                    recoveryCandidates = emptyList()
-                                    addedAccountIndex = null
-                                    successMessage = null
-                                    errorMessage = result.message
-                                    currentScreen = Screen.STORAGE_ERROR
-                                } else {
-                                    val reloaded = requireNotNull(result.vault)
-                                    activeVault = reloaded
-                                    addedAccountIndex = reloaded.entries.lastIndex
-                                    successMessage = result.message
-                                    errorMessage = null
-                                    currentScreen = Screen.MAIN
-                                }
-                            }
+                        Screen.ADD_ACCOUNT -> {
+                            AccountWizard(
+                                state = wizardState,
+                                onEdit = { if (!operationPending) wizardState = wizardState.edit(it) },
+                                onSubmit = { submitAccount() },
+                                onBack = { if (!operationPending) wizardState = wizardState.back() },
+                                onCancel = { cancelDraft() },
+                                onLock = { lock() },
+                                notice = operationNotice,
+                            )
                         }
-                        AccountWizard(
-                            state = wizardState,
-                            onEdit = { wizardState = wizardState.edit(it) },
-                            onSubmit = handleSubmit,
-                            onBack = { wizardState = wizardState.back() },
-                            onCancel = {
-                                if (!wizardState.isSaving) {
-                                    wizardState = AccountWizardState()
-                                    currentScreen = Screen.MAIN
-                                }
-                            }
-                        )
                     }
                 }
             }
@@ -607,10 +330,4 @@ open class MainActivity : ComponentActivity() {
 
 enum class Screen {
     SPLASH, SETUP, UNLOCK, MAIN, ADD_ACCOUNT, STORAGE_ERROR, RECOVERY
-}
-
-internal fun cacheFailureMessage(success: Boolean, remember: Boolean): String? = when {
-    success -> null
-    remember -> "Could not remember the password. Keep your vault password for the next unlock."
-    else -> "Could not confirm removal of the remembered password. It may still unlock the vault after restart."
 }

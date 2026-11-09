@@ -11,26 +11,22 @@ This documentation does not assume a Play Store release is available.
 
 ## Create a vault
 
-**Planned change, not active yet:** the owner-approved [session policy](session-policy.md)
-removes Remember and automatic cached unlock for both new and existing users.
-Each new session will require the original vault password, including after
-restart, screen off, leaving the app or 60 seconds of inactivity. Fullscreen
-keyboard editing will not itself count as leaving the app. Existing remembered
-credentials will be scheduled for removal. If cleanup fails, deletion is not
-confirmed: credentials may remain in storage and older app builds could reuse
-them. The planned new runtime will ignore them for unlocking. The vault will not
-be reset. Keep your original password and service recovery methods. This is a
-policy decision; the current behavior is described below.
+**Changed for existing users:** Remember and automatic cached unlock are removed.
+Keep your original vault password and independent service recovery methods before
+updating. Every new launch/session now requires that password. Legacy remembered
+credentials are scheduled for removal without resetting the vault. If cleanup
+fails, deletion is unconfirmed: data may remain and older app versions could use
+it. This version ignores it for unlocking. There is no password-reset or
+cached-password recovery feature. See the [session decision](session-policy.md).
+Automatic screen-off/background and 60-second inactivity locking are planned in
+#26 and are not implemented yet.
 
 On first launch, **Create Vault** asks for a master password. The current UI
 requires at least 8 characters and a heuristic score of at least 3. Mixed case,
 digits, symbols, and length contribute to the score. Use a long, unique password;
 the score is not a measured estimate of resistance to guessing.
 
-**Remember on watch** is checked by default. If enabled, the app attempts to
-store the password in encrypted preferences protected by Android Keystore and
-can unlock automatically on later launches. If disabled, enter the password
-again after a fresh launch. Keep your own record of the password either way.
+There is no Remember checkbox. Keep your own record of the password.
 
 Tap **Initialize Vault** and wait for key derivation and storage to finish.
 The app currently asks for the password once, without a confirmation field.
@@ -38,22 +34,18 @@ Setup refuses to replace an existing vault, including a file created after the
 startup check. If storage cannot be inspected or a backup needs recovery, the
 app shows a storage error and retry action instead of opening setup.
 Use **Retry storage check** to inspect again; repeated inspection errors do not
-enable creation. If cached unlock fails for an existing file, the app offers
-manual unlock instead. No error automatically replaces the vault or its backup.
+enable creation. An existing file always requires manual password unlock. No error automatically replaces the vault or its backup.
 If the very first write is interrupted, an incomplete file may remain. The app
 will refuse to overwrite it; this version has no automatic reset/recovery flow.
 
 ## Unlock an existing vault
 
-If no usable cached password is available, **Unlock Vault** prompts for the
-master password. The same remember option controls whether it is cached.
-A failed cache lookup does not replace or reset the vault.
-If remembering or removing the password fails, the app displays a separate
-warning. The vault can still be unlocked with its password. A removal warning
-means automatic unlock after restart may still be possible.
-To request cache cleanup again, unlock with **Remember on watch** unchecked.
-An unavailable Keystore key may require continuing with manual password unlock;
-removing the cache does not repair or reset the Keystore key.
+**Unlock Vault** always prompts for the original master password. No cached
+password is read and no newly entered password is saved in preferences. A failed
+unlock or legacy-credential cleanup never replaces or resets the vault. A cleanup
+warning means deletion was not confirmed; this version still requires a password.
+Startup and **Lock Vault** retry legacy cleanup without needing a readable
+Keystore key. Do not clear app data to repair cache/key errors.
 
 Unlocking a vault does not reapply the creation strength policy. The password
 must match the one used to encrypt it. The UI rejects blank password input.
@@ -121,17 +113,22 @@ compatible reader and keep service recovery methods when repairing original data
 
 ## Lock the vault
 
-If startup reports that the remembered password is unavailable, unlock with
-your original vault password. This can follow corrupted preferences or loss of
-the device's Keystore key. The warning does not mean the vault was reset, and
-the cached password cannot be recovered without its key. Keep your password
-and independent service recovery methods; do not clear app data to fix this.
-
-Scroll to **Lock Vault**. The app immediately leaves the account view, clears
-its active vault reference and form inputs, and requests removal of the cached
-password in the background. This does not delete the encrypted vault.
-The unlock action waits for that cleanup attempt. If removal fails, codes stay
-hidden and a warning explains that the remembered password may remain on disk.
+Choose **Lock Vault** on the account list, account wizard or loading screen.
+Codes disappear immediately and password, draft and active-vault references are
+cleared. This does not delete the encrypted vault. A previously started storage
+operation may still finish; controls remain disabled until it and legacy-cache
+cleanup finish. A late save reports whether data was saved or needs review,
+without reopening the session. Use storage review/manual unlock to inspect
+existing entries before adding the same account again. Locking is not an undo.
+Closing/recreating the activity or process also discards unsaved drafts and
+requires a new password session; committed entries remain in the encrypted file.
+If a save finishes after the activity closes, a new activity shows storage review
+before another unlock. This notice survives further activity recreation until
+**Retry storage check** acknowledges it. It is not a permanent history: after
+the whole process restarts, inspect existing accounts before repeating an add.
+After 30 seconds of pending I/O a notice explains that storage is still busy.
+Lock still hides codes immediately. If it never finishes, force stop and reopen
+the app or restart the watch; do not clear app data. The write may have completed.
 
 There is no automatic inactivity lock. Returning to the watch face is not an
 explicit lock action. Clearing references does not guarantee memory erasure;
@@ -187,7 +184,7 @@ available as an app workflow.
 | Invalid Base32 | Enter the manual setup key, not a QR image or `otpauth://` URL; check padding and length |
 | Duplicate name | Choose a different account name for the new entry |
 | `Code unavailable` or rejected code | Check account parameters and the watch clock; no substitute code is generated. If it persists, report the app/device version using synthetic examples, never real keys or codes |
-| Remember setting does not persist | Protected preference creation or saving may have failed; unlock manually |
+| Old remembered-credential cleanup warning | This version ignores old credentials. Retry cleanup with Lock or a new launch; older versions might still use leftover data. Keep your original vault password |
 
 Report reproducible problems with synthetic data through
 [GitHub Issues](https://github.com/wrogistefan/desktop-2fa-watch/issues).

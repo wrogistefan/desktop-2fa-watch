@@ -91,8 +91,8 @@ Startup inspection errors show a retry screen. Any fixed `.bak`/`.tmp` or old
 random `.vault.*.tmp` blocks creation and writable unlock, even alongside a main
 file. Backups/pending files are never automatically promoted or deleted. A failed
 password/authentication/load never authorizes new setup.
-The startup resolver keeps inspection and cached-unlock outcomes separate: an
-unavailable cache or rejected load falls back to manual unlock, while an inspection
+The startup resolver only inspects storage and never authenticates via cache.
+Every present file requires explicit password unlock; an inspection
 error stays on retry. Cancellation propagates without producing a navigation result.
 The create-only protection was introduced in #38; #19 tests its startup integration.
 

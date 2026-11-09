@@ -62,7 +62,9 @@ fun AccountWizard(
     onEdit: (String) -> Unit,
     onSubmit: () -> Unit,
     onBack: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onLock: (() -> Unit)? = null,
+    notice: String? = null,
 ) {
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -113,7 +115,13 @@ fun AccountWizard(
                 keyboard?.hide()
                 focus.clearFocus(force = true)
                 onCancel()
-            }
+            },
+            onLock = onLock?.let { lock -> {
+                keyboard?.hide()
+                focus.clearFocus(force = true)
+                lock()
+            } },
+            notice = notice,
         )
     }
 }
@@ -135,7 +143,9 @@ private fun SingleFieldStep(
     submitLabel: String,
     onSubmit: () -> Unit,
     onBack: (() -> Unit)?,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onLock: (() -> Unit)?,
+    notice: String?,
 ) {
     val errorRequester = remember { BringIntoViewRequester() }
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
@@ -196,12 +206,14 @@ private fun SingleFieldStep(
                         .semantics { liveRegion = LiveRegionMode.Polite })
             }
             Button(onClick = onSubmit, enabled = enabled) { Text(submitLabel) }
+            notice?.let { Text(it, color = Color(0xFFFCA5A5)) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (onBack != null) {
                     TextButton(onClick = onBack, enabled = enabled) { Text("Back", color = Color.White) }
                 }
                 TextButton(onClick = onCancel, enabled = enabled) { Text("Cancel", color = Color.White) }
             }
+            if (onLock != null) Button(onClick = onLock) { Text("Lock Vault") }
             Spacer(Modifier.height(12.dp))
         }
     }

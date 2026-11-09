@@ -4,6 +4,10 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
 import org.desktop2fa.desktop.watch.presentation.MainActivity
+import org.desktop2fa.desktop.watch.presentation.VaultSessionStorage
+import org.desktop2fa.desktop.watch.presentation.AccountWizardState
+import org.desktop2fa.desktop.watch.model.VaultData
+import org.desktop2fa.desktop.watch.vault.VaultSecurityManager
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -31,7 +35,9 @@ internal class SyntheticWatchContext(base: Context, val directory: File) : Conte
 }
 
 /** Non-exported debug host uses the production screen and callbacks unchanged. */
-class SyntheticMainActivity : MainActivity() {
+open class SyntheticMainActivity : MainActivity() {
+    internal var beforeIo: (String) -> Unit = {}
+    internal var afterIo: (String) -> Unit = {}
     internal val syntheticContext by lazy {
         val name = requireNotNull(intent.getStringExtra("syntheticDirectory"))
         val directory = requireNotNull(syntheticRecoveryDirectory(cacheDir, name))
@@ -39,4 +45,17 @@ class SyntheticMainActivity : MainActivity() {
     }
 
     override fun vaultContext(): Context = syntheticContext
+
+    internal override fun createSessionStorage(context: Context): VaultSessionStorage =
+        object : VaultSessionStorage(File(context.filesDir, "vault.d2fa"), { VaultSecurityManager.clearPassword(context) }) {
+            private fun <T> controlled(name: String, work: () -> T): T {
+                beforeIo(name)
+                return work().also { afterIo(name) }
+            }
+            override fun inspect() = controlled("startup") { super.inspect() }
+            override fun create(password: String) = controlled("setup") { super.create(password) }
+            override fun unlock(password: String) = controlled("unlock") { super.unlock(password) }
+            override fun add(snapshot: VaultData, draft: AccountWizardState, password: String) =
+                controlled("add") { super.add(snapshot, draft, password) }
+        }
 }

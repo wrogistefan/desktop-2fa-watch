@@ -1,9 +1,10 @@
 # Session and remembered-password decision (#24 / C2)
 
-Status: **accepted product policy, not implemented**. Approved by the repository
-owner on 2026-11-09. This documentation-only decision follows roadmap #13.
-Runtime baseline: `18b7804` (main before this decision); #23 is a separate draft
-with cache-outcome tests, not evidence of the policy below being enforced.
+Status: **accepted product policy; password-only sessions and explicit Lock
+implemented in #25; automatic triggers remain #26**. Approved by the repository
+owner on 2026-11-09 under #24. The original decision was documentation-only at
+`18b7804`; #23 cache-outcome work has since merged as #49. Current implementation
+evidence is separate in [session regressions](testing/session-regressions.md).
 
 ## Decision and reason
 
@@ -28,7 +29,8 @@ window focus or an IME overlay alone with true backgrounding.
 
 ## Transition and storage compatibility
 
-This PR changes no runtime behavior, defaults or data. The implementation must:
+The #24 decision changed no runtime behavior. The #25 implementation applies the
+following password-only transition; it does not change encrypted vault data:
 
 1. Disable cached-password reads/writes for unlock on every startup path before
    attempting cleanup; do not rely on a once-only migration flag to prevent reuse.
@@ -117,12 +119,11 @@ and stopping refresh are not a secure-erasure claim or security audit.
 
 ## Implementation and verification gates
 
-- #23 / C1: preserve immediate Lock, honest cache results and manual recovery;
-  rerun the draft's instrumented tests successfully before merge.
-- #25 / C3: session ownership, explicit Lock and late operations. Incorporate
-  the approved disabling of cache unlock/write and legacy cleanup into a focused
-  implementation before lifecycle locking is enabled. Update old warning wording:
-  the new runtime ignores leftover cache, although older builds may reuse it.
+- #23 / C1: merged as #49 with immediate Lock/cache evidence. Reports remain
+  historical; the session report records the updated password-only regressions.
+- #25 / C3: implements session ownership, explicit Lock, rejection of late
+  completions, disabled cache unlock/write and legacy cleanup. Updated warnings
+  distinguish this version from older builds that may reuse leftover cache.
 - #26 / C4: enforce the approved 60-second/background/screen/device-lock events,
   stop inactive code refresh and preserve IME editing. Do not treat this decision
   as evidence that any trigger works already.

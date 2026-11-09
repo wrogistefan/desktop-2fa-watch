@@ -66,7 +66,7 @@ class ImmediateLockDeviceTest {
     }
 
     @Test
-    fun unreadableSyntheticPreferencesShowManualUnlockWarningWithoutSetupOrReset() {
+    fun unreadableLegacyPreferencesAreRemovedWithoutAutomaticUnlockSetupOrReset() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext
         val directory = File(app.cacheDir, "synthetic-restart-${System.nanoTime()}").apply { check(mkdir()) }
         val context = SyntheticWatchContext(app, directory)
@@ -79,9 +79,10 @@ class ImmediateLockDeviceTest {
                 .putString("__androidx_security_crypto_encrypted_prefs_key_keyset__", "synthetic-invalid-keyset").commit())
             scenario = ActivityScenario.launch(Intent(app, SyntheticMainActivity::class.java)
                 .putExtra("syntheticDirectory", directory.name))
-            val warning = "Remembered password is unavailable. Unlock with your vault password; existing data has not been reset."
-            compose.waitUntil(60_000) { compose.onAllNodesWithText(warning).fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText(warning).performScrollTo().assertIsDisplayed()
+            compose.waitUntil(60_000) { compose.onAllNodesWithText("Unlock Vault").fetchSemanticsNodes().isNotEmpty() }
+            compose.onAllNodesWithText("Remember on watch").assertCountEquals(0)
+            scenario.onActivity { assertNull(it.currentSession!!.activeVault) }
+            assertNull(VaultSecurityManager.getPassword(context))
             compose.onAllNodesWithText("Initialize Vault").assertCountEquals(0)
             assertArrayEquals(original, file.readBytes())
         } finally {
@@ -113,11 +114,21 @@ class ImmediateLockDeviceTest {
             assertTrue(VaultSecurityManager.savePassword(preparedContext, password))
             scenario = ActivityScenario.launch(Intent(app, SyntheticMainActivity::class.java)
                 .putExtra("syntheticDirectory", directory.name))
-            // The splash also contains the app title. Wait for decrypted content,
-            // not a title that could appear while the real KDF is still running.
+            compose.waitUntil(60_000) { compose.onAllNodesWithText("Unlock Vault").fetchSemanticsNodes().isNotEmpty() }
+            // Legacy cached credentials must not open the session. Enter the password
+            // through the production action; this test does not claim native IME coverage.
+            assertNull(VaultSecurityManager.getPassword(preparedContext))
+            scenario.onActivity {
+                assertNull(it.currentSession!!.activeVault)
+                it.currentSession!!.passwordInput = password
+                it.currentSession!!.unlock()
+            }
             compose.waitUntil(60_000) {
                 compose.onAllNodes(code, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
             }
+            // Simulate residual legacy credentials independently of the new runtime,
+            // which never saves or reads remembered passwords.
+            assertTrue(VaultSecurityManager.savePassword(preparedContext, password))
             compose.waitUntil(30_000) {
                 var focused = false
                 scenario.onActivity { focused = it.hasWindowFocus() }
@@ -140,7 +151,7 @@ class ImmediateLockDeviceTest {
             compose.onNodeWithText("Unlock").performScrollTo().assertIsNotEnabled()
             assertArrayEquals(original, file.readBytes())
             release.countDown()
-            val warning = "Could not confirm removal of the remembered password. It may still unlock the vault after restart."
+            val warning = credentialCleanupWarning(false)!!
             compose.waitUntil(60_000) { compose.onAllNodesWithText(warning).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText(warning).performScrollTo().assertIsDisplayed()
             compose.onAllNodes(code, useUnmergedTree = true).assertCountEquals(0)

@@ -94,6 +94,13 @@ separate supported copy; no automatic Watch repair or lossy conversion is added.
 
 ## Import/export plan
 
+The #25 session change does not alter encrypted v1 files, TOTP parameters or
+password encoding. Supported files need no migration. Existing users must supply
+their original vault password: Remember/cache unlock is removed and legacy
+preferences are scheduled for cleanup. Keystore loss/cleanup errors never reset
+the vault; leftover cache is ignored by this version. See the
+[session transition and recovery limits](session-policy.md).
+
 Restart recovery does not reinterpret storage as a transfer package. Leftover
 backup/fixed/legacy pending files require review; a selected supported file can
 be authenticated for read-only code access without promotion or deletion. There
@@ -133,8 +140,8 @@ follow-up work on a separate branch:
 
 Desktop already has encrypted whole-vault import/export commands. The first
 watch workflow should use the same v1 file, without an intermediate plaintext
-export. An imported file's password and the device's cached credentials must
-be handled consistently after replacement.
+export. An imported file's password, invalidated session and legacy credential
+cleanup must be handled consistently after replacement.
 
 Automatic sync and account merging are outside that initial scope. The model
 has no stable IDs, edit timestamps, or deletion records for resolving conflicts.

@@ -54,8 +54,8 @@ lets a test grow a synthetic file after the metadata check, verifying that
 `Vault.load` still consumes no more than the limit plus one byte. Existing
 encrypted round-trip, wrong-password, tamper and truncation tests remain active.
 
-Startup routing has injected inspection/cache/load tests for every non-setup
-outcome and cancellation propagation. The Android suite also exercises the
+Startup routing has injected inspection tests for every non-setup outcome and
+cancellation propagation. It never reads credentials or authenticates a vault. The Android suite also exercises the
 resolver with disposable encrypted files and the production storage-error/retry
 component in an isolated Compose host. This does not launch MainActivity against
 user storage or establish full lifecycle/session behavior; see
@@ -85,7 +85,7 @@ automatically retries writes. An internal filesystem overload supports outcome
 fault tests. No stored data/KDF migration is needed. Validation/preparation can
 still throw before publication; unexpected writer exceptions are conservatively
 uncertain. Cancellation propagates without assuming a committed write rolled back.
-Session/cancellation ownership is separate #25 work. See
+Session/cancellation ownership is implemented in `VaultSession` (#25). See
 [save-outcome checks](testing/save-outcome-regressions.md).
 
 The #21 review follow-up tests normalized path aliases, replaced files and changes
@@ -156,8 +156,11 @@ key-loss tests delete only their own randomly named Keystore alias.
 The [accepted session/cache decision (#24)](session-policy.md) includes the
 synthetic state/event table and future implementation/device gates. It removes
 cache-based unlock and specifies a 60-second inactivity policy, with fullscreen
-IME transitions distinguished from true departure. This is a planned runtime
-change, not evidence that lifecycle/session checks already pass.
+IME transitions distinguished from true departure. Password-only sessions and
+explicit Lock are implemented in #25; automatic triggers remain #26. Current
+[session regressions](testing/session-regressions.md) cover controlled late I/O,
+recreation and a dedicated process-death host; they do not establish native IME
+or physical-watch lifecycle behavior.
 
 Recorded results: [emulator](testing/wear-os-emulator.md) and
 [Galaxy Watch Ultra](testing/galaxy-watch-ultra.md). See the
@@ -167,8 +170,9 @@ Use a disposable test device/profile and synthetic secrets. Preserve any
 existing vault and cached credentials before injecting fixtures; do not use
 personal accounts in screenshots or logs.
 
-- Create a vault; test weak-password feedback and remember on/off.
-- Unlock with correct/incorrect passwords and relaunch with/without a cache.
+- Create a vault; test weak-password feedback and absence of Remember.
+- Unlock with correct/incorrect passwords; verify legacy cache never auto-opens
+  a session, including after failed cleanup, recreation and restart.
 - Save a synthetic account and verify persistence after relaunch.
 - Scroll the list and reach the header, both footer actions, and feedback.
 - Load fixtures with duplicate names, missing names, and identical secrets.
