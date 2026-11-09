@@ -96,6 +96,16 @@ activity; merely opening an editor does not disable timeout. Resume uses current
 wall time. Physical-watch/OEM IME integration still needs #37 evidence; see the
 [current emulator report](testing/lifecycle-regressions.md).
 
+## Planned selected-account receiver (not implemented)
+
+The [receiver state proposal](transfer/receiver-states.md) describes a future
+explicit local start, peer verification, bounded account preview, collision
+choices and final **Add N accounts** consent on Watch. It never shows setup keys
+or current codes to identify imports. Lock/expiry/background discards pending
+input; a possibly committed result requires review rather than blind resend.
+E2 receipt and E4 pairing/transport decisions remain gates. These are planned
+labels/states, not current screens or new validation evidence.
+
 ## Validation status
 
 Manual testing on the Large Round emulator covered duplicate and unnamed

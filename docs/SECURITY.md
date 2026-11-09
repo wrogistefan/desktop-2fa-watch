@@ -41,6 +41,12 @@ there is no new password-reset or cached-password recovery mechanism.
 
 ## Sessions and locking
 
+The planned [receiver state model](transfer/receiver-states.md) requires bounded
+foreground-only pending data, explicit local consent and the same generation/
+deadline checks before every asynchronous publication. It is not implemented;
+current local session checks are not receiver/protocol evidence. No pending
+secrets may be restored from saved state, Intents, notifications or logs.
+
 `VaultSession` belongs to the composition and serializes its actions on the UI
 scope. Lock replaces its generation token before hiding codes, detaching the
 vault and clearing password/draft/recovery references. The same cleanup happens

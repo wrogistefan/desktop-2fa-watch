@@ -137,6 +137,16 @@ Screen off/device lock, Activity stop and 60 seconds without input lock the
 session. Manual Lock remains available at any time. Clearing references does
 not guarantee memory erasure; see the [security model](SECURITY.md).
 
+## Planned Desktop configuration (not available yet)
+
+The proposed optional flow would let you start receiving on Watch, verify the
+intended Desktop, review only selected accounts and explicitly approve additions.
+It would keep your existing accounts and would not share either vault password.
+If a connection ended after saving may have started, you would check existing
+accounts before approving another addition. Watch would remain fully usable
+offline on its own. This is a [design proposal](transfer/receiver-states.md),
+not a currently available transfer button or supported import/export workflow.
+
 ## Storage, updates, and recovery
 
 The vault is stored as `vault.d2fa` in private app storage. A normal update with
