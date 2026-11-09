@@ -35,15 +35,14 @@ class VaultStartupDeviceTest {
 
     @Test
     fun freshSetupAndExistingEncryptedVaultTakeSeparateStartupPaths() = withSyntheticFile { file ->
-        assertEquals(Screen.SETUP, resolveVaultStartup(file, { error("No cache on fresh setup") }).screen)
+        assertEquals(Screen.SETUP, resolveVaultStartup(file).screen)
         val original = Vault.create().apply { addEntry("synthetic account", "synthetic service", "MY======") }
         original.saveNew(file, "synthetic password")
         val bytes = file.readBytes()
-        assertEquals(Screen.UNLOCK, resolveVaultStartup(file, { null }).screen)
-        val opened = resolveVaultStartup(file, { "synthetic password" })
-        assertEquals(Screen.MAIN, opened.screen)
-        assertEquals(original.entries, opened.vault!!.entries)
-        assertEquals(Screen.UNLOCK, resolveVaultStartup(file, { "synthetic wrong password" }).screen)
+        assertEquals(Screen.UNLOCK, resolveVaultStartup(file).screen)
+        // Startup cannot authenticate: opening requires an explicit password action.
+        assertEquals(Screen.UNLOCK, resolveVaultStartup(file).screen)
+        assertEquals(original.entries, Vault.load(file, "synthetic password").entries)
         assertArrayEquals(bytes, file.readBytes())
         assertThrows(VaultIOException::class.java) { Vault.create().saveNew(file, "synthetic replacement") }
         assertArrayEquals(bytes, file.readBytes())
@@ -53,12 +52,12 @@ class VaultStartupDeviceTest {
     fun backupAndUnsupportedFileNeverEnableInitialization() = withSyntheticFile { file ->
         val backup = File(file.parentFile, "${file.name}.bak").apply { writeText("synthetic recovery candidate") }
         val bytes = backup.readBytes()
-        assertEquals(Screen.STORAGE_ERROR, resolveVaultStartup(file, { error("No cache for recovery") }).screen)
+        assertEquals(Screen.STORAGE_ERROR, resolveVaultStartup(file).screen)
         assertFalse(file.exists())
         assertArrayEquals(bytes, backup.readBytes())
         file.writeText("synthetic unsupported or truncated input")
         val unsupported = file.readBytes()
-        assertEquals(Screen.STORAGE_ERROR, resolveVaultStartup(file, { "synthetic password" }).screen)
+        assertEquals(Screen.STORAGE_ERROR, resolveVaultStartup(file).screen)
         assertArrayEquals(unsupported, file.readBytes())
         assertArrayEquals(bytes, backup.readBytes())
     }
@@ -66,7 +65,7 @@ class VaultStartupDeviceTest {
     @Test
     fun storageErrorOffersRetryAndOnlyConfirmedAbsenceThenAllowsSetup() = withSyntheticFile { file ->
         var denied = true
-        fun check() = resolveVaultStartup(file, { error("No cache for missing/error") }, inspect = {
+        fun check() = resolveVaultStartup(file, inspect = {
             if (denied) throw AccessDeniedException("synthetic path")
             org.desktop2fa.desktop.watch.vault.VaultFiles.inspect(it)
         })

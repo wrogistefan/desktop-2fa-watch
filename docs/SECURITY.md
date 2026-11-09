@@ -17,50 +17,53 @@ for an offline attack. Encryption cannot make a weak password strong.
 
 ## Password policy and caching
 
-**Accepted future policy (#24, not implemented here):** require a manually
-entered vault password for every session, remove Remember and ignore old cache
-for unlocking, including after restart. The [decision and transition plan](session-policy.md)
-specifies legacy cleanup, honest failure warnings and the 60-second/screen-off/
-true-background lock policy. The current runtime behavior below remains until
-the implementation tasks #25/#26 are completed and verified.
+The password-only part of the [accepted session policy](session-policy.md) is
+implemented by #25. Automatic background/screen-off/device-lock and 60-second
+inactivity triggers remain #26 work; they are not active yet.
 
 Creation requires at least 8 characters and a heuristic score of 3 or more.
 Mixed case, digits, symbols, and length of at least 12 add points. This is not
 zxcvbn, an entropy estimate, or equivalent to the desktop password policy.
 The UI unlocks an existing vault with its password without strength enforcement.
 
-**Remember on watch** defaults to enabled. The app stores the actual vault
-password in `EncryptedSharedPreferences`, with the preference master key
-protected by Android Keystore. It does not replace the password-derived vault
-key with a device-specific format. Cached-password access does not require a
-per-use PIN/biometric prompt in this implementation.
+Remember and automatic cached unlock are removed for new and existing users.
+Every new session requires the original vault password. Password input is
+captured on the UI thread and cleared on submission; the password needed to
+save an active vault remains only in its in-memory session owner.
 
-Unavailable or corrupted preferences fall back to manual password unlock without
-automatically deleting/recreating the cache or resetting the vault. Failed cache
-writes and deletions are surfaced separately from the vault operation. Clearing
-deletes all three known secure/legacy preference stores without decrypting them;
-all deletion results must succeed. This also permits cleanup of an unreadable
-cache. A failed clear warns that cached unlock may still be possible after restart.
-Startup distinguishes an empty readable cache from inaccessible preferences and
-shows a manual-unlock warning for the latter. Loss of a Keystore key cannot
-recover the cached password: use the original vault password. There is no
-automatic deletion of unreadable preferences or reset of the encrypted vault.
+Startup and Lock attempt to delete all three secure/legacy preference stores
+without reading/decrypting them or deleting Keystore aliases. Cleanup failure is
+reported honestly, remains visible through manual unlock, and is retried at the
+next startup or Lock. This version ignores leftover cache; older builds may
+reuse it after downgrade. No cleanup failure resets or rewrites the vault.
+Users who relied on Remember must know their original password before updating;
+there is no new password-reset or cached-password recovery mechanism.
 
 ## Sessions and locking
 
-After unlock, the vault and secrets remain in process memory. Password and
-form values can also remain in Compose state. **Lock Vault** immediately drops
-the active vault reference, clears input state, changes to the unlock screen,
-and schedules cache removal on an I/O coroutine with a non-cancellable clearing
-section. Clearing also attempts to remove legacy plaintext fallback preferences.
-Unlock submission waits for that cleanup attempt to finish, avoiding a concurrent
-cache save being removed by the previous Lock action. Failure never keeps the
-active vault open.
+`VaultSession` belongs to the composition and serializes its actions on the UI
+scope. Lock replaces its generation token before hiding codes, detaching the
+vault and clearing password/draft/recovery references. The same cleanup happens
+on composition disposal. Startup, setup, unlock, recovery, save success and error
+callbacks check ownership before publishing. An old completion cannot open Main,
+restore plaintext or repopulate an invalidated draft.
 
-There is no inactivity/background lock or guaranteed memory zeroization.
-Kotlin/JVM strings and garbage collection do not provide secure erasure.
-Returning to the watch face should not be treated as an explicit vault lock.
-The app currently does not block screenshots with `FLAG_SECURE`.
+A single process-local coroutine mutex prevents a new Activity owner from reading
+while the old owner's I/O is still finishing. This is not a multi-process lock or
+the future shared batch mutation API (#36). Work queued after invalidation or
+cancellation is skipped. A synchronous write already started runs through the
+existing atomic-save protocol in an I/O non-cancellable section; cancelling its
+caller cannot undo a known commit. Lock does not wait for it to hide codes.
+Further actions wait for the pending operation/credential cleanup. A late save
+requires storage review with its actual known/uncertain result and manual unlock,
+never a blind automatic retry. Recreated processes never recover an active
+session from saved state or cached credentials.
+
+There is still no inactivity/background lock or guaranteed memory zeroization.
+Returning to the watch face is not an explicit lock. Strings captured by running
+I/O can remain until that operation finishes; JVM garbage collection cannot
+prove erasure. The app does not yet block screenshots with `FLAG_SECURE` (#27).
+Fullscreen IME/lifecycle triggers need the separate #26/#37 verification.
 
 ## File integrity and persistence
 
@@ -84,16 +87,16 @@ leftover backup/pending data, with or without a main file, block setup and writa
 unlock. Authenticated recovery views expose codes read-only without promoting or
 deleting any candidate. Their passwords are not cached and adding accounts is
 disabled. No writable repair or cleanup is promised; multiple valid files can
-contain different accounts. Any previously remembered credentials are unchanged
-until Lock cleanup, but recovery routing never auto-loads them. New-vault publication is
+contain different accounts. Startup/Lock clean up legacy remembered credentials;
+recovery never uses them. New-vault publication is
 create-only, so a competing creator cannot be overwritten. Automatic backup
 promotion and full power-loss durability are not implemented.
 A failed initial write can leave a partial file that blocks setup. Creation is
 not an atomic write of the entire vault and never automatically discards such a file.
-Startup routing does not read cached credentials when absence or recovery is
-reported. For a present file, cache/load failures select manual unlock, never
-setup. Cancelled startup work does not publish a navigation result. This is not
-the later session-generation/lifecycle protection tracked in #25/#26.
+Startup never reads cached credentials or authenticates a file. A present file
+requires manual unlock; a rejected load never permits setup. Cancelled or
+invalidated startup work cannot publish a navigation result. Automatic lifecycle
+triggers remain #26 work.
 
 Vault reads refuse a final-component symlink at open time. Recovery also checks
 the listed file's temporary metadata fingerprint before and after loading; a

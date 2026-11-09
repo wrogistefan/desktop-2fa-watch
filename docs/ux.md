@@ -10,15 +10,15 @@ English labels currently shipped by the app.
 | Splash/loading | Displays `Loading Secure Vault...` during initialization or vault work | Setup, Unlock, Main, storage error, or the originating form after failure |
 | Storage error | Inspection failed, recovery artifacts remain, or a save needs reconciliation; Retry storage check / Review recovery files, no Initialize action | Rechecked startup state or read-only recovery selection |
 | Read-only recovery | Password and explicit current/backup/pending choice; no file promotion/deletion | Authenticated code view with Add Account disabled; Lock returns to storage check |
-| Create Vault | Password field, validation feedback, Remember on watch, Initialize Vault | Main after a successful save |
-| Unlock Vault | Password field, Remember on watch, Unlock, error feedback | Main after a successful load |
+| Create Vault | Password field, validation feedback, Initialize Vault; no Remember | Main after a successful save |
+| Unlock Vault | Password field, Unlock, cleanup/error feedback; no Remember | Main after a successful load |
 | Main | Scrollable account cards, empty state, Add Account, Lock Vault | Add Account or Unlock |
 | Add Account wizard | Service name → Account name → Setup key; one field per step, Back/Cancel, final Save Account | Main after clean commit/matching verification; otherwise clear submitted draft and review storage |
 
 On startup, only confirmed absence of both vault and backup leads to setup.
 Inspection errors block setup; create-only publication also refuses a competing
-creator. If a vault exists, a cached password
-is tried first; a missing or unusable cache leads to unlock. File access and
+creator. An existing vault always leads to manual unlock; startup never reads
+remembered credentials or opens Main. File access and
 cryptographic work run on an I/O dispatcher. The generic loading message is
 also used for creation and saving, not just startup.
 
@@ -68,24 +68,25 @@ opens the list at the new card, which displays Account added.
 
 Drafts remain in memory rather than saved instance state. Activity/process
 recreation can discard unfinished input. Vault setup/unlock retain their
-existing single-password forms and remember checkbox, without a confirmation
-password field or password-visibility toggle there.
+single-password forms without Remember, a confirmation password field or a
+password-visibility toggle there. Submitted input is cleared; only the active
+in-memory session retains the password needed for writes.
 
 ## Lock behavior
 
-The [accepted session decision (#24)](session-policy.md) plans removal of
-Remember and automatic cached unlock, with manual-password opening after every
-lock/restart. Explicit Lock, screen off/device lock, true departure and 60 seconds
-of inactivity will clear sensitive drafts and invalidate pending operations.
-Fullscreen IME editing remains in the same session and needs native Next/Done
-verification. These changes are not implemented by the documentation decision;
-the current behavior follows.
+The password-only and explicit-Lock parts of the [session decision](session-policy.md)
+are implemented by #25. Every launch/recreation needs manual unlock. Lock is also
+available during loading and wizard saving; it hides codes and clears sensitive
+state before pending I/O completes. Session generations reject late success and
+error publication. New actions stay disabled until pending work and legacy-cache
+cleanup finish. A save completing after Lock requires storage review and manual
+unlock, without restoring the draft or silently retrying the addition.
 
-Lock transitions to Unlock immediately, clears active vault/form references,
-and requests cache removal in the background. Unlock submission waits until the
-attempt completes. Failed cache writes/deletions show a separate warning; cache
-failure never retains the active vault. There is no inactivity lock or automatic
-lock on backgrounding.
+Legacy cleanup warnings remain visible through manual unlock and distinguish
+unconfirmed deletion from the locked session. Current code never reuses leftover
+cache; older versions may after downgrade. Screen-off/background/device-lock and
+60-second inactivity triggers are still #26 work. Native fullscreen IME behavior
+and physical-watch integration still need #37 evidence.
 
 ## Validation status
 

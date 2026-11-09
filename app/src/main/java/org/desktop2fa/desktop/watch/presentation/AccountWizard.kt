@@ -62,7 +62,8 @@ fun AccountWizard(
     onEdit: (String) -> Unit,
     onSubmit: () -> Unit,
     onBack: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onLock: (() -> Unit)? = null,
 ) {
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -113,7 +114,12 @@ fun AccountWizard(
                 keyboard?.hide()
                 focus.clearFocus(force = true)
                 onCancel()
-            }
+            },
+            onLock = onLock?.let { lock -> {
+                keyboard?.hide()
+                focus.clearFocus(force = true)
+                lock()
+            } },
         )
     }
 }
@@ -135,7 +141,8 @@ private fun SingleFieldStep(
     submitLabel: String,
     onSubmit: () -> Unit,
     onBack: (() -> Unit)?,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onLock: (() -> Unit)?,
 ) {
     val errorRequester = remember { BringIntoViewRequester() }
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
@@ -202,6 +209,7 @@ private fun SingleFieldStep(
                 }
                 TextButton(onClick = onCancel, enabled = enabled) { Text("Cancel", color = Color.White) }
             }
+            if (onLock != null) Button(onClick = onLock) { Text("Lock Vault") }
             Spacer(Modifier.height(12.dp))
         }
     }

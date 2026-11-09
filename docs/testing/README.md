@@ -1,5 +1,9 @@
 # UI Test Reports
 
+The [session ownership report](session-regressions.md) records #25’s password-only
+sessions, late I/O and synthetic Activity/process recreation checks. Automatic
+locking, native fullscreen IME and physical-watch integration remain #26/#37.
+
 The [cache outcome and immediate Lock report](cache-outcome-regressions.md)
 records #23's isolated Keystore-loss and production-screen checks. It does not
 replace the later integrated lifecycle/physical-watch checks in #37.

@@ -9,13 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned policy (not implemented)
 
-- Accept manual-password sessions without Remember/cache unlock for new and
-  existing users, legacy credential cleanup, and locking on screen off/device
-  lock, true departure or 60 seconds of inactivity, preserving fullscreen IME
-  editing. Decision #24 documents the transition and tests; runtime work follows
-  in #25/#26, with no vault format/KDF migration.
+- Lock on screen off/device lock, true departure or 60 seconds of inactivity,
+  preserving fullscreen IME editing (#24/#26). These automatic triggers remain
+  unimplemented; password-only sessions and explicit Lock ship in #25 below.
 
 ### ✨ Changed
+
+- Require explicit vault-password sessions for new and existing users; remove
+  Remember and cached auto-unlock. Startup/Lock remove old credential stores;
+  failed cleanup warns about leftover data and older builds, without resetting
+  the vault. Keep the original password before updating (#24/#25).
 
 - Replace the account form with a three-step wizard: service name, account name,
   and setup key, each with a heading and one input per screen.
@@ -38,6 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Samsung's fullscreen editor still hides the wizard heading despite IME hints.
 
 ### 🐛 Fixed
+
+- Invalidate session ownership before Lock/disposal, reject late I/O publication,
+  clear sensitive drafts, serialize old/new Activity I/O, and require storage
+  review for writes completed after locking. Add Lock during loading/saving (#25).
 
 - Distinguish unavailable remembered credentials from an empty cache at startup,
   preserve manual password recovery, and exclude all three known credential
