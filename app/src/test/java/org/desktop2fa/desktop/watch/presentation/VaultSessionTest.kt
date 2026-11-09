@@ -1,7 +1,7 @@
 package org.desktop2fa.desktop.watch.presentation
 
 import kotlinx.coroutines.*
-import org.desktop2fa.desktop.watch.model.VaultData
+import org.desktop2fa.desktop.watch.model.TotpEntry
 import org.desktop2fa.desktop.watch.vault.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -29,6 +29,7 @@ class VaultSessionTest {
         @Volatile var cleanupSucceeds = true
         @Volatile var calls = 0
         @Volatile var cleanups = 0
+        @Volatile var rejectCommit = false
         private fun <T> work(name: String, body: () -> T): T {
             before(name)
             calls++
@@ -43,10 +44,10 @@ class VaultSessionTest {
         override fun create(password: String) = work("setup") { Vault.create().also { current = it; missing = false } }
         override fun inventory() = work("inventory") { listOf(CANDIDATE) }
         override fun recover(candidate: RecoveryCandidate, password: String) = work("recovery") { RecoveryView(current, "Synthetic backup") }
-        override fun add(snapshot: VaultData, draft: AccountWizardState, password: String) = work("add") {
+        override fun commit(candidate: AccountAdditionCandidate, password: String) = work("add") {
             assertEquals(PASSWORD, password)
-            Vault(snapshot).also { it.addEntry(draft.account, draft.issuer, draft.secret); current = it }
-                .let { AccountSaveResult(VaultSaveOutcome.COMMITTED, it) }
+            if (rejectCommit || !candidate.matches(current.data)) AccountSaveResult(VaultSaveOutcome.NOT_COMMITTED)
+            else candidate.vault().also { current = it }.let { AccountSaveResult(VaultSaveOutcome.COMMITTED, it) }
         }
     }
 
@@ -350,9 +351,85 @@ class VaultSessionTest {
         f.ui { assertClosed(); assertEquals(Screen.STORAGE_ERROR, currentScreen) }
     }
 
+    @Test fun batchValidatesAllAccountsAndCommitsOnceThroughTheManualOperation() = Fixture().use { f ->
+        f.unlock()
+        val oldCalls = f.storage.calls
+        f.ui { submitAdditions(BATCH) }; f.idle()
+        f.ui { assertEquals(Screen.MAIN, currentScreen); assertEquals(3, activeVault!!.entries.size) }
+        assertEquals(oldCalls + 1, f.storage.calls)
+        assertEquals(listOf("synthetic old") + BATCH.map { it.accountName }, f.storage.current.entries.map { it.accountName })
+    }
+
+    @Test fun invalidOrFailedBatchDoesNotPublishAPartialAddition() = Fixture().use { f ->
+        f.unlock()
+        val calls = f.storage.calls
+        f.ui { submitAdditions(BATCH + BATCH[0].copy(digits = 10)) }; f.idle()
+        assertEquals(calls, f.storage.calls)
+        assertEquals(1, f.storage.current.entries.size)
+        f.storage.rejectCommit = true
+        f.ui { submitAdditions(BATCH) }; f.idle()
+        f.ui { assertClosed(); assertEquals(Screen.STORAGE_ERROR, currentScreen) }
+        assertEquals(1, f.storage.current.entries.size)
+    }
+
+    @Test fun competingBatchAndManualRequestsSerializeAndRejectTheStaleSnapshot() = Fixture().use { first ->
+        first.unlock()
+        Fixture(first.storage).use { second ->
+            second.unlock()
+            val gate = Gate()
+            first.storage.before = { if (it == "add") gate.block() }
+            try {
+                first.ui { submitAdditions(BATCH) }; gate.await()
+                second.ui { addAccount(); wizardState = DRAFT; submitAccount() }
+                val barrier = CountDownLatch(1)
+                second.ioExecutor.submit { barrier.countDown() }
+                assertTrue(barrier.await(5, TimeUnit.SECONDS))
+                assertEquals(1, first.storage.current.entries.size)
+            } finally { gate.release.countDown() }
+            first.idle(); second.idle()
+            first.ui { assertEquals(3, activeVault!!.entries.size) }
+            second.ui { assertClosed(); assertEquals(Screen.STORAGE_ERROR, currentScreen) }
+            assertEquals(listOf("synthetic old") + BATCH.map { it.accountName }, first.storage.current.entries.map { it.accountName })
+        }
+    }
+
+    @Test fun lockAndCancellationAfterBatchCommitKeepAllAccountsWithoutReopening() {
+        for (cancel in listOf(false, true)) Fixture().use { f ->
+            f.unlock()
+            val gate = Gate()
+            f.storage.after = { if (it == "add") gate.block() }
+            try {
+                f.ui { submitAdditions(BATCH) }; gate.await()
+                f.ui { lock(); assertClosed() }
+                if (cancel) f.job.cancel()
+            } finally { gate.release.countDown() }
+            if (cancel) runBlocking { withTimeout(5_000) { f.job.join() } } else f.idle()
+            f.ui { assertClosed() }
+            assertEquals(3, f.storage.current.entries.size)
+            assertNotNull(f.storage.pendingNotice())
+        }
+    }
+
+    @Test fun cancelledQueuedBatchWritesNoneOfItsAccounts() = Fixture().use { f ->
+        f.unlock()
+        val calls = f.storage.calls
+        val occupied = Gate()
+        f.ioExecutor.submit { occupied.block() }; occupied.await()
+        try {
+            f.ui { submitAdditions(BATCH); dispose() }
+            f.job.cancel()
+        } finally { occupied.release.countDown() }
+        runBlocking { withTimeout(5_000) { f.job.join() } }
+        f.ui { assertClosed() }
+        assertEquals(calls, f.storage.calls)
+        assertEquals(1, f.storage.current.entries.size)
+    }
+
     companion object {
         private const val PASSWORD = "Synthetic-Session-Password-42!"
         private const val KEY = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+        private val BATCH = listOf(TotpEntry("synthetic", "synthetic batch 1", KEY),
+            TotpEntry(null, "synthetic batch 2", KEY, 8, 60, "SHA256"))
         private val CANDIDATE = RecoveryCandidate(File("synthetic-unused-backup"), "Synthetic backup")
         private val DRAFT = AccountWizardState(AccountStep.SECRET, "synthetic", "synthetic new", KEY)
     }

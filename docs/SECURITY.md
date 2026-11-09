@@ -49,8 +49,8 @@ callbacks check ownership before publishing. An old completion cannot open Main,
 restore plaintext or repopulate an invalidated draft.
 
 A single process-local coroutine mutex prevents a new Activity owner from reading
-while the old owner's I/O is still finishing. This is not a multi-process lock or
-the future shared batch mutation API (#36). Work queued after invalidation or
+while the old owner's I/O is still finishing. This is process-local coordination,
+not a multi-process lock. Work queued after invalidation or
 cancellation is skipped. A synchronous write already started runs through the
 existing atomic-save protocol in an I/O non-cancellable section; cancelling its
 caller cannot undo a known commit. Lock does not wait for it to hide codes.
@@ -64,9 +64,10 @@ whole-process death loses this metadata, so inspect committed accounts after a
 restart before manually retrying. Recreated processes never recover an active
 session from saved state or cached credentials.
 
-Manual additions reload under the session I/O mutex and reject a snapshot that
-differs from committed data before saving. This prevents another live owner's
-addition from being overwritten; #36 still defines the shared batch mutation API.
+Manual and internal batch additions use one privately copied, validated candidate
+and reload under the session I/O mutex. A snapshot that differs from committed
+data is rejected before saving, preserving another live owner's changes. Each
+batch is one file update and one B4 outcome, never a series of partial additions.
 The extra authenticated read keeps v1 KDF costs and needs physical-watch
 measurement in #30. After 30 seconds of pending I/O the UI offers a recovery
 notice. It never releases the writer mutex on timeout: if I/O cannot finish,

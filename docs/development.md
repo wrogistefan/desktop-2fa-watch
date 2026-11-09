@@ -14,7 +14,38 @@ Set `sdk.dir` through Android Studio's generated `local.properties`; do not
 commit machine-specific SDK paths. Dependency versions are in
 `gradle/libs.versions.toml`.
 
-## Build and unit tests
+## Serialized additions (#36)
+
+The production writers are new-vault setup (`VaultSessionStorage.create`, using
+create-only `saveNew`) and additions (`VaultSession.submitAdditions` through
+`VaultSessionStorage.commit`). The manual wizard builds a one-entry list and
+uses the same operation as an internal multi-entry proposal. No receiver or
+batch UI is enabled. Raw `Vault.save` is a low-level filesystem API, not a second
+production UI mutation route.
+
+`AccountAdditionCandidate` privately copies the expected baseline and incoming
+immutable entries, validates the entire resulting proposal and exposes only
+fresh writable copies. Under the existing process-wide session I/O mutex,
+commit authenticates current storage and rejects a different baseline unchanged.
+It then writes once and uses B4 commit/verification results. Existing entries,
+including duplicates, null names, Unicode and TOTP parameters, remain unchanged.
+The wizard retains its name-collision checks; the generic boundary does not
+choose a transfer collision/consent policy (#32/#33). Future callers must resolve
+that policy before submitting the approved additions.
+
+All session reads, setup, cleanup and commits use the same process-local mutex,
+including recreated Activity owners. There is no evidence of another production
+writer process, so no Desktop-style multi-process lock is added. Debug child
+processes use separate fixture files. Future background/services/process writers
+must revisit this assumption rather than call raw save concurrently.
+
+Queued cancelled/invalidated mutations do not start. Already-started writes finish
+the existing atomic protocol; Lock/cancellation invalidates UI publication, not
+the commit. A batch is one candidate/file replacement, never one write per item.
+No receipts, stable account IDs, vault migration or new KDF parameters are added.
+See [batch regression checks](testing/batch-regressions.md).
+
+## Build commands
 
 ```bash
 ./gradlew testDebugUnitTest assembleDebug

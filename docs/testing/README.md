@@ -1,5 +1,8 @@
 # UI Test Reports
 
+The [batch report](batch-regressions.md) describes #36 immutable proposals,
+serialized competing sessions and encrypted whole-batch save/failure checks.
+
 The [session ownership report](session-regressions.md) records #25’s password-only
 sessions, late I/O and synthetic Activity/process recreation checks. The
 [lifecycle report](lifecycle-regressions.md) records #26 automatic locking and
