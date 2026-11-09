@@ -5,6 +5,11 @@ independent security audit. Report vulnerabilities through [Security Policy](../
 
 ## Assets and trust boundary
 
+The documentation-only [transfer threat model/options](transfer/threat-model.md)
+separate future channel authentication from vault encryption. Transport and
+concrete two-device pairing approval remain gates; no listener, permission,
+dependency, persistent peer or secret transmission is enabled by that proposal.
+
 The assets are TOTP secrets, the vault password, derived keys, and generated
 codes. The encrypted file lives in Android's private app storage. The model
 assumes a trustworthy watch OS, app build, cryptographic providers, and device
