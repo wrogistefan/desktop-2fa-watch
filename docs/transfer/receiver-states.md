@@ -1,9 +1,12 @@
 # Planned receiver states (#33 / E3)
 
-Status: **documentation-only draft**, following E1 and the recommended
-[E2 memory-only/reconciliation proposal](https://github.com/wrogistefan/desktop-2fa-watch/pull/57).
-E2 owner choice and the [E4 transport/authentication profile](https://github.com/wrogistefan/desktop-2fa-watch/pull/58)
-remain gates. No screen, listener, permission or receiving code is implemented.
+Status: **documentation-only draft for the later transfer thread**, following E1
+and the owner-accepted [E2 manual reconciliation/no durable receipt direction](https://github.com/wrogistefan/desktop-2fa-watch/pull/57).
+On 2026-11-09 the owner deferred communication/transfer to a separate existing
+model. Transport-specific limits below are provisional inputs, not an approved
+wire contract; reconcile them with that model before implementation. The
+[E4 comparison](https://github.com/wrogistefan/desktop-2fa-watch/pull/58) selects
+no transport. No screen, listener, permission or receiving code is implemented.
 
 Watch remains a standalone offline authenticator. Desktop configuration is
 optional; no permanent connection/account/phone is required by this proposed
