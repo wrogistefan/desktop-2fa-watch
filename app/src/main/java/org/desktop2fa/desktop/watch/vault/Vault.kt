@@ -29,9 +29,13 @@ class Vault(val data: VaultData = VaultData()) {
         data.entries.add(entry)
     }
 
+    /** Exact account names win over issuer fallback; neither tier breaks ties. */
+    @Synchronized
     fun getEntry(issuerOrName: String): TotpEntry {
-        return data.entries.firstOrNull { it.issuer == issuerOrName || it.accountName == issuerOrName }
-            ?: throw IllegalArgumentException("Entry '$issuerOrName' not found")
+        val exactNames = data.entries.filter { it.accountName == issuerOrName }
+        val matches = exactNames.ifEmpty { data.entries.filter { it.issuer == issuerOrName } }
+        if (matches.size > 1) throw AmbiguousEntryException()
+        return matches.singleOrNull() ?: throw IllegalArgumentException("Entry not found")
     }
 
     fun findEntries(name: String): List<TotpEntry> {

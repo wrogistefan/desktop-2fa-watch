@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Changed
 
+- Resolve exact account names before issuer fallback; reject ambiguous lookup or
+  removal without changing data, independent of entry order. Preserve historical
+  duplicate/null records without an ID or format migration (#35).
+
 - Lock on screen off/device lock, Activity stop or 60 seconds without user input.
   Pause/focus loss hides codes without discarding an unexpired editing session;
   native IME edits renew the deadline. Returning always requires a password

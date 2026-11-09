@@ -90,6 +90,11 @@ Physical-watch/OEM fullscreen IME integration still needs #37 verification.
 
 ## File integrity and persistence
 
+Name-based library lookup/removal rejects ambiguous historical matches rather
+than choosing by order. Exact account names precede issuer fallback; failure
+does not remove a record. This is not an account identity scheme: future transfer
+must review all collision candidates explicitly. See [lookup checks](testing/lookup-regressions.md).
+
 AES-GCM authenticates the encrypted payload. Wrong passwords and modified
 ciphertext can surface as the same error. There is no rollback protection,
 forward secrecy, or protection against deleting the vault. An older valid
