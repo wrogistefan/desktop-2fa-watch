@@ -111,7 +111,11 @@ class ImmediateLockDeviceTest {
             assertTrue(VaultSecurityManager.savePassword(preparedContext, password))
             scenario = ActivityScenario.launch(Intent(app, SyntheticMainActivity::class.java)
                 .putExtra("syntheticDirectory", directory.name))
-            compose.waitUntil(60_000) { compose.onAllNodesWithText("desktop-2fa").fetchSemanticsNodes().isNotEmpty() }
+            // The splash also contains the app title. Wait for decrypted content,
+            // not a title that could appear while the real KDF is still running.
+            compose.waitUntil(60_000) {
+                compose.onAllNodes(code, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+            }
             compose.waitUntil(30_000) {
                 var focused = false
                 scenario.onActivity { focused = it.hasWindowFocus() }
