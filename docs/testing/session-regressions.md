@@ -104,7 +104,7 @@ with `-read-only -no-snapshot -no-window -no-audio -gpu swiftshader`.
 | Final `.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug --stacktrace` | Passed: 318 JVM tests, zero failures/errors; debug app build passed on runtime `3d82ba0` |
 | Intermediate full Android rerun after review | 24 cases, 22 passed / 2 failed: pending-recovery selector and late-add/Lock/recreation case; not a passing full run |
 | Final targeted RecoveryScreenDeviceTest | Passed: 2 cases, zero failures/errors, including the corrected disabled-field selector |
-| Final targeted VaultSessionDeviceTest | In progress; result recorded after completion |
+| Final targeted VaultSessionDeviceTest | Passed: 4 cases, zero failures/errors, including late-Lock and disposal/recreation outcome retention |
 
 During development an initial compile caught the not-yet-migrated startup
 signature, and a controlled test caught that disposal cleared secrets but left
@@ -119,6 +119,18 @@ The late-add/recreation regression is checked on the final outcome-retention
 implementation. A comma-separated class filter executed only RecoveryScreen's
 two cases in this local runner, so VaultSession is explicitly run separately;
 Gradle success alone is not treated as proof that all requested cases ran.
+
+The final two targeted commands use the repository Wrapper with
+`:app:connectedDebugAndroidTest --no-configuration-cache --stacktrace` and
+`-Pandroid.testInstrumentationRunnerArguments.class=` followed by
+`org.desktop2fa.desktop.watch.presentation.RecoveryScreenDeviceTest` (2/2) or
+`org.desktop2fa.desktop.watch.presentation.VaultSessionDeviceTest` (4/4), each
+in its own run. They validate all UI cases changed by review on runtime
+`3d82ba0`; the final disabled-field matcher was corrected in `570b17e`. The
+full 24-case run is explicitly not claimed as passing: after correcting its two
+failed paths, the affected classes were rerun successfully. Unchanged storage,
+Keystore and dedicated process-death cases passed in the full runs above.
+The test emulator was stopped after verification without saving a snapshot.
 
 No automatic background/screen-off/device-lock/inactivity trigger is implemented
 here (#26). No new physical-watch/fullscreen IME/ambient pass, hardware-backed
