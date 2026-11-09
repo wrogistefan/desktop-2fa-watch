@@ -65,9 +65,8 @@ A separate instance was attempted on port 5582 using
 WHPX initialization boundary; no test cases ran there. The old port-5580 process
 was also confirmed to be a disposable read-only/no-snapshot instance before
 termination. No saved AVD data was intentionally changed. Emulator checks remain
-**blocked by the environment**, not passed. The new instrumented suite must run
-successfully before this PR is merged; do not infer a pass from Gradle's exit
-code alone.
+initially **blocked by the environment**, not passed. Do not infer a pass from
+Gradle's exit code alone. The successful final rerun is recorded below.
 
 After stopping the old instance, starting port 5582 alone with software GPU
 eventually brought Android online. The complete run then executed 18 tests:
@@ -77,6 +76,16 @@ An isolated diagnostic rerun of the Lock case passed (1/1); this alone does not
 establish that the original gesture was reliable. The test now waits for actual
 decrypted content (the title is also on the splash) and keeps scroll gestures
 in the center of the round display, away from lower actions/system edges.
+
+Final full rerun, tested source `2a393a5` (including #24 documentation):
+`.\gradlew.bat :app:connectedDebugAndroidTest --stacktrace` passed on
+`ANDROID_SERIAL=emulator-5582`, Wear_OS_Large_Round, Android 17 / API 37.
+The produced XML reports **18 tests, zero failures, zero errors**; all four new
+#23 cases passed in the complete suite. The final run took five minutes. Local
+JVM/build results above remain valid: subsequent code changes affect only test
+waiting/gestures; the #24 merge and this report are documentation changes.
+The test emulator was stopped afterwards without saving a snapshot. No physical
+watch or hardware-backed key guarantee is implied.
 
 ### Review follow-up
 
