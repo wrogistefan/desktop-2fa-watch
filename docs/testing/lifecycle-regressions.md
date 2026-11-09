@@ -44,6 +44,24 @@ $env:GRADLE_USER_HOME='C:/Users/lukas/.gradle'
 .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:processReleaseMainManifest --stacktrace
 ```
 
+The merged release manifest was checked: no synthetic hosts/IME, BIND_INPUT_METHOD
+or INTERNET entry. The test IME exists only in the debug source set.
+
+Android command (same Wrapper/environment):
+
+```powershell
+.\gradlew.bat :app:connectedDebugAndroidTest '-Pandroid.testInstrumentationRunnerArguments.class=org.desktop2fa.desktop.watch.presentation.SessionLifecycleDeviceTest' --no-configuration-cache --stacktrace
+```
+
+The last six-case run passed five cases and failed only the PIN fixture's initial
+unlock: enabling Keyguard before launching the session could lock the emulator
+before the tested event. After moving PIN activation after the initial unlock,
+the targeted `SessionLifecycleDeviceTest#secureEmulatorLockNeverAuthorizesCacheOrAResumedSession`
+run passed **1 test, zero failures/errors/skips**. Thus every scenario has a
+passing result; this is not a claim that one six-case invocation passed. The
+native editor case in that five-pass run used injected character key events,
+real extract-editor Next/Done and three controlled 61-second edit intervals.
+
 Android checks use the disposable Large Round API 37 emulator, serial
 `emulator-5582`, without loading/saving snapshots. Scenarios cover exact timeout
 and stale draft edits; pause versus stop; finite cleanup while the display stays
@@ -56,9 +74,13 @@ flags and synthetic PIN in finally blocks.
 Initial harness runs failed on two fixture assumptions: Wear OS screen sleep
 does not necessarily lock Keyguard, and UiAutomation command arguments do not
 use shell quoting. The fixture now requests Android's actual lock-screen action,
-validates IME selection and uses validated direct command tokens. Native edits
-also need Compose frames; polling must advance the test clock. Failed attempts
-are not counted as passing evidence.
+validates IME selection and uses validated direct command tokens. Native
+accessibility SET_TEXT only changed the extract view, so character events are
+used instead. Active editor waits advance Compose frames; stopped-Activity waits
+poll lifecycle/I/O independently. Advancing Compose frames for a deliberately
+stopped Activity hung a harness run, which was explicitly terminated. An old
+synthetic PIN left by an interrupted run was cleared only on the owned emulator
+using its known public fixture PIN. Failed/aborted attempts are not passing evidence.
 
 The #25 [session report](session-regressions.md) separately records process-death
 and late-commit checks; historical device reports do not establish current

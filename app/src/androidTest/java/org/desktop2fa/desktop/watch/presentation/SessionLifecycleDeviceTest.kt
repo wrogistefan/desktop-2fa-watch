@@ -48,8 +48,11 @@ class SessionLifecycleDeviceTest {
     }
 
     private fun await(condition: () -> Boolean) {
-        // Native InputConnection edits also need Compose frames to be applied.
-        compose.waitUntil(timeoutMillis = 60_000) { condition() }
+        // A stopped Activity cannot service Compose frames. Poll lifecycle/I/O
+        // independently; only active editor assertions advance the test clock.
+        val deadline = SystemClock.elapsedRealtime() + 60_000
+        while (!condition() && SystemClock.elapsedRealtime() < deadline) Thread.sleep(50)
+        assertTrue("Synthetic lifecycle condition completed", condition())
     }
     private fun state(scenario: ActivityScenario<SyntheticMainActivity>, condition: (SyntheticMainActivity, VaultSession) -> Boolean): Boolean {
         var result = false
@@ -149,13 +152,15 @@ class SessionLifecycleDeviceTest {
         assumeTrue(disabled in setOf("true", "false"))
         var installed = false
         try {
-            check(!shell("locksettings set-pin 246810").contains("Error", ignoreCase = true))
-            installed = true
-            shell("locksettings set-disabled false")
-            assertTrue(app.getSystemService(KeyguardManager::class.java).isDeviceSecure)
             withVault { scenario, file ->
                 unlock(scenario)
                 val bytes = file.readBytes()
+                // Establish the active session before enabling Keyguard: enabling
+                // it may immediately lock this emulator, which is the event under test.
+                check(!shell("locksettings set-pin 246810").contains("Error", ignoreCase = true))
+                installed = true
+                shell("locksettings set-disabled false")
+                assertTrue(app.getSystemService(KeyguardManager::class.java).isDeviceSecure)
                 assertTrue("OS lock-screen action accepted", instrumentation.uiAutomation.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN))
                 await { app.getSystemService(KeyguardManager::class.java).isKeyguardLocked }
                 shell("input keyevent 224")
@@ -194,6 +199,7 @@ class SessionLifecycleDeviceTest {
     }
 
     @Test fun nativeFullscreenExtractEditorKeepsDraftAndDeliversNextAndDone() = withVault { scenario, file ->
+        fun awaitNative(condition: () -> Boolean) = compose.waitUntil(timeoutMillis = 60_000) { condition() }
         val ime = "${app.packageName}/.testing.SyntheticFullscreenIme"
         val original = shell("settings get secure default_input_method")
         val showWithHardware = shell("settings get secure show_ime_with_hard_keyboard")
@@ -213,14 +219,14 @@ class SessionLifecycleDeviceTest {
             action(scenario) {} // Begin the controlled interval with qualifying input.
             fun nativeField(value: String) {
                 compose.onNode(hasSetTextAction()).performClick()
-                await { SyntheticFullscreenIme.active && SyntheticFullscreenIme.fullscreen }
+                awaitNative { SyntheticFullscreenIme.active && SyntheticFullscreenIme.fullscreen }
                 scenario.onActivity {
                     it.monotonicOverride = requireNotNull(it.monotonicOverride) + 59_000
                     assertTrue("Draft remains inside its pre-edit deadline", it.checkSessionDeadline())
                     assertNotNull(it.currentSession!!.activeVault)
                 }
                 var editor: AccessibilityNodeInfo? = null
-                await {
+                awaitNative {
                     editor = instrumentation.uiAutomation.windows.asSequence().mapNotNull { it.root }
                         .flatMap { it.findAccessibilityNodeInfosByViewId("android:id/inputExtractEditText").asSequence() }.firstOrNull()
                     editor != null
@@ -230,7 +236,7 @@ class SessionLifecycleDeviceTest {
                 assertTrue("Native extract editor is editable", editor!!.isEditable)
                 instrumentation.sendStringSync(value)
                 try {
-                    await { state(scenario) { _, s -> s.wizardState.value == value } }
+                    compose.waitUntil(timeoutMillis = 60_000) { state(scenario) { _, s -> s.wizardState.value == value } }
                 } catch (failure: Exception) {
                     scenario.onActivity { a ->
                         val s = requireNotNull(a.currentSession)
@@ -245,21 +251,21 @@ class SessionLifecycleDeviceTest {
                     assertNotNull(it.currentSession!!.activeVault)
                 }
                 var next: AccessibilityNodeInfo? = null
-                await {
+                awaitNative {
                     next = instrumentation.uiAutomation.windows.asSequence().mapNotNull { it.root }
                         .flatMap { it.findAccessibilityNodeInfosByViewId("android:id/inputExtractAction").asSequence() }.firstOrNull()
                     next != null
                 }
                 assertTrue("Native Next/Done accepted", next!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
-                await { !SyntheticFullscreenIme.active }
+                awaitNative { !SyntheticFullscreenIme.active }
             }
             nativeField("synthetic-service")
-            await { state(scenario) { _, s -> s.wizardState.step == AccountStep.ACCOUNT } }
+            awaitNative { state(scenario) { _, s -> s.wizardState.step == AccountStep.ACCOUNT } }
             scenario.onActivity { a -> assertEquals("synthetic-service", a.currentSession!!.wizardState.issuer); assertNotNull(a.currentSession!!.activeVault) }
             nativeField("synthetic-account")
-            await { state(scenario) { _, s -> s.wizardState.step == AccountStep.SECRET } }
+            awaitNative { state(scenario) { _, s -> s.wizardState.step == AccountStep.SECRET } }
             nativeField(KEY)
-            await { state(scenario) { _, s -> !s.operationPending && s.currentScreen == Screen.MAIN } }
+            awaitNative { state(scenario) { _, s -> !s.operationPending && s.currentScreen == Screen.MAIN } }
             assertEquals(listOf("synthetic old", "synthetic-account"), Vault.load(file, PASSWORD).entries.map { it.accountName })
         } finally {
             if (original.isNotBlank() && original != "null") shell("ime set ${quote(original)}")
