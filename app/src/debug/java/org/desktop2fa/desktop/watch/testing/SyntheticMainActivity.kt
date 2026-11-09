@@ -5,8 +5,7 @@ import android.content.ContextWrapper
 import android.content.SharedPreferences
 import org.desktop2fa.desktop.watch.presentation.MainActivity
 import org.desktop2fa.desktop.watch.presentation.VaultSessionStorage
-import org.desktop2fa.desktop.watch.presentation.AccountWizardState
-import org.desktop2fa.desktop.watch.model.VaultData
+import org.desktop2fa.desktop.watch.presentation.AccountAdditionCandidate
 import org.desktop2fa.desktop.watch.vault.VaultSecurityManager
 import java.io.File
 import java.util.concurrent.CountDownLatch
@@ -61,7 +60,7 @@ open class SyntheticMainActivity : MainActivity() {
             override fun inspect() = controlled("startup") { super.inspect() }
             override fun create(password: String) = controlled("setup") { super.create(password) }
             override fun unlock(password: String) = controlled("unlock") { super.unlock(password) }
-            override fun add(snapshot: VaultData, draft: AccountWizardState, password: String) =
-                controlled("add") { super.add(snapshot, draft, password) }
+            override fun commit(candidate: AccountAdditionCandidate, password: String) =
+                controlled("add") { super.commit(candidate, password) }
         }
 }

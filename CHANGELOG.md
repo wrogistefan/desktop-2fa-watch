@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   native IME edits renew the deadline. Returning always requires a password
   after a genuine lock. Refresh TOTP from current wall time on resume (#26).
 
+- Route manual and internal batch additions through one lifecycle-owned commit
+  operation; validate the entire privately copied candidate, reject stale data
+  and write all additions once. No batch receiver or vault migration is added (#36).
+
 - Require explicit vault-password sessions for new and existing users; remove
   Remember and cached auto-unlock. Startup/Lock remove old credential stores;
   failed cleanup warns about leftover data and older builds, without resetting

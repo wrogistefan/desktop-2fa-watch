@@ -17,7 +17,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.desktop2fa.desktop.watch.model.VaultData
+import org.desktop2fa.desktop.watch.model.TotpEntry
+import org.desktop2fa.desktop.watch.model.SetupKey
 import org.desktop2fa.desktop.watch.vault.CorruptedVaultException
 import org.desktop2fa.desktop.watch.vault.InvalidPasswordException
 import org.desktop2fa.desktop.watch.vault.PasswordStrengthValidator
@@ -47,13 +48,11 @@ internal open class VaultSessionStorage(private val file: File, private val clea
     open fun inventory(): List<RecoveryCandidate> = VaultFiles.inventory(file).candidates
     open fun recover(candidate: RecoveryCandidate, password: String): RecoveryView =
         openRecoveryView(file, candidate, password)
-    open fun add(snapshot: VaultData, draft: AccountWizardState, password: String): AccountSaveResult {
+    open fun commit(candidate: AccountAdditionCandidate, password: String): AccountSaveResult {
         // The caller holds processOperations. Another live owner may have committed
         // since this UI snapshot was captured; never replace that newer data.
-        if (Vault.load(file, password).data != snapshot) return AccountSaveResult(VaultSaveOutcome.NOT_COMMITTED)
-        val candidate = Vault(snapshot)
-        candidate.addEntry(draft.account, draft.issuer, draft.secret)
-        return persistAccountCandidate(candidate, file, password)
+        if (!candidate.matches(Vault.load(file, password).data)) return AccountSaveResult(VaultSaveOutcome.NOT_COMMITTED)
+        return persistAccountCandidate(candidate.vault(), file, password)
     }
     companion object { private val notices = ConcurrentHashMap<String, LateSessionNotice>() }
 }
@@ -344,11 +343,25 @@ internal class VaultSession(
         val draft = wizardState.submit(vault.entries.map { it.accountName })
         wizardState = draft
         if (!draft.isSaving) return
+        submitAdditions(listOf(TotpEntry(issuer = draft.issuer, accountName = draft.account,
+            secret = SetupKey.canonical(draft.secret))))
+    }
+
+    /** In-memory additions only; callers resolve consent/collisions before submission. */
+    fun submitAdditions(additions: List<TotpEntry>) {
+        if (operationPending || disposed || recoverySource != null) return
+        val vault = activeVault ?: return
+        val candidate = try {
+            AccountAdditionCandidate(vault.data, additions)
+        } catch (_: IllegalArgumentException) {
+            wizardState = wizardState.copy(isSaving = false, error = "Invalid account data")
+            errorMessage = "Invalid account data. No accounts were saved."
+            return
+        }
         val supplied = sessionPassword
         // Capture on the UI thread, before entering I/O; no Compose state is read there.
-        val snapshot = vault.data.copy(entries = vault.entries.toMutableList())
         operation(loading = false, mutation = true, work = {
-            storage.add(snapshot, draft, supplied)
+            storage.commit(candidate, supplied)
         }, success = { result ->
             wizardState = AccountWizardState()
             if (result.requiresReview) review(result.message)
@@ -369,7 +382,7 @@ internal class VaultSession(
     companion object {
         // A recreated Activity must not read a snapshot while its old owner's
         // non-interruptible write is still finishing. This is process-local only;
-        // the shared mutation/candidate API remains the separate #36 task.
+        // all manual/batch additions use this same lifecycle-owned operation.
         private val processOperations = Mutex()
         const val STALLED_OPERATION = "Storage is still busy. You can lock now. If it does not finish, force stop and reopen the app or restart the watch. Do not clear app data; a write may have completed."
         const val LATE_SAVE_REVIEW = "A previous save may have changed storage. Review existing data before trying again."

@@ -75,6 +75,15 @@ rejected before a writable vault is exposed, rather than discarded on save.
 
 ## Save and load
 
+Manual and internal batch additions now share a lifecycle-owned commit operation
+(#36). A privately copied, fully validated additive candidate is compared with
+authenticated committed data under the session's process-wide I/O mutex. A stale
+baseline is rejected unchanged; the complete batch uses one call to the existing
+save/verification path. It never saves a valid prefix of an invalid batch. There
+is no multi-process writer, data-format/KDF migration, receipt or transport added.
+Cancellation after publication remains a possible commit, not rollback. See
+[writer assumptions](development.md#serialized-additions-36).
+
 New-vault setup uses `saveNew`, separate from updating an existing vault. It
 inspects the directory, target and possible `.bak` with error-reporting metadata
 reads. Only confirmed absence allows creation. The encrypted

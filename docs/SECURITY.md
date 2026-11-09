@@ -64,9 +64,10 @@ whole-process death loses this metadata, so inspect committed accounts after a
 restart before manually retrying. Recreated processes never recover an active
 session from saved state or cached credentials.
 
-Manual additions reload under the session I/O mutex and reject a snapshot that
-differs from committed data before saving. This prevents another live owner's
-addition from being overwritten; #36 still defines the shared batch mutation API.
+Manual and internal batch additions use one privately copied, validated candidate
+and reload under the session I/O mutex. A snapshot that differs from committed
+data is rejected before saving, preserving another live owner's changes. Each
+batch is one file update and one B4 outcome, never a series of partial additions.
 The extra authenticated read keeps v1 KDF costs and needs physical-watch
 measurement in #30. After 30 seconds of pending I/O the UI offers a recovery
 notice. It never releases the writer mutex on timeout: if I/O cannot finish,
