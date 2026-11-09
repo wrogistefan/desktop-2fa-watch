@@ -1,0 +1,10 @@
+argon2-cffi==25.1.0
+argon2-cffi-bindings==25.1.0
+cryptography==46.0.3
+pydantic==2.12.5
+pydantic-core==2.41.5
+cffi==2.0.0
+pycparser==2.23
+annotated-types==0.7.0
+typing-extensions==4.15.0
+typing-inspection==0.4.2

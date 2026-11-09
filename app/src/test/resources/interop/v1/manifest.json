@@ -1,0 +1,335 @@
+{
+  "schema_version": 1,
+  "synthetic_only": true,
+  "desktop_release": "v0.10.0",
+  "desktop_commit": "7d1089d6bee0f3f82678ca8a13988c742840fba0",
+  "dependencies": {
+    "argon2-cffi": "25.1.0",
+    "argon2-cffi-bindings": "25.1.0",
+    "cryptography": "46.0.3",
+    "pydantic": "2.12.5",
+    "pydantic-core": "2.41.5",
+    "cffi": "2.0.0",
+    "pycparser": "2.23",
+    "annotated-types": "0.7.0",
+    "typing-extensions": "4.15.0",
+    "typing-inspection": "0.4.2"
+  },
+  "max_vault_bytes": 10485760,
+  "files": {
+    "supported.d2fa": {
+      "sha256": "a819a0f6db135b622ef0d09c78b7eee6affe7c569a31f4f1c5f52205327e4291",
+      "bytes": 2458,
+      "provenance": "pinned Desktop Vault.save"
+    },
+    "supported.json": {
+      "sha256": "af7a918a06f6dce01785b078f6ee6b46c4f89d3fcc0a5e1c8a6f99cbcaae4728",
+      "bytes": 3176,
+      "provenance": "semantic snapshot of pinned Desktop models"
+    },
+    "fixed-time-codes.json": {
+      "sha256": "46f07a66de0c96e946d5ed837377ec4f16c5f43cd96e2130df313e38c10df052",
+      "bytes": 2422,
+      "provenance": "actual pinned Desktop TOTP generator; public synthetic keys"
+    },
+    "historical-empty.d2fa": {
+      "sha256": "2b531cc701d8b07dd1174b5f3ccf1e45c75930218614e1cd6a46cdce106ce370",
+      "bytes": 164,
+      "provenance": "pinned Desktop Vault.save"
+    },
+    "historical-unicode-fold.d2fa": {
+      "sha256": "24fd2d9d1d426588abb4f4c788060f7263dd2fdba80904ea76126e8b3259e56a",
+      "bytes": 173,
+      "provenance": "pinned Desktop Vault.save"
+    },
+    "historical-trailing-bits.d2fa": {
+      "sha256": "192d2ee846846371f3c9fd43045a5213597f7c8ece1fb24a148915f8ccf6be98",
+      "bytes": 172,
+      "provenance": "pinned Desktop Vault.save"
+    },
+    "unknown-root.d2fa": {
+      "sha256": "5636e586e3ae71704aa830d15163d3209912dbf3bc3d901508368535bfb632a6",
+      "bytes": 3252,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "unknown-entry.d2fa": {
+      "sha256": "23f434bb5bfb9fd72f9d9fcdcbf95d10ba201dd1f5b70e620e503e453e0d3395",
+      "bytes": 3256,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "payload-version-2.d2fa": {
+      "sha256": "4e1192af8305162998c81fced2aaed28c5893a24245fcc394ba380e3b83833a6",
+      "bytes": 3225,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "payload-version-string.d2fa": {
+      "sha256": "1686a04e4d6e061398f8b4612a6687067650098951f71bc17dd5955087d48fab",
+      "bytes": 3227,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "payload-version-missing.d2fa": {
+      "sha256": "4f6dd832b5082ae9402f82b305aff4c4e8dde691920a0ac2bac811ff02680cd5",
+      "bytes": 3209,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "invalid-key.d2fa": {
+      "sha256": "9b288073e0d7754535ca204417f4f5e184812f31b81799eba49fd980dc890719",
+      "bytes": 3194,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "invalid-period.d2fa": {
+      "sha256": "2ec97642e216cb6f4b0680098fb4792ca4b88d3c885ea8a0029bddd2cfe2421b",
+      "bytes": 3224,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "unsupported-digits.d2fa": {
+      "sha256": "100170c35a0eaf02a9160f21a05af325f75a34f645a17347fec55ec5d3fda9ab",
+      "bytes": 3226,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "unsupported-algorithm.d2fa": {
+      "sha256": "7ff9cc3830ded5ce68ee9d1c6f58d224ef3ce9c635b17ed70fea2fc5948702d5",
+      "bytes": 3224,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "malformed-json.d2fa": {
+      "sha256": "ba8303caf4148a6e8fbc7d9f7927adb1bf50cd2cc9ffbda002cc631b61f1ea9a",
+      "bytes": 50,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "invalid-utf8.d2fa": {
+      "sha256": "9b20dc78e3696b898e909f8d08fdab703fcc0dba66f4e21a743bf5ec1ddacbeb",
+      "bytes": 50,
+      "provenance": "synthetic invalid payload via pinned Desktop crypto; NOT Vault.save"
+    },
+    "header-version-2.d2fa": {
+      "sha256": "03e0527e932ecd69e4a338fc9823fa34dfe7d8320390cd9fc31727906732a22f",
+      "bytes": 2458,
+      "provenance": "deterministic byte mutation of supported.d2fa"
+    },
+    "invalid-magic.d2fa": {
+      "sha256": "b95a579f0736621082802cb6cfcc48f55cf787ba2e1fa9ca838fc52f3e22c54c",
+      "bytes": 2458,
+      "provenance": "deterministic byte mutation of supported.d2fa"
+    },
+    "tampered.d2fa": {
+      "sha256": "938fc67f35788963618091525b32da0dbcedff127884f752ace0209f531aa4e8",
+      "bytes": 2458,
+      "provenance": "deterministic byte mutation of supported.d2fa"
+    },
+    "truncated-tag.d2fa": {
+      "sha256": "be293025cbffcb15c1d2b6bb510548af8a2ba0b39335f370a1395b8c219eb44f",
+      "bytes": 2450,
+      "provenance": "deterministic byte mutation of supported.d2fa"
+    },
+    "short-header.d2fa": {
+      "sha256": "07e014232906d0e2235458db7e708343890ff3f8fed731dfd4c8ad97e2a6e970",
+      "bytes": 10,
+      "provenance": "deterministic byte mutation of supported.d2fa"
+    }
+  },
+  "cases": [
+    {
+      "id": "supported",
+      "file": "supported.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "accept",
+      "watch_load": "accept",
+      "round_trip": true
+    },
+    {
+      "id": "historical-empty",
+      "file": "historical-empty.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "accept",
+      "watch_load": "reject",
+      "round_trip": false,
+      "desktop_generate": false,
+      "reason": "Preserve historical source; Watch does not accept this key. No lossy conversion."
+    },
+    {
+      "id": "historical-unicode-fold",
+      "file": "historical-unicode-fold.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "accept",
+      "watch_load": "reject",
+      "round_trip": false,
+      "desktop_generate": false,
+      "reason": "Preserve historical source; Watch does not accept this key. No lossy conversion."
+    },
+    {
+      "id": "historical-trailing-bits",
+      "file": "historical-trailing-bits.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "accept",
+      "watch_load": "reject",
+      "round_trip": false,
+      "desktop_generate": true,
+      "reason": "Preserve historical source; Watch does not accept this key. No lossy conversion."
+    },
+    {
+      "id": "unknown-root",
+      "file": "unknown-root.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "unknown-entry",
+      "file": "unknown-entry.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "payload-version-2",
+      "file": "payload-version-2.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "payload-version-string",
+      "file": "payload-version-string.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "payload-version-missing",
+      "file": "payload-version-missing.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "accept",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "invalid-key",
+      "file": "invalid-key.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "invalid-period",
+      "file": "invalid-period.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "unsupported-digits",
+      "file": "unsupported-digits.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "unsupported-algorithm",
+      "file": "unsupported-algorithm.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "malformed-json",
+      "file": "malformed-json.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "invalid-utf8",
+      "file": "invalid-utf8.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "header-version-2",
+      "file": "header-version-2.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "invalid-magic",
+      "file": "invalid-magic.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "tampered",
+      "file": "tampered.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "truncated-tag",
+      "file": "truncated-tag.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "short-header",
+      "file": "short-header.d2fa",
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "wrong-password",
+      "file": "supported.d2fa",
+      "password": "Synthetic-Wrong-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false
+    },
+    {
+      "id": "at-size-limit-invalid-auth",
+      "recipe": {
+        "prefix": "supported.d2fa",
+        "zero_pad_to": 10485760
+      },
+      "sha256": "1c23f3afd2822f7e43d39e046cc7480f5736b5c9ede7a0e2f3d8da304bb4d090",
+      "bytes": 10485760,
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false,
+      "reason": "At-limit case passes byte limit but fails authentication; overflow must be bounded/rejected."
+    },
+    {
+      "id": "over-size-limit",
+      "recipe": {
+        "prefix": "supported.d2fa",
+        "zero_pad_to": 10485761
+      },
+      "sha256": "2c8170b027d78caf4b31d15344316ef36b728279dd478f8c2a1b96ab29e9202e",
+      "bytes": 10485761,
+      "password": "Synthetic-Żółw-🔐-42!",
+      "desktop_load": "reject",
+      "watch_load": "reject",
+      "round_trip": false,
+      "reason": "At-limit case passes byte limit but fails authentication; overflow must be bounded/rejected."
+    }
+  ]
+}

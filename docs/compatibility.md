@@ -1,8 +1,11 @@
 # Desktop Vault Compatibility
 
-The watch 0.2.0 source was compared with
-[`desktop-2fa@f2baf74`](https://github.com/wrogistefan/desktop-2fa/tree/f2baf741cef4799a4983577f76fd866c71496816).
-This is a source-level assessment, not completed interoperability certification.
+The current reference is Desktop-2FA **v0.10.0**, commit
+[`7d1089d6bee0f3f82678ca8a13988c742840fba0`](https://github.com/wrogistefan/desktop-2fa/tree/7d1089d6bee0f3f82678ca8a13988c742840fba0).
+This supersedes the old f2baf74 source comparison. The
+[immutable synthetic corpus](../app/src/test/resources/interop/README.md) is
+generated with that release's actual models, Vault writer and TOTP generator.
+Cross-language execution remains D2 #29; this is not compatibility certification.
 
 ## Current parity
 
@@ -56,7 +59,8 @@ specifically `utils/base32.py` and `vault/models.py`. This is a source compariso
 and targeted synthetic Kotlin regression coverage. One immutable Python-written
 v0.8.3 fixture from that commit is hash-checked and loaded/re-saved to verify all
 fields, Unicode labels/password and nullable names. It is not full current
-Python-library interoperability; the larger corpus/runner stays in #28/#29.
+Python-library interoperability. The larger pinned corpus is now in #28;
+cross-language execution remains #29.
 
 Watch requires non-empty ASCII Base32 and canonical trailing bits at every vault
 boundary. It accepts ASCII space plus U+0009–U+000D formatting whitespace; pinned
@@ -93,6 +97,13 @@ file, keep the original and use a compatible reader to inspect/explicitly save a
 separate supported copy; no automatic Watch repair or lossy conversion is added.
 
 ## Import/export plan
+
+The D1 corpus records explicit supported/rejected cases and complete fields,
+including historical unsupported keys and the missing-version difference. Its
+hashes/provenance do not by themselves prove a Python↔Kotlin round trip. Binary
+vault compatibility and the future additive account-package contract are
+separate: identical internal vault storage is not required for selected-account
+transfer. This work implements no import/export UI and does not close #10.
 
 The #25 session change does not alter encrypted v1 files, TOTP parameters or
 password encoding. Supported files need no migration. Existing users must supply

@@ -1,0 +1,5 @@
+# These synthetic interoperability bytes are immutable, including JSON hashes.
+app/src/test/resources/interop/v1/** -text
+tools/interop/*.py text eol=lf
+tools/interop/*.json text eol=lf
+tools/interop/requirements.txt text eol=lf

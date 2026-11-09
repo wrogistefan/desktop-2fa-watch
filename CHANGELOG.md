@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🧪 Testing
 
+- Add immutable public synthetic fixtures pinned to Desktop v0.10.0 and full
+  commit, source/dependency hashes, deterministic reproduction and explicit
+  historical/negative/size-limit expectations. Cross-language execution remains
+  separate (#28/#29); no vault format or KDF migration is introduced.
+
 - Verify all RFC 6238 vectors for three algorithms, 6/7/8 digits, leading zeroes,
   independent boundary/large-counter cases and controlled countdown rollover (#16).
 - Cover Base32 normalization/padding, invalid input, wizard navigation, duplicate

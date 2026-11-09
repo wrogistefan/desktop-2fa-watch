@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "issuer": "Syntetyczny Żółw 日本 🔐",
+      "account_name": "synthetic-SHA1-6",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "digits": 6,
+      "period": 30,
+      "algorithm": "SHA1"
+    },
+    {
+      "issuer": "Syntetyczny Żółw 日本 🔐",
+      "account_name": "synthetic-SHA1-7",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "digits": 7,
+      "period": 45,
+      "algorithm": "SHA1"
+    },
+    {
+      "issuer": "Syntetyczny Żółw 日本 🔐",
+      "account_name": "synthetic-SHA1-8",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "digits": 8,
+      "period": 60,
+      "algorithm": "SHA1"
+    },
+    {
+      "issuer": "Syntetyczny Żółw 日本 🔐",
+      "account_name": "synthetic-SHA256-6",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA====",
+      "digits": 6,
+      "period": 30,
+      "algorithm": "SHA256"
+    },
+    {
+      "issuer": "Syntetyczny Żółw 日本 🔐",
+      "account_name": "synthetic-SHA256-7",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA====",
+      "digits": 7,
+      "period": 45,
+      "algorithm": "SHA256"
+    },
+    {
+      "issuer": "Syntetyczny Żółw 日本 🔐",
+      "account_name": "synthetic-SHA256-8",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA====",
+      "digits": 8,
+      "period": 60,
+      "algorithm": "SHA256"
+    },
+    {
+      "issuer": "Syntetyczny Żółw 日本 🔐",
+      "account_name": "synthetic-SHA512-6",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA=",
+      "digits": 6,
+      "period": 30,
+      "algorithm": "SHA512"
+    },
+    {
+      "issuer": "Syntetyczny Żółw 日本 🔐",
+      "account_name": "synthetic-SHA512-7",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA=",
+      "digits": 7,
+      "period": 45,
+      "algorithm": "SHA512"
+    },
+    {
+      "issuer": "Syntetyczny Żółw 日本 🔐",
+      "account_name": "synthetic-SHA512-8",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA=",
+      "digits": 8,
+      "period": 60,
+      "algorithm": "SHA512"
+    },
+    {
+      "issuer": null,
+      "account_name": null,
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "digits": 6,
+      "period": 30,
+      "algorithm": "SHA1"
+    },
+    {
+      "issuer": "synthetic duplicate",
+      "account_name": "synthetic same",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "digits": 6,
+      "period": 30,
+      "algorithm": "SHA1"
+    },
+    {
+      "issuer": "synthetic duplicate",
+      "account_name": "synthetic same",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "digits": 6,
+      "period": 30,
+      "algorithm": "SHA1"
+    },
+    {
+      "issuer": "synthetic formatted",
+      "account_name": "synthetic lowercase",
+      "secret": "gezd gnbv gy3t qojq gezd gnbv gy3t qojq",
+      "digits": 6,
+      "period": 30,
+      "algorithm": "SHA1"
+    }
+  ]
+}

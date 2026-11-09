@@ -3,6 +3,10 @@
 The [batch report](batch-regressions.md) describes #36 immutable proposals,
 serialized competing sessions and encrypted whole-batch save/failure checks.
 
+The [pinned interoperability corpus](../../app/src/test/resources/interop/README.md)
+records D1 #28 source/dependency provenance, synthetic fixtures and hash checks.
+It does not claim a cross-language/device run; that execution is D2 #29.
+
 The [session ownership report](session-regressions.md) records #25’s password-only
 sessions, late I/O and synthetic Activity/process recreation checks. The
 [lifecycle report](lifecycle-regressions.md) records #26 automatic locking and
