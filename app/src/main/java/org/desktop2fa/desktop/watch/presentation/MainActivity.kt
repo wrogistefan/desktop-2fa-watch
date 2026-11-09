@@ -103,7 +103,9 @@ open class MainActivity : ComponentActivity() {
 
     internal fun checkSessionDeadline(): Boolean {
         deviceReady = getSystemService(PowerManager::class.java).isInteractive &&
-            !getSystemService(KeyguardManager::class.java).isKeyguardLocked
+            // Wear OS may keep an insecure Keyguard showing but occluded by the
+            // app. That is not an authentication-locked device (isDeviceLocked).
+            !getSystemService(KeyguardManager::class.java).isDeviceLocked
         if (!deviceReady) {
             // Cleanup may finish while the display stays off. Do not repeatedly
             // invalidate its new generation and schedule another cleanup.

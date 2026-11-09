@@ -22,6 +22,12 @@ broadcasts refresh the sample without extending inactivity. There are no wake
 locks, periodic background workers or new production permissions/services.
 
 This follows Android's distinction between [paused and stopped activities](https://developer.android.com/guide/components/activities/activity-lifecycle).
+Device readiness uses [KeyguardManager.isDeviceLocked](https://developer.android.com/reference/android/app/KeyguardManager#isDeviceLocked()).
+Review of the process fixture exposed that `isKeyguardLocked` also reports an
+insecure/occluded lock-screen UI: the emulator reported showing=true and
+occluded=true with deviceLocked=0, preventing ordinary startup with the wrong
+API. The corrected check concerns authentication-required device lock; screen
+off still invalidates independently and returning never supplies a vault password.
 The debug fixture exercises Android's actual [InputMethodService extract editor](https://developer.android.com/reference/android/inputmethodservice/InputMethodService),
 including a provider which ignores the app's NO_FULLSCREEN/NO_EXTRACT_UI hints.
 It does not emulate Samsung's implementation or prove every OEM avoids stopping
@@ -81,6 +87,12 @@ poll lifecycle/I/O independently. Advancing Compose frames for a deliberately
 stopped Activity hung a harness run, which was explicitly terminated. An old
 synthetic PIN left by an interrupted run was cleared only on the owned emulator
 using its known public fixture PIN. Failed/aborted attempts are not passing evidence.
+
+The process fixture now routes input through the production user-action guard,
+uses a fixed monotonic clock to isolate process death from inactivity, and keeps
+a synthetic foreground host for child launches. It can explicitly Retry startup
+once after a launch transition invalidates it; Retry never authenticates. Error
+markers contain only stage/screen metadata, never credentials or exception text.
 
 The #25 [session report](session-regressions.md) separately records process-death
 and late-commit checks; historical device reports do not establish current
