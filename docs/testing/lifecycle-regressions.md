@@ -98,3 +98,17 @@ The #25 [session report](session-regressions.md) separately records process-deat
 and late-commit checks; historical device reports do not establish current
 physical-watch behavior. No physical KDF measurements, power-loss durability or
 hardware-backed Keystore guarantee is claimed.
+
+After the `isDeviceLocked` correction, `VaultSessionProcessDeviceTest` passed
+**1/1**, with actual child termination/restart and unchanged encrypted bytes.
+The full JVM suite passed again (**325/325**), debug assembly and release
+manifest processing passed, and targeted secure-PIN/keyguard passed **1/1**.
+The combined command used the tasks above plus `:app:connectedDebugAndroidTest`
+and the `SessionLifecycleDeviceTest#secureEmulatorLockNeverAuthorizesCacheOrAResumedSession`
+class filter. This is staged evidence, not a new single six-case pass.
+
+GitHub CI passed for the initial implementation. Subsequent runs for the final
+revision and its retry failed before tests due to external downloads: Gradle
+distribution timeout (10 seconds) and Kotlin compiler HTTP 504. They are not
+reported as passing checks or code/test failures. The equivalent full local
+Wrapper checks above completed successfully; CI remains an infrastructure limit.
