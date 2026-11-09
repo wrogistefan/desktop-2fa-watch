@@ -119,6 +119,13 @@ implicit selector. Historical duplicate/null/empty records still load/display;
 there is no format/ID migration or edit/remove UI. Future additive transfer uses
 E2 explicit collision/operation semantics and must not use first-match lookup.
 
+The [E2 collision/retry policy](transfer/collisions-retry.md) preserves existing
+accounts and uses explicit Watch choices instead of first-match lookup. Its
+owner-accepted memory-only direction requires manual reconciliation after Lock,
+restart or expiry. Communication/transfer remains a separate later design. It adds no
+v1 fields, sidecar, backup change or account-ID migration and does not promise
+exactly-once delivery across process death.
+
 The [selected-account package v1 proposal](transfer/package-v1.md) is a bounded,
 additive application contract, separate from D2FA v1 and any transport. It carries
 only user-selected explicit parameters, preserves nullable names and requires
