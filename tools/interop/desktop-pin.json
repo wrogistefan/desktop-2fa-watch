@@ -1,0 +1,34 @@
+{
+  "release": "v0.10.0",
+  "commit": "7d1089d6bee0f3f82678ca8a13988c742840fba0",
+  "python": "3.13.11",
+  "dependencies": {
+    "argon2-cffi": "25.1.0",
+    "argon2-cffi-bindings": "25.1.0",
+    "cryptography": "46.0.3",
+    "pydantic": "2.12.5",
+    "pydantic-core": "2.41.5",
+    "cffi": "2.0.0",
+    "pycparser": "2.23",
+    "annotated-types": "0.7.0",
+    "typing-extensions": "4.15.0",
+    "typing-inspection": "0.4.2"
+  },
+  "source_sha256": {
+    "pyproject.toml": "3e8667d229632a01715326ec25b214cc34ea49db8e088b8985e5335a313db9bb",
+    "src/desktop_2fa/__init__.py": "6c1f56e73c5d83430caa4e8b15fc00db4304fc46effaa7097256a79f50b6930a",
+    "src/desktop_2fa/crypto/__init__.py": "63c212c5ca2a46839a07f6115899ee835df80767b229be7c8b6d914439fcc149",
+    "src/desktop_2fa/crypto/aesgcm.py": "d75978903c5dfe7e8d8c943cf6378965a221f32903ffe438c9eb804da73bc12b",
+    "src/desktop_2fa/crypto/argon2.py": "4eddafdd34ce2ca024cb4d8edd94c930bb6dfbeb2228e82d5d77664585ec6724",
+    "src/desktop_2fa/totp/__init__.py": "1dd367946b3539c34a54f1e399bf93b209fdf0f0a0c13a4d64dfafcc9ec1e942",
+    "src/desktop_2fa/totp/generator.py": "eafde882f92265cdb3bef216ecd1a67874bcc5605fdc1bdf905401ea1549459a",
+    "src/desktop_2fa/utils/__init__.py": "a41f2fbbec456834e6e6ba9770d9a427025fca93c7c08d4615e4b80d307c4cb5",
+    "src/desktop_2fa/utils/base32.py": "30b73f6e187ab74c63077f4d8b159d2a4c9bcd63c4deb3fb7c9e98ba872abbbf",
+    "src/desktop_2fa/vault/__init__.py": "90e94c0f98af6bd1ab7848558cd2a338264e2d5a922139563af0ae62f9f3a78c",
+    "src/desktop_2fa/vault/durability.py": "fb0d7df22511c492443fc9cd866a847bf1c27935d415dc12862e8ec9aae61adb",
+    "src/desktop_2fa/vault/locking.py": "18b3018fc4f4cf9d5a38f50ee7babfdc9fee42882c4efb3ab9ce6b35dce3790b",
+    "src/desktop_2fa/vault/models.py": "becbf709385f66937d19beb9d32930a7568cded07fb658bb93e24b14394326f1",
+    "src/desktop_2fa/vault/password_strength.py": "dfd88fa77b73a87142bf851e3e8d912d961863db4e0e51e736de674bb9ee0258",
+    "src/desktop_2fa/vault/vault.py": "a08b141c3ef8b803f3a82d6836112d139d505e975b98cfa9e0726bdaa3459b1f"
+  }
+}
