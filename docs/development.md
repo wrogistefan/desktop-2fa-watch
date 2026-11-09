@@ -269,6 +269,11 @@ do not establish that typing is comfortable on a real watch.
 
 ## Screenshot provenance
 
+Current app windows request capture protection; README images below predate
+that control. See the [screen-exposure assessment](testing/screen-exposure-2026-11-09.md)
+for the synthetic calibration test, restricted capture workflow and untested
+physical/ambient cases. Do not disable the flag on personal data for a screenshot.
+
 `assets/screenshots/accounts.png`, `vault-actions.png`, and `empty-vault.png`
 were copied without editing from that emulator run. Names and codes belong to
 synthetic test fixtures. The repeated account names demonstrate the regression

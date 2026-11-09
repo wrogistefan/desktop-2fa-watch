@@ -90,7 +90,11 @@ session. See [integrated checks and physical limits](testing/wear-integration-20
 
 There is no guaranteed memory zeroization. Strings captured by running I/O can
 remain until that operation finishes; JVM garbage collection cannot prove
-erasure. The app does not yet block screenshots with `FLAG_SECURE` (#27).
+erasure. MainActivity requests secure-window capture protection on all screens
+and disables task screenshots on API 33+. This does not protect native IME
+windows, cameras, compromised OS/accessibility providers or establish ambient
+redaction. See the [screen-exposure assessment](testing/screen-exposure-2026-11-09.md)
+for tested behavior and missing physical/API checks (#27).
 Physical-watch/OEM fullscreen IME integration still needs #37 verification.
 
 ## File integrity and persistence
