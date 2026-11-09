@@ -157,8 +157,9 @@ Use the source checkout and Python 3.13.11 environment described in the
 
 The runner verifies all source/dependency pins and fixture hashes, enables the
 actual Python bridge and invokes the repository Wrapper's full
-`:app:testDebugUnitTest :app:assembleDebug --stacktrace` tasks. CI installs the
-same pinned Python/dependencies and checks out the exact Desktop commit; it does
+`:app:testDebugUnitTest :app:assembleDebug --stacktrace` tasks. CI uses Ubuntu
+24.04 (a supported image for Python 3.13.11), installs the same pinned
+Python/dependencies and checks out the exact Desktop commit; it does
 not need a live Desktop application. Wrapper download timeout is 60 seconds
 (formerly 10) after observed external CI timeouts; distribution URL/checksum and
 cryptographic settings are unchanged. This does not guarantee remote service availability.

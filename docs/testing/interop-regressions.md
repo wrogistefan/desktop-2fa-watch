@@ -57,8 +57,17 @@ outcomes and returned Python files, preserving original source hashes. The full
 existing RFC, password/tamper, storage-fault and session tests ran in that suite.
 The stdlib preflight verified all 22 artifact hashes and both size recipes.
 
+After adding an explicit report/source-commit assertion, the targeted
+`PinnedInteropTest` rerun passed **3/3**, zero failures/errors/skips. The full
+336-case result above preceded only that additional assertion.
+
 CI checks out the full immutable commit and uses the same Python/dependency
-pins. Wrapper network timeout is raised to 60 seconds after prior external
+pins on Ubuntu 24.04. The first workflow attempt used ubuntu-latest (26.04),
+where setup-python could not provide Python 3.13.11. The official
+[actions/python-versions manifest](https://github.com/actions/python-versions/blob/main/versions-manifest.json)
+lists x64 builds for 22.04/24.04; the runner OS is now pinned to 24.04. That failed
+setup did not run tests and is not passing evidence.
+Wrapper network timeout is raised to 60 seconds after prior external
 distribution timeouts; URL, distribution checksum, versions and app security
 settings remain unchanged. External download failures are not passing tests.
 
