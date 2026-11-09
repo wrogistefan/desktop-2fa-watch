@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned policy (not implemented)
+
+- Accept manual-password sessions without Remember/cache unlock for new and
+  existing users, legacy credential cleanup, and locking on screen off/device
+  lock, true departure or 60 seconds of inactivity, preserving fullscreen IME
+  editing. Decision #24 documents the transition and tests; runtime work follows
+  in #25/#26, with no vault format/KDF migration.
+
 ### ✨ Changed
 
 - Replace the account form with a three-step wizard: service name, account name,

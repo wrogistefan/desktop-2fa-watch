@@ -148,6 +148,12 @@ No root or bootloader unlock is needed. Disable debugging after testing.
 
 ## Manual UI checklist
 
+The [accepted session/cache decision (#24)](session-policy.md) includes the
+synthetic state/event table and future implementation/device gates. It removes
+cache-based unlock and specifies a 60-second inactivity policy, with fullscreen
+IME transitions distinguished from true departure. This is a planned runtime
+change, not evidence that lifecycle/session checks already pass.
+
 Recorded results: [emulator](testing/wear-os-emulator.md) and
 [Galaxy Watch Ultra](testing/galaxy-watch-ultra.md). See the
 [report index](testing/README.md) for scope and limitations.
