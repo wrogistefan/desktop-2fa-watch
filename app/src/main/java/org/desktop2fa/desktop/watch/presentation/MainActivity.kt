@@ -85,6 +85,7 @@ open class MainActivity : ComponentActivity() {
                         Text(text = "desktop-2fa", color = Color.White)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(text = "Loading Secure Vault...", color = Color(0xFF3B82F6))
+                        operationNotice?.let { Text(it, color = Color(0xFFFCA5A5)) }
                         Button(onClick = { lock() }) { Text("Lock Vault") }
                     }
                 } else {
@@ -92,7 +93,7 @@ open class MainActivity : ComponentActivity() {
                         Screen.SPLASH -> {}
 
                         Screen.STORAGE_ERROR -> StorageErrorScreen(
-                            listOfNotNull(errorMessage, cacheWarning).joinToString("\n").ifBlank { null },
+                            listOfNotNull(errorMessage, cacheWarning, operationNotice).joinToString("\n").ifBlank { null },
                             onRetry = { startup() }, onRecovery = { listRecovery() }, busy = operationPending,
                         )
 
@@ -100,9 +101,10 @@ open class MainActivity : ComponentActivity() {
                             candidates = recoveryCandidates,
                             password = passwordInput,
                             error = listOfNotNull(errorMessage, cacheWarning).joinToString("\n").ifBlank { null },
-                            onPasswordChange = { passwordInput = it; errorMessage = null },
+                            onPasswordChange = { if (!operationPending) { passwordInput = it; errorMessage = null } },
                             onOpen = { openRecovery(it) },
                             onBack = { leaveRecovery() },
+                            busy = operationPending,
                         )
 
                         Screen.SETUP -> {
@@ -121,9 +123,11 @@ open class MainActivity : ComponentActivity() {
                                     value = passwordInput,
                                     enabled = !operationPending,
                                     onValueChange = {
-                                        passwordInput = it
-                                        val res = PasswordStrengthValidator.evaluate(it)
-                                        errorMessage = if (!res.isValid) res.feedback else null
+                                        if (!operationPending) {
+                                            passwordInput = it
+                                            val res = PasswordStrengthValidator.evaluate(it)
+                                            errorMessage = if (!res.isValid) res.feedback else null
+                                        }
                                     },
                                     label = { Text("Master Password") },
                                     singleLine = true,
@@ -149,6 +153,7 @@ open class MainActivity : ComponentActivity() {
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 cacheWarning?.let { Text(it, color = Color(0xFFFCA5A5)) }
+                                operationNotice?.let { Text(it, color = Color(0xFFFCA5A5)) }
                                 Text("Password required for every session. Remember is no longer available.", color = Color.White)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Button(
@@ -173,13 +178,14 @@ open class MainActivity : ComponentActivity() {
                                 if (operationPending) {
                                     Text(if (clearingCache) "Removing remembered password…" else "Finishing previous operation…", color = Color.White)
                                 }
+                                operationNotice?.let { Text(it, color = Color(0xFFFCA5A5)) }
                                 Text("Password required for every session. Remember is no longer available.", color = Color.White)
                                 cacheWarning?.let { Text(it, color = Color(0xFFFCA5A5)) }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 OutlinedTextField(
                                     value = passwordInput,
                                     enabled = !operationPending,
-                                    onValueChange = { passwordInput = it },
+                                    onValueChange = { if (!operationPending) passwordInput = it },
                                     label = { Text("Password") },
                                     singleLine = true,
                                     visualTransformation = PasswordVisualTransformation(),
@@ -312,6 +318,7 @@ open class MainActivity : ComponentActivity() {
                                 onBack = { if (!operationPending) wizardState = wizardState.back() },
                                 onCancel = { cancelDraft() },
                                 onLock = { lock() },
+                                notice = operationNotice,
                             )
                         }
                     }

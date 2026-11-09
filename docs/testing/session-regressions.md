@@ -35,6 +35,20 @@ Vault v1, Argon2id, AES-GCM, backup exclusions and offline operation are unchang
 The shared AGENTS security standard is unchanged. Captured strings can survive
 until blocking work ends; these checks do not prove secure memory erasure.
 
+Review follow-up adds an authenticated comparison with committed data under the
+session mutex before manual additions. Stale snapshots are rejected unchanged;
+the extra KDF/read cost is not reduced and needs #30 hardware measurement. The
+shared multi-entry mutation API remains #36. A process-local non-secret outcome
+handoff survives Activity disposal/recreation until explicit storage Retry.
+Each notice has distinct identity, so acknowledging an older result cannot clear
+a newer one. This is not a persisted retry receipt: whole-process death loses it.
+Always inspect committed accounts after restart before repeating an addition.
+
+A 30-second watchdog only displays recovery guidance. It never releases a mutex
+or claims a blocking writer rolled back; force stop/reopen or watch restart
+without clearing app data is the recovery for permanently stalled I/O. Its JVM
+test injects a zero-delay notice with gated work, not a hardware hang.
+
 ## Tests
 
 - JVM session tests use separate UI/I/O executors and controlled gates, not
@@ -58,6 +72,15 @@ until blocking work ends; these checks do not prove secure memory erasure.
   report a closed, clean session and unchanged committed bytes. Intents/markers
   contain only a validated synthetic directory, stage and constant PID/status;
   the compiled fixture password/key are public synthetic data, never user data.
+- Review regressions independently verify startup cannot reach inspection before
+  the old writer releases the I/O executor/mutex; exact locked-state feedback for
+  late read errors; no storage-change warning for skipped queued mutations;
+  disabled recovery editing/navigation and cleared trailing edits; unchanged
+  committed bytes on stale-snapshot rejection; and commit-outcome handoff across
+  repeated Activity recreation until explicit Retry. A local XML/API review and
+  real absent-legacy-store cleanup cases do not support treating false deletions
+  as success: Android 34 ContextImpl returns true when both files are absent.
+  Actual false/exception outcomes remain failures, as established in #23.
 
 All Android fixtures use disposable validated app-cache directories and prefixed
 preferences. Finally blocks clean fixture files/preferences and owned children.
@@ -77,12 +100,16 @@ with `-read-only -no-snapshot -no-window -no-audio -gpu swiftshader`.
 | `.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:processReleaseMainManifest --stacktrace` | Passed: 315 JVM tests, zero failures/errors; app/test APK builds and release manifest processing passed |
 | Merged release manifest | No synthetic component or INTERNET permission |
 | `git diff --check` and relative Markdown links | Passed |
-| `.\gradlew.bat :app:connectedDebugAndroidTest --no-configuration-cache --stacktrace` | In progress; final device results are recorded after completion |
+| First full `.\gradlew.bat :app:connectedDebugAndroidTest --no-configuration-cache --stacktrace` | Passed: 22 tests, zero failures/errors, before review follow-ups |
+| Final full JVM/build and Android reruns after review | In progress; results recorded after completion |
 
 During development an initial compile caught the not-yet-migrated startup
 signature, and a controlled test caught that disposal cleared secrets but left
 the old screen enum. Both were corrected; a later targeted session/startup JVM
 run passed before the full suite was launched. They are not final-pass evidence.
+An intermediate Android rerun stopped at compilation because a newly added test
+imported a member as a top-level function (`onNode`); the import was removed before
+the final rerun. It did not execute device cases and is not counted as a pass.
 
 No automatic background/screen-off/device-lock/inactivity trigger is implemented
 here (#26). No new physical-watch/fullscreen IME/ambient pass, hardware-backed

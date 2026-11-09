@@ -64,6 +64,7 @@ fun AccountWizard(
     onBack: () -> Unit,
     onCancel: () -> Unit,
     onLock: (() -> Unit)? = null,
+    notice: String? = null,
 ) {
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -120,6 +121,7 @@ fun AccountWizard(
                 focus.clearFocus(force = true)
                 lock()
             } },
+            notice = notice,
         )
     }
 }
@@ -143,6 +145,7 @@ private fun SingleFieldStep(
     onBack: (() -> Unit)?,
     onCancel: () -> Unit,
     onLock: (() -> Unit)?,
+    notice: String?,
 ) {
     val errorRequester = remember { BringIntoViewRequester() }
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
@@ -203,6 +206,7 @@ private fun SingleFieldStep(
                         .semantics { liveRegion = LiveRegionMode.Polite })
             }
             Button(onClick = onSubmit, enabled = enabled) { Text(submitLabel) }
+            notice?.let { Text(it, color = Color(0xFFFCA5A5)) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (onBack != null) {
                     TextButton(onClick = onBack, enabled = enabled) { Text("Back", color = Color.White) }

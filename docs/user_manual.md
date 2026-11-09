@@ -122,6 +122,13 @@ without reopening the session. Use storage review/manual unlock to inspect
 existing entries before adding the same account again. Locking is not an undo.
 Closing/recreating the activity or process also discards unsaved drafts and
 requires a new password session; committed entries remain in the encrypted file.
+If a save finishes after the activity closes, a new activity shows storage review
+before another unlock. This notice survives further activity recreation until
+**Retry storage check** acknowledges it. It is not a permanent history: after
+the whole process restarts, inspect existing accounts before repeating an add.
+After 30 seconds of pending I/O a notice explains that storage is still busy.
+Lock still hides codes immediately. If it never finishes, force stop and reopen
+the app or restart the watch; do not clear app data. The write may have completed.
 
 There is no automatic inactivity lock. Returning to the watch face is not an
 explicit lock action. Clearing references does not guarantee memory erasure;

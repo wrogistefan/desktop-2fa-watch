@@ -81,6 +81,11 @@ state before pending I/O completes. Session generations reject late success and
 error publication. New actions stay disabled until pending work and legacy-cache
 cleanup finish. A save completing after Lock requires storage review and manual
 unlock, without restoring the draft or silently retrying the addition.
+A disposed owner's non-secret outcome is handed to the next Activity's storage
+review and retained until explicit Retry. At 30 seconds a pending-work notice
+explains recovery without pretending the writer stopped or enabling competing
+actions. Recovery password edits and navigation are disabled during pending I/O;
+success also clears trailing password edits.
 
 Legacy cleanup warnings remain visible through manual unlock and distinguish
 unconfirmed deletion from the locked session. Current code never reuses leftover

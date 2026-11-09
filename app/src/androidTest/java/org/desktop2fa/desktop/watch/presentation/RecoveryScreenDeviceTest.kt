@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -17,6 +18,19 @@ import java.io.File
 
 class RecoveryScreenDeviceTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun pendingRecoveryDisablesPasswordEditingAndNavigation() {
+        val candidate = RecoveryCandidate(File("synthetic-unused.d2fa.bak"), "Previous backup")
+        compose.setContent {
+            RecoveryScreen(listOf(candidate), "synthetic password", null,
+                onPasswordChange = { error("Editing must be disabled") },
+                onOpen = { error("Opening must be disabled") },
+                onBack = { error("Navigation must be disabled") }, busy = true)
+        }
+        compose.onNode(hasSetTextAction()).assertIsNotEnabled()
+        compose.onNodeWithText("Previous backup").performScrollTo().assertIsNotEnabled().performClick()
+        compose.onNodeWithText("Back to storage check").performScrollTo().assertIsNotEnabled().performClick()
+    }
 
     @Test
     fun recoveryRequiresPasswordAndAChoiceAndDisablesAddingAccounts() {

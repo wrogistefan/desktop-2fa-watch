@@ -21,7 +21,7 @@ class VaultSessionTest {
         fun await() = assertTrue("Synthetic I/O reached gate", entered.await(5, TimeUnit.SECONDS))
     }
 
-    private class Storage : VaultSessionStorage(File("synthetic-unused.d2fa"), { true }) {
+    private class Storage : VaultSessionStorage(File("synthetic-unused-${System.nanoTime()}.d2fa"), { true }) {
         @Volatile var before: (String) -> Unit = {}
         @Volatile var after: (String) -> Unit = {}
         @Volatile var current = Vault.create().apply { addEntry("synthetic old", "synthetic", KEY) }
@@ -50,13 +50,13 @@ class VaultSessionTest {
         }
     }
 
-    private class Fixture(val storage: Storage = Storage()) : AutoCloseable {
+    private class Fixture(val storage: Storage = Storage(), stallDelay: Long = 30_000) : AutoCloseable {
         val ui = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
         val ioExecutor = Executors.newSingleThreadExecutor()
         val io = ioExecutor.asCoroutineDispatcher()
         val job = SupervisorJob()
         val scope = CoroutineScope(job + ui)
-        val session = VaultSession(scope, storage, io)
+        val session = VaultSession(scope, storage, io, stallDelay)
         fun <T> ui(action: VaultSession.() -> T): T = runBlocking { withContext(ui) { session.action() } }
         fun idle() = runBlocking {
             withTimeout(5_000) { while (ui { operationPending }) delay(1) }
@@ -143,16 +143,23 @@ class VaultSessionTest {
         }
     }
 
-    @Test fun errorsFromOldOperationsCannotReplaceLockedStateOrExposeDiagnostics() {
+    @Test fun lateReadErrorsPreserveLockedFeedbackAndSaveErrorsRequireReview() {
         for (kind in listOf("startup", "unlock", "setup", "inventory", "recovery", "add")) {
             Fixture().use { f ->
                 f.prepare(kind)
                 val gate = Gate()
+                var locked: Pair<Screen, String?>? = null
                 f.storage.before = { if (it == kind) { gate.block(); error("synthetic provider detail") } }
-                try { f.ui { start(kind) }; gate.await(); f.ui { lock(); assertClosed() } }
+                try { f.ui { start(kind) }; gate.await(); f.ui { lock(); assertClosed(); locked = currentScreen to errorMessage } }
                 finally { gate.release.countDown() }
                 f.idle()
-                f.ui { assertClosed(); assertFalse(errorMessage.orEmpty().contains("synthetic provider detail")) }
+                f.ui {
+                    assertClosed()
+                    if (kind in listOf("setup", "add")) {
+                        assertEquals(Screen.STORAGE_ERROR, currentScreen)
+                        assertEquals(VaultSession.LATE_SAVE_REVIEW, errorMessage)
+                    } else assertEquals(locked, currentScreen to errorMessage)
+                }
                 assertEquals(1, f.storage.current.entries.size)
             }
         }
@@ -165,7 +172,7 @@ class VaultSessionTest {
         occupied.await()
         val calls = f.storage.calls
         try {
-            f.ui { addAccount(); wizardState = DRAFT; submitAccount(); lock(); assertClosed() }
+            f.ui { addAccount(); wizardState = DRAFT; submitAccount(); lock(); assertClosed(); assertNull(errorMessage) }
         } finally { occupied.release.countDown() }
         f.idle()
         assertEquals(calls, f.storage.calls)
@@ -188,6 +195,12 @@ class VaultSessionTest {
                 // A new process/owner has no session or draft and must authenticate again.
                 Fixture(f.storage).use { restarted ->
                     restarted.ui { startup() }; restarted.idle()
+                    restarted.ui {
+                        assertClosed()
+                        assertEquals(Screen.STORAGE_ERROR, currentScreen)
+                        assertNotNull(errorMessage)
+                        startup()
+                    }; restarted.idle()
                     restarted.ui { assertClosed(); assertEquals(Screen.UNLOCK, currentScreen) }
                     restarted.unlock()
                     restarted.ui { assertEquals(if (kind == "add") 2 else 0, activeVault!!.entries.size) }
@@ -230,18 +243,66 @@ class VaultSessionTest {
             old.ui { dispose(); assertClosed() }
             old.job.cancel()
             Fixture(old.storage).use { replacement ->
+                val inspectEntered = CountDownLatch(1)
+                old.storage.before = { if (it == "startup") inspectEntered.countDown() }
                 replacement.ui {
                     startup()
                     assertTrue(operationPending)
                     assertNull(activeVault)
                 }
+                // FIFO executor barrier proves startup reached its suspension point.
+                // Without serialization, inspect would already have run before this.
+                val dispatched = CountDownLatch(1)
+                replacement.ioExecutor.submit { dispatched.countDown() }
+                assertTrue(dispatched.await(5, TimeUnit.SECONDS))
+                assertEquals(1L, inspectEntered.count)
                 gate.release.countDown()
                 replacement.idle()
+                assertEquals(0L, inspectEntered.count)
+                Fixture(old.storage).use { recreatedAgain ->
+                    recreatedAgain.ui { startup() }; recreatedAgain.idle()
+                    recreatedAgain.ui { assertEquals(Screen.STORAGE_ERROR, currentScreen); assertNotNull(errorMessage) }
+                }
+                replacement.ui {
+                    assertEquals(Screen.STORAGE_ERROR, currentScreen)
+                    assertNotNull(errorMessage)
+                    startup()
+                }; replacement.idle()
                 replacement.ui { assertEquals(Screen.UNLOCK, currentScreen); assertClosed() }
                 replacement.unlock()
                 replacement.ui { assertEquals(2, activeVault!!.entries.size) }
             }
         } finally { gate.release.countDown() }
+    }
+
+    @Test fun stalledWriteShowsRecoveryNoticeButNeverReleasesSerializationOrOpensASession() = Fixture(stallDelay = 0).use { f ->
+        f.unlock()
+        val gate = Gate()
+        f.storage.before = { if (it == "add") gate.block() }
+        try {
+            f.ui { addAccount(); wizardState = DRAFT; submitAccount() }; gate.await()
+            f.ui {
+                assertEquals(VaultSession.STALLED_OPERATION, operationNotice)
+                lock(); assertClosed()
+                assertTrue(operationPending)
+                assertEquals(VaultSession.STALLED_OPERATION, operationNotice)
+            }
+        } finally { gate.release.countDown() }
+        f.idle()
+        f.ui { assertClosed(); assertNull(operationNotice) }
+        assertEquals(2, f.storage.current.entries.size)
+    }
+
+    @Test fun recoverySuccessClearsEvenATrailingPasswordEdit() = Fixture().use { f ->
+        val gate = Gate()
+        f.storage.after = { if (it == "recovery") gate.block() }
+        try {
+            f.ui { passwordInput = PASSWORD; openRecovery(CANDIDATE) }; gate.await()
+            // Defense in depth for a queued editor callback; normal UI edits are disabled.
+            f.ui { passwordInput = "synthetic trailing edit" }
+        } finally { gate.release.countDown() }
+        f.idle()
+        f.ui { assertEquals(Screen.MAIN, currentScreen); assertEquals("", passwordInput) }
     }
 
     @Test fun wrongPasswordAndReadCancellationClearInputsWithoutASetupFallback() = Fixture().use { f ->

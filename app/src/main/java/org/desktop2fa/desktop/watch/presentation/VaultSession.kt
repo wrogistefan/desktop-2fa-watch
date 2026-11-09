@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -28,9 +29,17 @@ import org.desktop2fa.desktop.watch.vault.VaultFiles
 import org.desktop2fa.desktop.watch.vault.VaultSaveOutcome
 import org.desktop2fa.desktop.watch.vault.openRecoveryView
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
+
+/** Non-secret, process-local handoff; never a persisted receipt or active session. */
+internal class LateSessionNotice(val message: String)
 
 /** Synchronous storage boundary; the session always calls it on its I/O dispatcher. */
 internal open class VaultSessionStorage(private val file: File, private val clearCache: () -> Boolean) {
+    private val noticeKey = file.absoluteFile.toPath().normalize().toString()
+    fun recordNotice(message: String): LateSessionNotice = LateSessionNotice(message).also { notices[noticeKey] = it }
+    fun pendingNotice(): LateSessionNotice? = notices[noticeKey]
+    fun acknowledgeNotice(notice: LateSessionNotice) { notices.remove(noticeKey, notice) }
     open fun clearCredentials(): Boolean = clearCache()
     open fun inspect(): VaultStartup = resolveVaultStartup(file)
     open fun create(password: String): Vault = Vault.create().also { it.saveNew(file, password) }
@@ -39,10 +48,14 @@ internal open class VaultSessionStorage(private val file: File, private val clea
     open fun recover(candidate: RecoveryCandidate, password: String): RecoveryView =
         openRecoveryView(file, candidate, password)
     open fun add(snapshot: VaultData, draft: AccountWizardState, password: String): AccountSaveResult {
+        // The caller holds processOperations. Another live owner may have committed
+        // since this UI snapshot was captured; never replace that newer data.
+        if (Vault.load(file, password).data != snapshot) return AccountSaveResult(VaultSaveOutcome.NOT_COMMITTED)
         val candidate = Vault(snapshot)
         candidate.addEntry(draft.account, draft.issuer, draft.secret)
         return persistAccountCandidate(candidate, file, password)
     }
+    companion object { private val notices = ConcurrentHashMap<String, LateSessionNotice>() }
 }
 
 /** In-memory, composition-owned state. Call actions on the UI dispatcher only. */
@@ -50,6 +63,7 @@ internal class VaultSession(
     private val scope: CoroutineScope,
     private val storage: VaultSessionStorage,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val stallNoticeDelayMillis: Long = 30_000,
 ) {
     var activeVault by mutableStateOf<Vault?>(null)
         private set
@@ -67,6 +81,8 @@ internal class VaultSession(
         private set
     var clearingCache by mutableStateOf(false)
         private set
+    var operationNotice by mutableStateOf<String?>(null)
+        private set
     var recoverySource by mutableStateOf<String?>(null)
         private set
     var recoveryCandidates by mutableStateOf(emptyList<RecoveryCandidate>())
@@ -76,10 +92,11 @@ internal class VaultSession(
         private set
 
     private var sessionPassword = ""
+    private var presentedNotice: LateSessionNotice? = null
     @Volatile private var generation = Any()
     @Volatile private var disposed = false
     private var cleanupRequested = false
-    private var mutationInFlight = false
+    @Volatile private var mutationInFlight = false
 
     private fun owns(token: Any) = !disposed && generation === token
 
@@ -115,6 +132,7 @@ internal class VaultSession(
         clearSensitiveState()
         currentScreen = Screen.UNLOCK
         isLoading = false
+        operationNotice = null
     }
 
     private fun review(message: String) {
@@ -135,8 +153,15 @@ internal class VaultSession(
         val token = generation
         operationPending = true
         isLoading = loading
-        mutationInFlight = mutation
+        mutationInFlight = false
+        operationNotice = null
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            var completionNotice: LateSessionNotice? = null
+            // A notice is bounded; it never times out/unlocks a synchronous writer.
+            val notice = scope.launch {
+                delay(stallNoticeDelayMillis)
+                if (!disposed && operationPending) operationNotice = STALLED_OPERATION
+            }
             try {
                 val caller = currentCoroutineContext().job
                 val result = withContext(if (mutation) io + NonCancellable else io) {
@@ -145,11 +170,14 @@ internal class VaultSession(
                     processOperations.withLock {
                         caller.ensureActive()
                         if (!owns(token)) throw CancellationException("Session closed")
-                        work()
+                        mutationInFlight = mutation
+                        if (mutation) completionNotice = storage.recordNotice(LATE_SAVE_REVIEW)
+                        work().also { if (mutation) completionNotice = storage.recordNotice(late(it)) }
                     }
                 }
                 if (owns(token)) success(result)
                 else if (!disposed && mutation) review(late(result))
+                if (!disposed) completionNotice?.let { storage.acknowledgeNotice(it) }
             } catch (cancelled: CancellationException) {
                 if (owns(token)) {
                     generation = Any()
@@ -159,8 +187,11 @@ internal class VaultSession(
             } catch (caught: Exception) {
                 if (owns(token)) failure(caught)
                 else if (!disposed && mutation) review(LATE_SAVE_REVIEW)
+                if (!disposed) completionNotice?.let { storage.acknowledgeNotice(it) }
             } finally {
+                notice.cancel()
                 if (!disposed) {
+                    operationNotice = null
                     operationPending = false
                     isLoading = false
                     mutationInFlight = false
@@ -182,21 +213,29 @@ internal class VaultSession(
         })
     }
 
-    fun startup() = operation(work = {
-        // No credential reads or writes, even if cleanup fails or legacy preferences remain.
-        val cleared = try { storage.clearCredentials() }
-            catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { false }
-        storage.inspect() to cleared
-    }, success = { (startup, cleared) ->
-        clearSensitiveState()
-        currentScreen = startup.screen
-        errorMessage = startup.errorMessage
-        cacheWarning = credentialCleanupWarning(cleared)
-    }, failure = {
-        cacheWarning = credentialCleanupWarning(false)
-        review("Cannot check vault storage. Existing data has not been replaced.")
-    })
+    fun startup() {
+        if (disposed || operationPending) return
+        val acknowledged = presentedNotice
+        operation(work = {
+            // A fresh/recreated owner only presents this notice. A subsequent explicit
+            // Retry acknowledges it; merely assigning a screen is not user observation.
+            acknowledged?.let { storage.acknowledgeNotice(it) }
+            // No credential reads or writes, even if cleanup fails or legacy preferences remain.
+            val cleared = try { storage.clearCredentials() }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { false }
+            Triple(storage.inspect(), cleared, storage.pendingNotice())
+        }, success = { (startup, cleared, notice) ->
+            clearSensitiveState()
+            currentScreen = if (notice == null) startup.screen else Screen.STORAGE_ERROR
+            errorMessage = listOfNotNull(startup.errorMessage, notice?.message).joinToString("\n").ifBlank { null }
+            cacheWarning = credentialCleanupWarning(cleared)
+            presentedNotice = notice
+        }, failure = {
+            cacheWarning = credentialCleanupWarning(false)
+            review("Cannot check vault storage. Existing data has not been replaced.")
+        })
+    }
 
     fun setup() {
         if (operationPending || disposed) return
@@ -208,13 +247,14 @@ internal class VaultSession(
         }
         passwordInput = ""
         operation(mutation = true, work = { storage.create(supplied) }, success = {
+            passwordInput = ""
             activeVault = it
             sessionPassword = supplied
             currentScreen = Screen.MAIN
             errorMessage = null
         }, failure = {
             review("Could not create a new vault. Existing data has not been replaced.")
-        }, late = { "Vault was created while locked. Review storage and unlock with its password." })
+        }, late = { "Vault was created. Review storage and unlock with its password." })
     }
 
     fun unlock() {
@@ -223,6 +263,7 @@ internal class VaultSession(
         if (supplied.isBlank()) { errorMessage = "Password cannot be empty"; return }
         passwordInput = ""
         operation(work = { storage.unlock(supplied) }, success = {
+            passwordInput = ""
             activeVault = it
             sessionPassword = supplied
             currentScreen = Screen.MAIN
@@ -249,6 +290,7 @@ internal class VaultSession(
         val supplied = passwordInput
         passwordInput = ""
         operation(work = { storage.recover(candidate, supplied) }, success = {
+            passwordInput = ""
             activeVault = it.vault
             recoverySource = it.sourceLabel
             sessionPassword = ""
@@ -306,7 +348,7 @@ internal class VaultSession(
             }
         }, failure = { review(LATE_SAVE_REVIEW) }, late = {
             if (it.requiresReview) it.message
-            else "Account was saved while locked. Unlock and review before adding it again."
+            else "Account was saved. Unlock and review before adding it again."
         })
     }
 
@@ -315,6 +357,7 @@ internal class VaultSession(
         // non-interruptible write is still finishing. This is process-local only;
         // the shared mutation/candidate API remains the separate #36 task.
         private val processOperations = Mutex()
+        const val STALLED_OPERATION = "Storage is still busy. You can lock now. If it does not finish, force stop and reopen the app or restart the watch. Do not clear app data; a write may have completed."
         const val LATE_SAVE_REVIEW = "A previous save may have changed storage. Review existing data before trying again."
     }
 }

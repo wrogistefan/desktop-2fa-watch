@@ -125,7 +125,7 @@ class VaultSessionDeviceTest {
         }
         scenario.onActivity {
             assertNull(it.currentSession!!.activeVault)
-            assertEquals("Account was saved while locked. Unlock and review before adding it again.", it.currentSession!!.errorMessage)
+            assertEquals("Account was saved. Unlock and review before adding it again.", it.currentSession!!.errorMessage)
             it.currentSession!!.startup()
         }
         waitClosed(scenario)
@@ -149,6 +149,42 @@ class VaultSessionDeviceTest {
             assertEquals("", it.currentSession!!.passwordInput)
         }
         assertArrayEquals(original, file.readBytes())
+    }
+
+    @Test fun committedWriteAfterDisposalHandsReviewToRecreatedOwnersUntilExplicitRetry() = withVault { scenario, file ->
+        unlock(scenario)
+        val gate = Gate()
+        try {
+            scenario.onActivity {
+                it.afterIo = { name -> if (name == "add") gate.block() }
+                it.currentSession!!.apply {
+                    addAccount()
+                    wizardState = AccountWizardState(AccountStep.SECRET, "synthetic", "synthetic new", KEY)
+                    submitAccount()
+                }
+            }
+            gate.await()
+            scenario.recreate()
+        } finally { gate.release.countDown() }
+        fun waitReview() {
+            compose.waitUntil(60_000) {
+                var ready = false
+                scenario.onActivity { ready = it.currentSession?.let { s -> !s.operationPending && s.currentScreen == Screen.STORAGE_ERROR } == true }
+                ready
+            }
+            compose.onAllNodes(code, useUnmergedTree = true).assertCountEquals(0)
+            scenario.onActivity {
+                assertNull(it.currentSession!!.activeVault)
+                assertEquals("Account was saved. Unlock and review before adding it again.", it.currentSession!!.errorMessage)
+            }
+        }
+        waitReview()
+        scenario.recreate()
+        waitReview() // Merely displaying/disposing a notice must not consume it.
+        scenario.onActivity { it.currentSession!!.startup() }
+        waitClosed(scenario)
+        unlock(scenario)
+        assertEquals(2, Vault.load(file, PASSWORD).entries.size)
     }
 
     companion object {

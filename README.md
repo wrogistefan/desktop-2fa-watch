@@ -27,7 +27,7 @@ guided account setup. Watch import/export and synchronization are not available 
 | ⌚ **Wear OS Interface** | Native scrolling list with rounded account cards |
 | ➕ **Manual Account Setup** | Three-step wizard with one field per screen, secret visibility, and Base32 validation |
 | 🔓 **Password-only Sessions** | Enter the vault password for every session; Lock clears active access immediately |
-| 🔒 **Manual Lock** | Leave the account view and request removal of the remembered password |
+| 🔒 **Manual Lock** | Immediately clear active access and attempt cleanup of leftover legacy credentials |
 | 📴 **Offline Operation** | No registration, cloud service, or phone companion required |
 | 📁 **Versioned Vault** | `.d2fa` v1 layout and cryptographic parameters match the desktop implementation |
 

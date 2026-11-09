@@ -56,8 +56,22 @@ existing atomic-save protocol in an I/O non-cancellable section; cancelling its
 caller cannot undo a known commit. Lock does not wait for it to hide codes.
 Further actions wait for the pending operation/credential cleanup. A late save
 requires storage review with its actual known/uncertain result and manual unlock,
-never a blind automatic retry. Recreated processes never recover an active
+never a blind automatic retry. A non-secret, file-scoped in-memory completion
+notice hands a disposed owner's outcome to a new Activity and survives further
+Activity recreation until explicit storage Retry acknowledges it. Notice identity
+prevents an old callback from clearing a newer outcome. No receipt is persisted;
+whole-process death loses this metadata, so inspect committed accounts after a
+restart before manually retrying. Recreated processes never recover an active
 session from saved state or cached credentials.
+
+Manual additions reload under the session I/O mutex and reject a snapshot that
+differs from committed data before saving. This prevents another live owner's
+addition from being overwritten; #36 still defines the shared batch mutation API.
+The extra authenticated read keeps v1 KDF costs and needs physical-watch
+measurement in #30. After 30 seconds of pending I/O the UI offers a recovery
+notice. It never releases the writer mutex on timeout: if I/O cannot finish,
+force stop/reopen the app or restart the watch without clearing app data, then
+inspect storage. A completed write cannot be assumed rolled back.
 
 There is still no inactivity/background lock or guaranteed memory zeroization.
 Returning to the watch face is not an explicit lock. Strings captured by running
