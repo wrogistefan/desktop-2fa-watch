@@ -99,6 +99,18 @@ when main and backup files are absent) or by the passing Android 17 cleanup
 cases with absent legacy stores. No check-then-delete workaround or false-success
 fallback is added; actual false/exception outcomes remain failures.
 
+The #23 review also correctly requested that backup expectations not derive from
+the current cleanup list. Both the packaged-policy test and the JVM cleanup
+contract now spell out all three historical names independently. After this
+test-only follow-up, `:app:testDebugUnitTest --tests
+org.desktop2fa.desktop.watch.vault.PasswordCacheTest --stacktrace` passed all
+7 cases, and `:app:assembleDebugAndroidTest --stacktrace` passed. A targeted
+`:app:connectedDebugAndroidTest` run with
+`-Pandroid.testInstrumentationRunnerArguments.class=org.desktop2fa.desktop.watch.vault.KeystoreLossDeviceTest#packagedBackupPoliciesExcludeEveryKnownCredentialStore`
+and `--no-configuration-cache --stacktrace` passed 1/1 on the same disposable
+AVD. The complete 18/18 run above predates only this independent-name assertion
+and documentation changes; it is not misrepresented as a second full rerun.
+
 No physical watch, authentication-bound key invalidation, device-lock policy,
 inactivity/background lock, IME or process-death session verification is claimed
 here. Those integrated device scenarios remain #37; this report is not a security

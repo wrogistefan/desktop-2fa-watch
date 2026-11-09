@@ -61,7 +61,11 @@ class PasswordCacheTest {
             true
         })
         assertTrue(cache.clear())
-        assertEquals(PasswordCache.STORE_NAMES, attempted)
+        assertEquals(listOf(
+            "desktop_2fa_secure_prefs",
+            "desktop_2fa_fallback_prefs",
+            "desktop_2fa_secure_prefs_fallback",
+        ), attempted)
     }
 
     @Test

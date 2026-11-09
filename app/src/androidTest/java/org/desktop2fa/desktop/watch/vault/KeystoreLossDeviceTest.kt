@@ -15,7 +15,13 @@ class KeystoreLossDeviceTest {
     @Test
     fun packagedBackupPoliciesExcludeEveryKnownCredentialStore() {
         val resources = InstrumentationRegistry.getInstrumentation().targetContext.resources
-        val expected = PasswordCache.STORE_NAMES.map { "$it.xml" }.toSet()
+        // Historical filenames are a compatibility contract, independent of the
+        // current cleanup list: dropping a name must not weaken this assertion.
+        val expected = setOf(
+            "desktop_2fa_secure_prefs.xml",
+            "desktop_2fa_fallback_prefs.xml",
+            "desktop_2fa_secure_prefs_fallback.xml",
+        )
         val groups = mutableMapOf<String, MutableSet<String>>()
         for (resource in listOf(R.xml.backup_rules, R.xml.data_extraction_rules)) {
             resources.getXml(resource).use { parser ->
