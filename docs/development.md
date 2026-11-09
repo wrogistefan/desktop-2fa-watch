@@ -77,7 +77,7 @@ now covers all 18 RFC 6238 eight-digit results, their 6/7-digit suffixes and 162
 independent Python-generated boundary/parameter cases. Controlled countdown tests
 cover period rollover without sleeps; unsupported digits including 10 are rejected.
 Fixture provenance is in `app/src/test/resources/totp/README.md`. Full vault
-interoperability remains separate (#28/#29); JVM vectors do not prove device lifecycle.
+interoperability uses the pinned #28/#29 runner below; JVM vectors do not prove device lifecycle.
 
 Bounded-read regressions cover the real 10 MiB limit, overflow sentinels, small
 chunks, read failures and guaranteed stream closure. An internal opener seam
@@ -145,6 +145,36 @@ key-invalidation and lifecycle/IME pass remains separate from those tests.
 GitHub Actions runs unit tests and builds the debug APK on `main`, `feature/*`,
 and pull requests to `main`. Its setup step selects Java 17; the repository's
 daemon criteria separately request Java 25 through toolchain provisioning.
+
+## Actual pinned Desktop interoperability (#29)
+
+Use the source checkout and Python 3.13.11 environment described in the
+[corpus README](../app/src/test/resources/interop/README.md), then run:
+
+```powershell
+.\build\interop-venv\Scripts\python.exe tools/interop/run.py --desktop-source build/desktop-source
+```
+
+The runner verifies all source/dependency pins and fixture hashes, enables the
+actual Python bridge and invokes the repository Wrapper's full
+`:app:testDebugUnitTest :app:assembleDebug --stacktrace` tasks. CI installs the
+same pinned Python/dependencies and checks out the exact Desktop commit; it does
+not need a live Desktop application. Wrapper download timeout is 60 seconds
+(formerly 10) after observed external CI timeouts; distribution URL/checksum and
+cryptographic settings are unchanged. This does not guarantee remote service availability.
+
+Plain Wrapper JVM tests still verify corpus hashes, Kotlin fields/fixed-time
+codes and negative-case preservation. The single actual-Python method is skipped
+when the explicit runner environment is absent. The runner reads JUnit XML and
+fails if that method was missing/skipped/failed. Gradle test inputs include bridge
+mode/source/Python paths and its scripts/pins, preventing reuse of a JVM-only
+result when enabling/changing the bridge. Python/provider validation errors are
+reported by type only; code/key/password values are omitted from assertions/logs.
+
+Both round-trip directions operate only in disposable synthetic directories;
+the corpus is immutable. This is file/semantic compatibility evidence, not an
+account-package implementation, a physical-watch check or an independent audit.
+See [execution evidence](testing/interop-regressions.md).
 
 ## Install and launch
 

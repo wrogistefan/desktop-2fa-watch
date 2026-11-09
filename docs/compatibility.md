@@ -5,7 +5,8 @@ The current reference is Desktop-2FA **v0.10.0**, commit
 This supersedes the old f2baf74 source comparison. The
 [immutable synthetic corpus](../app/src/test/resources/interop/README.md) is
 generated with that release's actual models, Vault writer and TOTP generator.
-Cross-language execution remains D2 #29; this is not compatibility certification.
+The D2 #29 runner executes both implementations against that corpus; see
+[execution evidence](testing/interop-regressions.md). This is not compatibility certification.
 
 ## Current parity
 
@@ -17,16 +18,24 @@ Cross-language execution remains D2 #29; this is not compatibility certification
 | JSON | Same `version`, `entries`, and TOTP field names, including `account_name` |
 | TOTP | Both implement SHA1/SHA256/SHA512 and parameterized digits/periods |
 | Watch transfer UI | Not implemented |
-| Automated Python ↔ Kotlin round trip | Not implemented |
+| Automated Python ↔ Kotlin round trip | Pinned synthetic runner; see execution evidence below |
 
 For valid v1 data, the implementations are expected to read each other's
 encrypted files given the correct password. The application version 0.2.0 does
 not introduce a new vault format or require migration from watch 0.1.0.
 
-The emulator regression test loaded a Python-generated encrypted fixture with
+The historical emulator regression test loaded a Python-generated encrypted fixture with
 synthetic duplicate and unnamed entries. It exercised the layout and crypto
 primitives, but did not run the desktop `Vault` implementation or verify a
 complete desktop → watch → desktop round trip.
+
+The current runner separately loads the pinned Python fixture in Kotlin, saves
+it with Kotlin and reads it using the actual pinned Desktop Vault. It also
+creates a fresh Kotlin vault, loads/re-saves it in Python and loads that result
+in Kotlin. All fields, order, duplicate/null names and original key text must
+match; codes are compared at fixed timestamps using both generators. Negative
+cases follow the manifest's explicit differences and require unchanged source
+hashes. Detailed commands/results and limits are in the execution report.
 
 ## Differences that matter
 
@@ -60,7 +69,7 @@ and targeted synthetic Kotlin regression coverage. One immutable Python-written
 v0.8.3 fixture from that commit is hash-checked and loaded/re-saved to verify all
 fields, Unicode labels/password and nullable names. It is not full current
 Python-library interoperability. The larger pinned corpus is now in #28;
-cross-language execution remains #29.
+cross-language execution is provided by the #29 runner.
 
 Watch requires non-empty ASCII Base32 and canonical trailing bits at every vault
 boundary. It accepts ASCII space plus U+0009–U+000D formatting whitespace; pinned
@@ -99,8 +108,8 @@ separate supported copy; no automatic Watch repair or lossy conversion is added.
 ## Import/export plan
 
 The D1 corpus records explicit supported/rejected cases and complete fields,
-including historical unsupported keys and the missing-version difference. Its
-hashes/provenance do not by themselves prove a Python↔Kotlin round trip. Binary
+including historical unsupported keys and the missing-version difference. D1
+hashes/provenance alone do not prove a round trip; D2 executes the libraries. Binary
 vault compatibility and the future additive account-package contract are
 separate: identical internal vault storage is not required for selected-account
 transfer. This work implements no import/export UI and does not close #10.

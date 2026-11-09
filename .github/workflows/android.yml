@@ -23,8 +23,21 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest --stacktrace
+      - name: Set up pinned Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.11'
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Checkout pinned Desktop source for synthetic interoperability
+        uses: actions/checkout@v4
+        with:
+          repository: wrogistefan/desktop-2fa
+          ref: 7d1089d6bee0f3f82678ca8a13988c742840fba0
+          path: build/desktop-source
+          persist-credentials: false
+
+      - name: Install pinned interoperability dependencies
+        run: python -m pip install -r tools/interop/requirements.txt
+
+      - name: Run full JVM, actual Python interoperability and debug APK checks
+        run: python tools/interop/run.py --desktop-source build/desktop-source

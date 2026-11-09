@@ -86,3 +86,6 @@ generation matched **23 artifacts including the manifest byte for byte**.
 `verify_fixtures.py` verified 22 hashes, all 23 cases and both bounded-size recipes.
 No Kotlin runtime change, Gradle/device/round-trip run or security audit is
 claimed for D1. Original historical fixtures elsewhere remain unchanged.
+
+Actual cross-language execution added in D2 is recorded separately in the
+[interoperability report](../../../../../docs/testing/interop-regressions.md).

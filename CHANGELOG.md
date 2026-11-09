@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🧪 Testing
 
+- Add a pinned actual Desktop Python ↔ Kotlin runner for fields, ordering,
+  duplicate/null names, fixed-time TOTP codes, safe rejection and both round-trip
+  directions; CI uses pinned Python/dependencies and verifies the bridge ran (#29).
+
 - Add immutable public synthetic fixtures pinned to Desktop v0.10.0 and full
   commit, source/dependency hashes, deterministic reproduction and explicit
   historical/negative/size-limit expectations. Cross-language execution remains
