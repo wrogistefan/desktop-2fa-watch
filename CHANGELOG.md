@@ -58,6 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- Reconcile actual window focus before input and I/O publication after Activity
+  recreation, so an explicitly reopened vault can display codes again. Keep
+  pause/focus-loss hiding and all session-lock triggers (#37).
+
 - Invalidate session ownership before Lock/disposal, reject late I/O publication,
   clear sensitive drafts, serialize old/new Activity I/O, and require storage
   review for writes completed after locking. Add Lock during loading/saving (#25).
