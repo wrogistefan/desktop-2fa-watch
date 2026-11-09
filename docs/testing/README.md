@@ -7,6 +7,9 @@ The [pinned interoperability corpus](../../app/src/test/resources/interop/README
 records D1 #28 source/dependency provenance, synthetic fixtures and hash checks.
 It does not claim a cross-language/device run; that execution is D2 #29.
 
+The [interoperability execution report](interop-regressions.md) separately records
+D2 actual pinned Python/Kotlin fields, codes, both directions and rejection checks.
+
 The [session ownership report](session-regressions.md) records #25’s password-only
 sessions, late I/O and synthetic Activity/process recreation checks. The
 [lifecycle report](lifecycle-regressions.md) records #26 automatic locking and
