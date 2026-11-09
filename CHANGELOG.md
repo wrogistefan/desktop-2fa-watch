@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Changed
 
+- Request secure-window capture protection on every app screen and disable
+  recents screenshots on API 33+. Document capture/accessibility tradeoffs and
+  independently unverified OEM/ambient behavior (#27).
+
 - Resolve exact account names before issuer fallback; reject ambiguous lookup or
   removal without changing data, independent of entry order. Preserve historical
   duplicate/null records without an ID or format migration (#35).
