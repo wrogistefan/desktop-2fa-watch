@@ -107,6 +107,16 @@ separate supported copy; no automatic Watch repair or lossy conversion is added.
 
 ## Import/export plan
 
+The [selected-account package v1 proposal](transfer/package-v1.md) is a bounded,
+additive application contract, separate from D2FA v1 and any transport. It carries
+only user-selected explicit parameters, preserves nullable names and requires
+Watch preview/consent before one batch commit. It cannot replace the local vault
+or exchange vault passwords. Unsupported packages leave both vaults unchanged.
+The proposal adds no implementation/network permission. Collision/retry,
+receiver states and authenticated transport remain E2–E4 decisions; approval and
+all required evidence are gates before any later implementation. This direction
+does not close or redefine [whole-vault issue #10](https://github.com/wrogistefan/desktop-2fa-watch/issues/10).
+
 The D1 corpus records explicit supported/rejected cases and complete fields,
 including historical unsupported keys and the missing-version difference. D1
 hashes/provenance alone do not prove a round trip; D2 executes the libraries. Binary

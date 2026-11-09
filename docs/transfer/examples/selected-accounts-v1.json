@@ -1,0 +1,23 @@
+{
+  "format": "desktop-2fa.selected-accounts",
+  "version": 1,
+  "operation_id": "2f74c8e4-7887-4a26-9a68-bc4ab63d9281",
+  "accounts": [
+    {
+      "issuer": "Synthetic Żółw",
+      "account_name": "synthetic@example.invalid",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "algorithm": "SHA1",
+      "digits": 6,
+      "period": 30
+    },
+    {
+      "issuer": null,
+      "account_name": null,
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "algorithm": "SHA256",
+      "digits": 8,
+      "period": 60
+    }
+  ]
+}
