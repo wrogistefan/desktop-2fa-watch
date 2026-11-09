@@ -1,6 +1,9 @@
 # Transfer threats and local transport options (#34 / E4)
 
-Status: **documentation-only recommendation; owner transport decision pending**.
+Status: **deferred to the owner's separate communication/transfer design thread**
+(owner clarification, 2026-11-09). The owner already has a model in another
+document. Wi-Fi/TLS below is an unapproved comparison proposal, not the selected
+transport; do not implement it or request that choice to finish local foundations.
 No network permission, dependency, service, socket, pairing or receiver is added.
 The complete authentication profile and physical/protocol evidence remain gates
 before a separately authorized implementation. This is not a security audit.
@@ -124,10 +127,10 @@ automatic discovery loop, analytics or secret upload is authorized by this desig
 
 ## Decisions and readiness
 
-Owner decision requested: adopt **direct local Wi-Fi/LAN + TLS** as the first
-transport direction, accepting a shared-network/firewall/picker cost, or keep
-transport open for a BLE feasibility phase first. No phone/cloud bridge is
-silently added under either choice.
+The owner explicitly deferred communication and transfer to a separate thread
+using their existing model. No transport choice is requested here. Retain this
+comparison only as preparatory material for that later review; neither direct
+Wi-Fi/TLS nor BLE, phone/cloud routing or an authentication profile is approved.
 
 Before first transfer, all of the following remain required: owner-approved
 E1–E4 choices; a concrete reviewed two-device authentication/pairing/library
