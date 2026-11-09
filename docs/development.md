@@ -148,6 +148,11 @@ No root or bootloader unlock is needed. Disable debugging after testing.
 
 ## Manual UI checklist
 
+Cache/Keystore loss and immediate Lock checks for #23 are described in the
+[focused regression report](testing/cache-outcome-regressions.md). The debug
+UI host uses only validated synthetic cache directories and prefixed preferences;
+key-loss tests delete only their own randomly named Keystore alias.
+
 The [accepted session/cache decision (#24)](session-policy.md) includes the
 synthetic state/event table and future implementation/device gates. It removes
 cache-based unlock and specifies a 60-second inactivity policy, with fullscreen

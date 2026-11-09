@@ -1,5 +1,9 @@
 # UI Test Reports
 
+The [cache outcome and immediate Lock report](cache-outcome-regressions.md)
+records #23's isolated Keystore-loss and production-screen checks. It does not
+replace the later integrated lifecycle/physical-watch checks in #37.
+
 The reports record functional checks using synthetic vaults, including their
 scope, input method, screenshots, and limitations. They complement the JVM unit
 suite and do not replace an automated UI suite or a usability study.

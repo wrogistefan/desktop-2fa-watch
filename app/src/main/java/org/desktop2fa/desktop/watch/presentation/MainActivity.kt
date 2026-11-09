@@ -1,6 +1,7 @@
 package org.desktop2fa.desktop.watch.presentation
 
 import android.os.Bundle
+import android.content.Context
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -57,15 +58,19 @@ import org.desktop2fa.desktop.watch.vault.VaultFiles
 import org.desktop2fa.desktop.watch.vault.RecoveryCandidate
 import org.desktop2fa.desktop.watch.vault.openRecoveryView
 import org.desktop2fa.desktop.watch.vault.VaultSaveOutcome
+import org.desktop2fa.desktop.watch.vault.PasswordCacheRead
 import java.io.File
 
-class MainActivity : ComponentActivity() {
+open class MainActivity : ComponentActivity() {
+    /** Debug test hosts can isolate storage; production always uses the application context. */
+    protected open fun vaultContext(): Context = applicationContext
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.decorView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
 
         setContent {
-            val context = applicationContext
+            val context = vaultContext()
             val vaultFile = remember { File(context.filesDir, "vault.d2fa") }
             val coroutineScope = rememberCoroutineScope()
 
@@ -89,14 +94,22 @@ class MainActivity : ComponentActivity() {
             // Asynchronous startup check off main thread
             LaunchedEffect(startupAttempt) {
                 withContext(Dispatchers.IO) {
+                    var cacheUnavailable = false
                     val startup = resolveVaultStartup(vaultFile, readCachedPassword = {
-                        VaultSecurityManager.getPassword(context)
+                        when (val cached = VaultSecurityManager.readPassword(context)) {
+                            is PasswordCacheRead.Available -> cached.password
+                            PasswordCacheRead.Missing -> null
+                            PasswordCacheRead.Unavailable -> { cacheUnavailable = true; null }
+                        }
                     })
                     withContext(Dispatchers.Main) {
                         activeVault = startup.vault
                         recoverySource = null
                         currentScreen = startup.screen
                         errorMessage = startup.errorMessage
+                        cacheWarning = if (cacheUnavailable) {
+                            "Remembered password is unavailable. Unlock with your vault password; existing data has not been reset."
+                        } else null
                         isLoading = false
                     }
                 }

@@ -11,9 +11,9 @@ import java.security.GeneralSecurityException
 object VaultSecurityManager {
     private const val KEY_VAULT_PASSWORD = "vault_password"
 
-    private fun cache(context: Context) = PasswordCache(
+    internal fun cache(context: Context, keyAlias: String = MasterKey.DEFAULT_MASTER_KEY_ALIAS) = PasswordCache(
         openStore = {
-            createEncryptedPreferences(context)?.let { prefs ->
+            createEncryptedPreferences(context, keyAlias)?.let { prefs ->
                 object : PasswordStore {
                     override fun read(): String? = prefs.getString(KEY_VAULT_PASSWORD, null)
 
@@ -26,9 +26,9 @@ object VaultSecurityManager {
         deleteStore = { name -> context.deleteSharedPreferences(name) },
     )
 
-    private fun createEncryptedPreferences(context: Context): SharedPreferences? {
+    private fun createEncryptedPreferences(context: Context, keyAlias: String): SharedPreferences? {
         return try {
-            val masterKey = MasterKey.Builder(context)
+            val masterKey = MasterKey.Builder(context, keyAlias)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build()
 
@@ -56,8 +56,11 @@ object VaultSecurityManager {
     }
 
     @Synchronized
+    internal fun readPassword(context: Context): PasswordCacheRead = cache(context).readResult()
+
+    @Synchronized
     fun getPassword(context: Context): String? {
-        return cache(context).read()
+        return (readPassword(context) as? PasswordCacheRead.Available)?.password
     }
 
     @Synchronized
