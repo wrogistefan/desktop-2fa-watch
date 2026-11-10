@@ -68,8 +68,7 @@ built debug and instrumentation APKs successfully with the repository Wrapper:
 .\gradlew.bat :app:connectedDebugAndroidTest '-Pandroid.testInstrumentationRunnerArguments.class=org.desktop2fa.desktop.watch.presentation.ScreenCaptureDeviceTest' --no-configuration-cache --stacktrace
 ```
 
-Integration with the later C5 focus correction and full JVM/actual-Python checks
-is pending; this initial capture pass alone is not that integration evidence.
+Integration verification on 2026-11-10 at `1543705`: the full interop runner completed successfully, verifying 22 artifact hashes and 23 corpus cases, all 343 JVM tests (zero failures/errors/skips), the actual pinned Python bridge and debug APK assembly. Gradle reused up-to-date task outputs on the confirming run. Capture and native fullscreen IME regressions each passed 1/1 after integration with the C5 focus correction; these remain emulator-only observations.
 No test has yet established OEM recents, casting, secure displays, native IME
 capture behavior, accessibility compatibility or physical ambient behavior.
 
