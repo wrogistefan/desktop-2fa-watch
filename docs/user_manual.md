@@ -179,6 +179,11 @@ available as an app workflow.
 
 ## Troubleshooting
 
+App screenshots, screen recording and screen sharing may appear blank because
+the app requests secure-window protection. This does not cover a keyboard's
+separate fullscreen window or physical observation. Use synthetic examples when
+reporting UI problems; never attach real account keys, passwords or live codes.
+
 | Symptom | What to check |
 |---------|---------------|
 | Loading takes time | Argon2id uses 128 MiB per derivation; performance varies by device |

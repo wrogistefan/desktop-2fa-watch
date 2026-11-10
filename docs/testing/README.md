@@ -4,6 +4,9 @@ The [dated Wear integration report/checklist](wear-integration-2026-11-09.md)
 records the current #37 emulator pass and explicitly unperformed physical phase.
 It does not close the hardware gate or turn older device reports into new evidence.
 
+The [screen-exposure assessment](screen-exposure-2026-11-09.md) distinguishes
+secure-window protection from task previews and unverified physical ambient behavior.
+
 The [lookup report](lookup-regressions.md) records #35 exact-name precedence,
 ambiguity-safe removal and reordered/null/duplicate JVM regressions.
 

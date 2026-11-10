@@ -98,6 +98,12 @@ wall time. Physical-watch/OEM IME integration still needs #37 evidence; see the
 
 ## Validation status
 
+All app screens request secure-window capture protection; API 33+ also disables
+task screenshots. Screenshots, recording or remote visual support may show a
+blank app. Normal input and accessibility semantics remain available. This does
+not cover the keyboard's separate window or guarantee ambient redaction. See
+the [assessment and pending device matrix](testing/screen-exposure-2026-11-09.md).
+
 Manual testing on the Large Round emulator covered duplicate and unnamed
 entries, identical secrets, scrolling, countdown/code changes, empty state,
 opening the account form, and locking. Screenshots in the README use synthetic
