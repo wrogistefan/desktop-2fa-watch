@@ -282,6 +282,10 @@ used the temporary IME workaround described above.
 
 ## Versioning
 
+The opt-in [physical KDF protocol](testing/kdf-measurement-protocol.md) provides
+synthetic measurement commands and limits for the final device phase (#30).
+Do not treat an emulator harness check as a physical latency/memory result.
+
 The MVP increments app SemVer from 0.1.0 to **0.2.0** and Android `versionCode`
 from 2 to **3** in `app/build.gradle.kts`. Feature additions justify the minor
 increment while the project is pre-1.0. This is not a declaration of a stable

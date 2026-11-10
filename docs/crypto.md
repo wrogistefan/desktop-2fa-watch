@@ -1,5 +1,10 @@
 # Cryptographic Design
 
+Physical v1 KDF measurement remains #30. The opt-in
+[measurement protocol](testing/kdf-measurement-protocol.md) prepares synthetic
+unlock/manual/batch timing and memory evidence without changing parameters;
+physical results are deferred to the final roadmap device phase.
+
 This document describes the 0.2.0 implementation. It is not an independent
 audit, certification, or promise of compatibility with all future formats.
 

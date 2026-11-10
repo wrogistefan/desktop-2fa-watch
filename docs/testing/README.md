@@ -1,5 +1,8 @@
 # UI Test Reports
 
+The [KDF measurement protocol](kdf-measurement-protocol.md) prepares the opt-in
+synthetic harness; actual physical measurements remain the final #30 gate.
+
 The [dated Wear integration report/checklist](wear-integration-2026-11-09.md)
 records the current #37 emulator pass and explicitly unperformed physical phase.
 It does not close the hardware gate or turn older device reports into new evidence.
