@@ -1,5 +1,9 @@
 # UI Test Reports
 
+The [physical SM-L705F report](physical-watch-2026-11-11.md) records current
+synthetic device runs, initial fixture failures and remaining manual/measurement
+checks. It does not close the physical roadmap gates.
+
 The [KDF measurement protocol](kdf-measurement-protocol.md) prepares the opt-in
 synthetic harness; actual physical measurements remain the final #30 gate.
 

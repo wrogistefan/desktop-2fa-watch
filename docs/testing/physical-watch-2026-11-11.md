@@ -23,7 +23,7 @@ Wireless ADB repeatedly lost foreground runner output. Incomplete invocations
 are not passing evidence. One prematurely started invocation was canceled;
 clean sequential runs supersede it. On-device /data/local/tmp reports retain
 synthetic instrumentation output across host connection interruptions.
-Full session class is in progress. KDF, physical OEM keyboard, actual lock,
+At that checkpoint the full session class was incomplete. Physical OEM keyboard, actual lock,
 ambient, recents, accessibility and other required scenarios are not yet passed.
 Keystore alias deletion checks do not establish hardware key invalidation;
 packaged backup XML checks do not establish actual OS backup behavior.
@@ -51,7 +51,7 @@ reported missing Compose hierarchies. A third case was interrupted by the
 operator before completion. The Watch was repeatedly observed Dozing.
 No causal conclusion or passing full-suite claim is made. A standalone
 recreation case passed; this does not supersede the failures above.
-Remaining physical scenarios and cleanup audit are still pending.
+Corrected reruns are recorded below; remaining physical scenarios and cleanup audit are still pending.
 ## Corrected debug-host run
 
 Debug-only opt-in syntheticKeepScreenOn preserves foreground test conditions
@@ -64,3 +64,21 @@ Together with capture/Keystore/ImmediateLock: 15 passed, 1 skipped.
 The test fullscreen IME is not the physical Samsung/OEM keyboard assessment.
 JVM and debug assembly passed after the initial host patch; final lifecycle-only
 instrumentation update also built both APKs successfully.
+
+## Second physical KDF run
+
+Source b95e02aa579d271eb530efe300403b18e38ca48f (foreground debug-fixture
+changes; benchmark workload unchanged). Start: battery 69%, 31.8 C, not charging;
+MemAvailable 557424 KiB and /data available 19291968 KiB. End-condition snapshots
+were taken during/cooling after the run, not at an exact synchronized endpoint.
+Passed 1/1, 18 samples, completed=true, cleanupDeferredForPendingIo=false.
+[Run 2 JSON](physical-watch-2026-11-11-kdf-run2.json).
+First-process unlock 13.001 s; warm unlock 11.521–11.679 s (N=5);
+manual save 34.530–34.992 s (N=6); batch commit 34.642–34.903 s (N=6).
+Three further full cooled invocations are still required.
+
+An opt-in ManualObservationDeviceTest prepares a public synthetic fixture through
+the real UI/session path for three minutes of human observation. Session and
+screen clocks remain normal. Its runner result means host execution only;
+ambient/recents/OEM observations require the owner's recorded answers. It skips
+without d2faManualObservation=synthetic. Pending writes defer fixture cleanup.
