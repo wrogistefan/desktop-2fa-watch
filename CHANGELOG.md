@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-11
+
+Local foundations for future transfer; no transport or receiver is implemented. Vault v1 and KDF parameters are unchanged. Keep the existing vault password: remembered-password auto-unlock has been removed. No automatic vault migration is required. Roadmap #13 and outstanding device/platform checks remain open.
+
 ### ✨ Changed
 
 - Request secure-window capture protection on every app screen and disable
@@ -41,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with confirmation on its card.
 
 ### 🧪 Testing
+
+- Record physical SM-L705F evidence: 16 core cases passed and one emulator-only PIN case skipped; five KDF runs (90 samples), native Samsung keyboard, device Lock, recents and AOD observations. Include real-save/Lock record preservation and a bounded partial-write failure model. Actual OOM/full-volume and broader platform coverage remain unverified (#64).
 
 - Record 15 integrated Wear emulator regressions for lock, actual owned-key loss,
   native fullscreen IME, late I/O and process termination. Keep the unperformed
