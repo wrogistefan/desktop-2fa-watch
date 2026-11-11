@@ -6,15 +6,13 @@ Compose for Wear OS, with a local encrypted vault designed around the
 
 🌐 **Project website:** [desktop-2fa.org](https://desktop-2fa.org/)
 
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![Status](https://img.shields.io/badge/status-MVP-orange)
 ![Minimum API](https://img.shields.io/badge/Android_API-30%2B-green)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![Build](https://github.com/wrogistefan/desktop-2fa-watch/actions/workflows/android.yml/badge.svg)](https://github.com/wrogistefan/desktop-2fa-watch/actions)
 
-The **v0.2.0** tag marks the standalone MVP: creating a vault, adding accounts
-manually, viewing live codes, and locking the vault. Current development adds
-guided account setup. Watch import/export and synchronization are not available yet.
+The **v0.3.0** tag marks the local foundations for future selected-account transfer: guided account setup, password-only sessions, automatic locking, safer storage and pinned interoperability tests. Physical evidence and remaining limits are recorded in the [device report](docs/testing/physical-watch-2026-11-11.md). Transfer, import/export and synchronization are not implemented; the communication model and outstanding roadmap checks remain separate work.
 
 ---
 

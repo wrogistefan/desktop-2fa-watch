@@ -291,8 +291,15 @@ The opt-in [physical KDF protocol](testing/kdf-measurement-protocol.md) provides
 synthetic measurement commands and limits for the final device phase (#30).
 Do not treat an emulator harness check as a physical latency/memory result.
 
-The MVP increments app SemVer from 0.1.0 to **0.2.0** and Android `versionCode`
-from 2 to **3** in `app/build.gradle.kts`. Feature additions justify the minor
-increment while the project is pre-1.0. This is not a declaration of a stable
-1.0 API or a published store release. The v0.2.0 tag marks the MVP baseline; subsequent wizard work is documented
-under Unreleased in the changelog. Vault header/payload versions remain **1**.
+Version **0.3.0** uses Android `versionCode` **4** in `app/build.gradle.kts`.
+The minor increment follows the project's pre-1.0 SemVer convention: the account
+wizard, password-only sessions, automatic locking and storage/recovery behavior
+extend the v0.2.0 MVP (code 3). The annotated v0.3.0 tag marks these local
+foundations; it is not a Play Store publication or transfer-protocol approval.
+Vault header/payload versions stay **1** and KDF parameters are unchanged; no
+automatic vault migration is required. Existing users must retain their vault
+password because remembered-password auto-unlock has been removed.
+
+Physical results and unverified scenarios are in the
+[device report](testing/physical-watch-2026-11-11.md). Roadmap #13 remains open;
+communication and the remaining gates are separate work.
