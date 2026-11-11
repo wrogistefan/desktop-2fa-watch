@@ -42,7 +42,7 @@ class VaultSessionProcessDeviceTest {
             val marker = File(directory, "session-result.txt")
             Files.deleteIfExists(marker.toPath())
             context.startActivity(Intent(context, SyntheticSessionProcessActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("syntheticDirectory", directory.name)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("syntheticKeepScreenOn", true).putExtra("syntheticDirectory", directory.name)
                 .putExtra("sessionStage", stage))
             val deadline = System.nanoTime() + 75_000_000_000L
             while (!marker.exists() && System.nanoTime() < deadline) Thread.sleep(100)
@@ -63,7 +63,7 @@ class VaultSessionProcessDeviceTest {
             // Keep the test UID in the foreground when launching another process.
             // Modern Android may create a background Activity without resuming it.
             foregroundHost = ActivityScenario.launch(Intent(context, SyntheticMainActivity::class.java)
-                .putExtra("syntheticDirectory", directory.name))
+                .putExtra("syntheticKeepScreenOn", true).putExtra("syntheticDirectory", directory.name))
             assertEquals("ACTIVE_DRAFT", child("active"))
             killOwnedChild() // No finish/onDestroy or orderly draft cleanup.
             assertEquals("LOCKED_CLEAN", child("inspect"))

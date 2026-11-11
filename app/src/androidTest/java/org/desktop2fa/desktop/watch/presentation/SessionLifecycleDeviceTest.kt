@@ -81,8 +81,9 @@ class SessionLifecycleDeviceTest {
         try {
             val file = File(directory, "vault.d2fa")
             Vault.create().apply { addEntry("synthetic old", "synthetic", KEY) }.saveNew(file, PASSWORD)
+            shell("input keyevent 224")
             scenario = ActivityScenario.launch(Intent(app, SyntheticMainActivity::class.java)
-                .putExtra("syntheticDirectory", directory.name))
+                .putExtra("syntheticKeepScreenOn", true).putExtra("syntheticDirectory", directory.name))
             closed(scenario)
             test(scenario, file)
         } finally {

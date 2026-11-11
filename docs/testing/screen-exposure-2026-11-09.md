@@ -1,5 +1,7 @@
 # Screen exposure assessment (#27 / C6)
 
+Later partial physical evidence: [SM-L705F report, 2026-11-11](physical-watch-2026-11-11.md). This dated report retains its original emulator-phase results and limitations.
+
 Date: 2026-11-09. Status: **partial protection; hardware/ambient assessment open**.
 No vault, KDF, session policy, permission or transport change. This does not close
 #27, certify capture prevention or establish physical-device behavior.

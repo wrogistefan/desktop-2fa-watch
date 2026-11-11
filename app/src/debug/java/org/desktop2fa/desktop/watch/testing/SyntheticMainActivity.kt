@@ -35,6 +35,12 @@ internal class SyntheticWatchContext(base: Context, val directory: File) : Conte
 
 /** Non-exported debug host uses the production screen and callbacks unchanged. */
 open class SyntheticMainActivity : MainActivity() {
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (intent.getBooleanExtra("syntheticKeepScreenOn", false)) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
     internal var monotonicOffset = 0L
     internal var monotonicOverride: Long? = null
     internal var wallClockOverride: Long? = null

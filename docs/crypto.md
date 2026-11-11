@@ -3,7 +3,7 @@
 Physical v1 KDF measurement remains #30. The opt-in
 [measurement protocol](testing/kdf-measurement-protocol.md) prepares synthetic
 unlock/manual/batch timing and memory evidence without changing parameters;
-physical results are deferred to the final roadmap device phase.
+five physical SM-L705F runs are recorded in the [device report](testing/physical-watch-2026-11-11.md). Real write/Lock behavior was checked; actual OOM/full-volume exhaustion and frame profiling remain unverified. #30 stays open.
 
 This document describes the 0.2.0 implementation. It is not an independent
 audit, certification, or promise of compatibility with all future formats.

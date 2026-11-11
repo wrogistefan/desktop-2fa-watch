@@ -80,7 +80,7 @@ class VaultSessionDeviceTest {
             // A historical remembered password must not bypass the new startup policy.
             assertTrue(VaultSecurityManager.savePassword(SyntheticWatchContext(app, directory), PASSWORD))
             scenario = ActivityScenario.launch(Intent(app, SyntheticMainActivity::class.java)
-                .putExtra("syntheticDirectory", directory.name))
+                .putExtra("syntheticKeepScreenOn", true).putExtra("syntheticDirectory", directory.name))
             waitClosed(scenario)
             compose.onAllNodesWithText("Remember on watch").assertCountEquals(0)
             test(scenario, file)
