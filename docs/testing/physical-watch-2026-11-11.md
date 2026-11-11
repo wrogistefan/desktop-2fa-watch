@@ -167,3 +167,115 @@ Seven synthetic-restart cache directories from interrupted/earlier tests remain
 retained for diagnosis; their contents were not opened or published. Do not claim
 all artifacts removed. Normal completed benchmark invocations each reported no
 deferred I/O. The original Samsung input method was previously confirmed restored.
+
+## Owner observations: preview and AOD enabled
+
+Owner confirmed recent-app card was blank/obscured with no accounts or codes.
+Opening the app requested a password. With AOD enabled temporarily, natural
+wrist-down/dimmed display showed the Watch face without app data. This observation
+covers the account-list fixture on this SM-L705F/API 36, not all OEMs/versions or
+visible setup-key/IME surfaces. AOD was originally off and must be restored.
+AOD-on manual driver subsequently completed 1/1 with cleanup DONE after waking;
+its sleep wait had extended across device sleep. Manual drivers now support an
+explicit validated synthetic control-directory finish marker and elapsed-time
+waits. No release behavior changed.
+
+The first wizard attempt became unavailable before the owner could enter text;
+it is not keyboard evidence. Its driver was ended explicitly and cleanup DONE
+was confirmed. The second attempt initially displayed storage unavailable after
+background/launch transitions. Owner pressed Retry storage check once, then the
+synthetic wizard became ready. No reset/recovery replacement was selected.
+The keyboard-only fixture keeps its screen on; session timeout remains normal.
+Owner confirmed Samsung keyboard Next from Service name reached Account name.
+
+Owner confirmed Samsung keyboard Next also reached Setup key, Show/Hide worked,
+and one Done action saved the synthetic account and returned to the list.
+A brief red storage-related message was reported approximately, not verbatim.
+Source inspection identifies a likely explanation: operationNotice becomes
+STALLED_OPERATION after 30 seconds, and measured commits take about 35 seconds;
+the wizard renders that notice in pale red. This is an inference, not an exact
+identification of the observed text. No failed-save claim follows from it.
+The native save completed; no retry was requested.
+
+Owner confirmed a real existing device credential lock was exercised and D2FA
+requested its password afterward. Pre-lock active/expired state is being clarified;
+without it, do not claim isolation from the separate 60-second inactivity timeout.
+No device PIN or pattern was supplied to tools or changed.
+
+The first real credential-lock attempt began with the app already asking for its
+password, so it did not isolate device lock from inactivity. A fresh lock-check
+fixture was then prepared: owner confirmed codes were visible immediately before
+locking the Watch, then D2FA required its password after owner-authenticated unlock.
+The lock-check fixture kept its display on to avoid unplanned natural sleep,
+without changing the real session clock or existing device credential. Its driver
+completed 1/1 with cleanup DONE via explicit finish marker.
+
+## Visible setup-key observation
+
+The initial key-surface driver failed its readiness deadline and reported cleanup
+DONE. Owner clarified they had only seen a password prompt, not the shown key;
+that attempt is not an exposure pass. The corrected key driver kept the screen
+interactive only during preparation. Owner explicitly confirmed the full public
+synthetic key was visible after Show. The controller then signaled allow-sleep,
+and the runner confirmed SLEEP_ALLOWED (screen-on flag removed). With AOD still
+enabled, owner lowered the wrist/awaited dimming and observed the Watch face with
+no key or app data. The driver subsequently completed 1/1 with cleanup DONE.
+
+Owner confirmed AOD restored to its original disabled state. Existing Samsung
+keyboard and existing device credential were used; no PIN/value was captured.
+A final actual-save/Lock observation and record-preservation verification is in
+progress; its outcome is not inferred from earlier controlled-gate tests.
+
+## Actual save followed by manual Lock
+
+The save-lock fixture began at the prepared Setup key with normal session clocks
+and a kept-on display. Owner submitted once, then pressed Lock Vault roughly five
+seconds into the real cryptographic/storage operation. The key disappeared
+immediately; after 45 seconds the app still showed no account list/codes and
+reported: Account was saved. Unlock and review before adding it again.
+No retry or password submission followed. After the finish signal the driver
+reloaded only its public synthetic file: final record count 14, all original 13
+records preserved in order, exactly one new record. It passed 1/1 with cleanup
+DONE. This complements the controlled delayed-I/O tests with a real Watch write.
+
+Manual host modes: accounts (natural sleep), wizard (keyboard preparation),
+lock-check (active credential-lock preparation), key (kept on until the explicit
+allow-sleep marker), and save-lock (real write plus record-preservation check).
+Default observation duration is 180 seconds; explicit d2faManualSeconds accepts
+60–600. Screen-on controls are debug/test-only; session clocks are never frozen.
+Read-only synthetic startup inspection may be retried once through userAction
+when launch/ambient invalidates it; no password cache, reset or format change.
+Control markers reside only inside the reported validated synthetic directory.
+A host pass is not a substitute for the owner's visual observation.
+
+## Remaining limits
+
+Physical evidence covers one SM-L705F/API 36 with the owner's settings and patch
+level. API 30–32, other OEMs, casting/secure displays, separate IME capture,
+accessibility-service usability, actual OS backup/transfer, hardware key invalidation,
+full-volume exhaustion and actual OOM/low-memory-kill behavior were not verified.
+No audit, cold-hardware benchmark, full-device resource stress or approved receiver
+budget is claimed. Communication remains deferred to the owner's separate model.
+#27/#30/#37/#13 are not closed by this partial evidence PR.
+## Bounded capacity-fault model on Android
+
+VaultCapacityFailureDeviceTest passed 1/1 on the physical Watch. It copied the
+hashed public corpus, loaded its 13 records, prepared one synthetic addition,
+and used the real Android temp-file writer with an injected capacity exception
+after writing/flushing/syncing 64 bytes. Outcome NOT_COMMITTED; original encrypted
+bytes unchanged; partial temp remained exactly 64 bytes; no backup was created;
+all original records reloaded unchanged. Synchronous test cleanup removed its
+owned files/directory. Failure diagnostics were then changed from list equality
+to a boolean assertion to avoid printing record contents; success condition is
+identical. This models a limited-write failure; it does not establish behavior
+under a truly full volume, OOM, system-wide pressure or hardware power loss.
+
+Core device regression subset now totals 16 passed, one emulator-only PIN skip.
+Benchmarks and manual drivers are separate invocations and not added to that count.
+
+Final restoration inspection: Samsung HoneyBoard remains selected; owner confirmed
+AOD disabled again; no owned synthetic child processes; zero synthetic-capacity
+directories. Seven earlier interrupted-run synthetic-restart directories remain
+intentionally retained for diagnosis. No real vault or unrelated files were read
+for these checks; no device credential was changed. Final source APK/test-APK
+build passed after the diagnostic-only assertion change.

@@ -1,5 +1,7 @@
 # Wear integration evidence and physical checklist (#37 / C5)
 
+Later partial physical evidence: [SM-L705F report, 2026-11-11](physical-watch-2026-11-11.md). This dated report retains its original emulator-phase results and limitations.
+
 Status: **partial evidence; physical-watch phase not performed, #37 stays open**.
 Date: 2026-11-09. Base `9f5db4d` (#59), app development version 0.2.0.
 Fixture changes `3f12712` and focus correction/regressions `61559b2` are on

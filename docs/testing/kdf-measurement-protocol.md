@@ -1,6 +1,6 @@
 # Physical KDF measurement protocol (#30 / D3)
 
-Status: **five physical SM-L705F invocations completed**; see the [dated report](physical-watch-2026-11-11.md) and its 90 raw samples. Native responsiveness/cancellation and low-resource checks remain incomplete. No receiver-budget conclusion is claimed; #30 remains open.
+Status: **five physical SM-L705F invocations completed**; see the [dated report](physical-watch-2026-11-11.md) and its 90 raw samples. A real write/Lock observation with preserved records is documented there; actual OOM/full-volume exhaustion and profiler/frame analysis remain unverified. No receiver-budget conclusion is claimed; #30 remains open.
 
 ## Workload and isolation
 
