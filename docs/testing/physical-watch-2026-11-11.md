@@ -1,6 +1,6 @@
 # Physical Watch validation — 2026-11-11
 
-Status: in progress; does not close #27, #30, #37 or #13.
+Status: partial physical evidence; automated/manual runs described below are finished. Remaining limits do not close #27, #30, #37 or #13.
 Source: 74dd6981834cea56b9199ab3a44c5cdda0c601ee, isolated worktree.
 Samsung SM-L705F; Android 16/API 36; build BP2A.250325.020;
 security patch 2026-07-05. Initial battery 91%, not charging, 32.1 C.
