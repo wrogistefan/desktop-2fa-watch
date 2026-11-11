@@ -198,8 +198,7 @@ identification of the observed text. No failed-save claim follows from it.
 The native save completed; no retry was requested.
 
 Owner confirmed a real existing device credential lock was exercised and D2FA
-requested its password afterward. Pre-lock active/expired state is being clarified;
-without it, do not claim isolation from the separate 60-second inactivity timeout.
+requested its password afterward. The initial attempt did not isolate device lock from inactivity; the fresh active-session rerun is recorded below.
 No device PIN or pattern was supplied to tools or changed.
 
 The first real credential-lock attempt began with the app already asking for its
@@ -223,8 +222,7 @@ no key or app data. The driver subsequently completed 1/1 with cleanup DONE.
 
 Owner confirmed AOD restored to its original disabled state. Existing Samsung
 keyboard and existing device credential were used; no PIN/value was captured.
-A final actual-save/Lock observation and record-preservation verification is in
-progress; its outcome is not inferred from earlier controlled-gate tests.
+The actual-save/Lock section below records the completed follow-up, separate from earlier controlled-gate tests.
 
 ## Actual save followed by manual Lock
 
