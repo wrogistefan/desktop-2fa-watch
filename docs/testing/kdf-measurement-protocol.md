@@ -1,8 +1,6 @@
 # Physical KDF measurement protocol (#30 / D3)
 
-Status: **instrument prepared; physical measurements deferred to the final
-roadmap phase by the owner on 2026-11-09**. No physical latency/memory result or
-receiver-budget conclusion is claimed. #30 remains open.
+Status: **five physical SM-L705F invocations completed**; see the [dated report](physical-watch-2026-11-11.md) and its 90 raw samples. Native responsiveness/cancellation and low-resource checks remain incomplete. No receiver-budget conclusion is claimed; #30 remains open.
 
 ## Workload and isolation
 
@@ -80,7 +78,7 @@ cache intact (`cleanupDeferredForPendingIo`), rather than deleting under a write
 Preserve it for review. OOM/process death may prevent JSON entirely: report an
 incomplete run and secret-free OS evidence, not a successful result.
 
-## Final physical checklist (not performed)
+## Final physical checklist (see dated report for completed subsets)
 
 | Scenario | Required evidence |
 | --- | --- |
@@ -91,5 +89,4 @@ incomplete run and secret-free OS evidence, not a successful result.
 | Receiver budgets | Decide after actual hardware and the later communication model |
 | Restoration | Confirm files/preferences/process cleanup or list owned artifacts still retained |
 
-Harness smoke: **1 test passed, zero failures/errors/skips** on the Large Round Android 17/API 37 emulator, source `35e14ead2d44307a2709eb711a115011bd0d764e`, report timestamp 2026-11-10T01:48:30 UTC. This confirms smoke completion only; emulator timings are not physical measurements. Debug and test APK build passed in the preceding session. This table stays unfilled until
-the final real-device phase; an emulator smoke cannot substitute for it.
+Harness smoke: **1 test passed, zero failures/errors/skips** on the Large Round Android 17/API 37 emulator, source `35e14ead2d44307a2709eb711a115011bd0d764e`, report timestamp 2026-11-10T01:48:30 UTC. This confirms smoke completion only; emulator timings are not physical measurements. Debug and test APK build passed in the preceding session. The later physical report records five completed runs; emulator smoke remains separate evidence.

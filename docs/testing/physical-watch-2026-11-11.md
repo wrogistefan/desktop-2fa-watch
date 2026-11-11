@@ -40,7 +40,7 @@ Sampled process PSS reached 295826 KiB; largest sampled heartbeat gap 610 ms.
 These are instrumented debug end-to-end measurements, not isolated Argon2,
 true peak allocation, frame-jank statistics or a receiver performance budget.
 End battery 80%, battery temperature 39.7 C. Cool before repeating.
-One full invocation does not satisfy the five-invocation protocol.
+This first-run checkpoint alone did not satisfy the five-invocation protocol; the completed five-run aggregate appears below.
 
 ## Session failures requiring investigation
 
@@ -75,10 +75,95 @@ Passed 1/1, 18 samples, completed=true, cleanupDeferredForPendingIo=false.
 [Run 2 JSON](physical-watch-2026-11-11-kdf-run2.json).
 First-process unlock 13.001 s; warm unlock 11.521–11.679 s (N=5);
 manual save 34.530–34.992 s (N=6); batch commit 34.642–34.903 s (N=6).
-Three further full cooled invocations are still required.
+At this checkpoint three further invocations remained; see the completed aggregate below.
 
 An opt-in ManualObservationDeviceTest prepares a public synthetic fixture through
 the real UI/session path for three minutes of human observation. Session and
 screen clocks remain normal. Its runner result means host execution only;
 ambient/recents/OEM observations require the owner's recorded answers. It skips
 without d2faManualObservation=synthetic. Pending writes defer fixture cleanup.
+
+## Manual observation driver
+
+Only on the approved isolated Watch, after automated benchmarks finish:
+
+```powershell
+adb -s <test-serial> shell input keyevent 224
+adb -s <test-serial> shell am instrument -r -w -e class org.desktop2fa.desktop.watch.presentation.ManualObservationDeviceTest -e d2faManualObservation synthetic org.desktop2fa.desktop.watch.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Wait for READY_SYNTHETIC_UI. The fixture contains public synthetic accounts and
+remains available for three minutes. The normal 60-second inactivity policy
+and real display/lifecycle clocks are active. Do not enter private credentials.
+Record separately: OEM recents contents, natural ambient entry/exit with AOD
+settings, actual owner-controlled test-device lock/unlock, and native Samsung
+keyboard entry/Next/Done. A screen-off or expired session requires manual password
+entry; do not label that expected closure as fixture failure. The observer must
+report what was actually visible. A passing driver is not a visual pass.
+No screenshots or personal settings are captured by this driver.
+
+Cooling before run 3: battery temperature fell to 33.7 C and repeated readings
+were stable; battery 63%. A provisional 33.5 C waiting threshold was relaxed by
+0.2 C after the plateau. This is an experimental condition, not a battery safety
+limit. Runs have differing battery/thermal conditions and test-only source SHAs;
+benchmark workload and production cryptography remain unchanged.
+
+## Third physical KDF run
+
+Source 6fc2698f134c571e42cc87af80f4fa48a37a0727; start battery 63%, 33.7 C.
+Passed 1/1; 18 samples; completed=true; cleanupDeferredForPendingIo=false.
+[Run 3 JSON](physical-watch-2026-11-11-kdf-run3.json).
+First-process unlock 13.679 s; warm unlock 11.834–11.992 s (N=5);
+manual save 35.506–35.771 s (N=6); batch commit 35.392–35.649 s (N=6).
+After collecting the completed report: battery 58%, temperature 36.0 C.
+At this checkpoint two further invocations remained; see the completed aggregate below.
+
+## Fourth physical KDF run
+
+Source 6fc2698f134c571e42cc87af80f4fa48a37a0727; start battery 58%, 33.9 C.
+Passed 1/1; 18 samples; completed=true; cleanupDeferredForPendingIo=false.
+[Run 4 JSON](physical-watch-2026-11-11-kdf-run4.json).
+First-process unlock 13.079 s; warm unlock 11.495–11.619 s (N=5);
+manual save 34.483–34.754 s (N=6); batch commit 34.403–34.978 s (N=6).
+After collecting the completed report: battery 53%, temperature 36.1 C.
+At this checkpoint one further invocation remained; see the completed aggregate below.
+
+The current commit path loads the latest file to compare the candidate, saves,
+then reloads to verify the committed snapshot. Each step derives a key. Thus the
+measured commit wait includes three KDF operations plus I/O/UI/sampling overhead;
+it must not be presented as the latency of one encryption or one Argon2 call.
+
+## Five-run KDF aggregate
+
+All five invocations completed: 90 samples, zero failed operations,
+cleanupDeferredForPendingIo=false in every report. First-process means a new
+application process, not cold hardware/filesystem/boot. Run 5 source matches
+run 3/4; start battery 52%, 33.7 C. [Run 5 JSON](physical-watch-2026-11-11-kdf-run5.json).
+
+| Phase | N | Median ms | Range ms |
+| --- | --- | --- | --- |
+| batch-commit | 30 | 34986 | 34403–35649 |
+| first-process-unlock | 5 | 13239 | 13001–13679 |
+| manual-save | 30 | 35002.5 | 34483–35913 |
+| warm-unlock | 25 | 11770 | 11495–12052 |
+
+Maximum sampled PSS: 375198 KiB; maximum sampled main-thread heartbeat gap: 673 ms. These are instrumented debug process observations, not isolated KDF, guaranteed memory peaks or frame-jank measurements. Low-resource and native responsiveness/cancellation assessment remains incomplete. Receiver budgets remain deferred to the later owner model.
+
+## Owner observation: AOD disabled
+
+Owner confirmed AOD disabled. With the opt-in synthetic host ready, the owner
+lowered the wrist/allowed natural display sleep. Corrected observation: screen
+went dark and waking showed the Watch face. An initial report of the account
+list returning was explicitly retracted and is not confirmed defect evidence.
+OEM task preview, app reopening and AOD-enabled behavior remain separate checks.
+After all measurements and during manual observation: battery 47%, 34.7 C.
+Owner confirmed reopening D2FA from recent apps requested a password. The exact
+preview appearance was not yet reported at this checkpoint; no preview pass is
+inferred solely from the password prompt. Manual driver completed 1/1 with
+READY_SYNTHETIC_UI and d2faManualCleanup=DONE.
+
+Cleanup inspection found no synthetic_session/synthetic_recovery child processes.
+Seven synthetic-restart cache directories from interrupted/earlier tests remain
+retained for diagnosis; their contents were not opened or published. Do not claim
+all artifacts removed. Normal completed benchmark invocations each reported no
+deferred I/O. The original Samsung input method was previously confirmed restored.
