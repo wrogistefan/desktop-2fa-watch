@@ -10,6 +10,7 @@ import org.desktop2fa.desktop.watch.model.VaultPayloadValidation
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
+import java.nio.charset.CharacterCodingException
 
 class Vault(val data: VaultData = VaultData()) {
 
@@ -90,7 +91,7 @@ class Vault(val data: VaultData = VaultData()) {
 
             val jsonString = if (snapshot.version == 1) json.encodeToString(VaultData.serializer(), snapshot)
             else json.encodeToString(VaultPayloadV2.serializer(),
-                VaultPayloadV2(2, snapshot.entries, snapshot.transferReceipts))
+                VaultPayloadV2(snapshot.version, snapshot.entries, snapshot.transferReceipts))
             val rawJson = jsonString.toByteArray(Charsets.UTF_8)
             val encrypted = try {
                 CryptoUtils.encrypt(key, rawJson, header.takeIf { snapshot.version == 2 })
@@ -188,16 +189,21 @@ class Vault(val data: VaultData = VaultData()) {
             } finally { key.fill(0) }
 
             val vaultData: VaultData
+            var phase = if (version == 2) VaultPayloadPhase.JSON_SYNTAX else VaultPayloadPhase.MODEL_SCHEMA
             try {
                 val rawJsonString = if (version == 2) StrictVaultJson.decode(decryptedJsonBytes)
                     else String(decryptedJsonBytes, Charsets.UTF_8)
+                phase = VaultPayloadPhase.JSON_TYPES
                 if (version == 2) StrictVaultJson.validatePayloadTypes(rawJsonString)
+                phase = VaultPayloadPhase.MODEL_SCHEMA
                 vaultData = if (version == 1) json.decodeFromString(VaultData.serializer(), rawJsonString)
                 else json.decodeFromString(VaultPayloadV2.serializer(), rawJsonString).let {
                     VaultData(it.version, it.entries.toMutableList(), it.transferReceipts)
                 }
-            } catch (_: Exception) {
-                throw CorruptedVaultException("Vault contains invalid data")
+            } catch (failure: Exception) {
+                val diagnosticPhase = if (failure is CharacterCodingException) VaultPayloadPhase.UTF8 else phase
+                throw CorruptedVaultException("Vault contains invalid data",
+                    VaultPayloadDiagnosticException(diagnosticPhase))
             } finally { decryptedJsonBytes.fill(0) }
 
             if (vaultData.version !in 1..2 || vaultData.version != version) {
@@ -207,7 +213,8 @@ class Vault(val data: VaultData = VaultData()) {
                 VaultPayloadValidation.requireValid(vaultData)
             } catch (_: IllegalArgumentException) {
                 throw CorruptedVaultException(if (version == 1) "Vault contains invalid account data"
-                    else "Vault contains invalid account or receipt data")
+                    else "Vault contains invalid account or receipt data",
+                    VaultPayloadDiagnosticException(VaultPayloadPhase.MODEL_VALIDATION))
             }
 
             return Vault(vaultData)

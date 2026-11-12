@@ -148,6 +148,27 @@ class VaultV2Test {
         assertThrows(CorruptedVaultException::class.java) { Vault.load(malformedUtf8, password) }
     }
 
+    @Test fun payloadDiagnosticsIdentifyTheStageWithoutChainingDecryptedInput() {
+        val marker = "SYNTHETIC_ONLY_DO_NOT_LOG"
+        val valid = """{"version":2,"entries":[{"secret":"MY======","account_name":"$marker"}],"transfer_receipts":[]}"""
+        val cases = listOf(
+            (valid.toByteArray() + byteArrayOf(0xc3.toByte(), 0x28)) to VaultPayloadPhase.UTF8,
+            valid.replace("\"version\":2", "\"version\":2,\"version\":2").toByteArray() to VaultPayloadPhase.JSON_SYNTAX,
+            valid.replace("\"secret\":", "\"digits\":\"$marker\",\"secret\":").toByteArray() to VaultPayloadPhase.JSON_TYPES,
+            valid.replace("\"version\":2", "\"unexpected\":\"$marker\",\"version\":2").toByteArray() to VaultPayloadPhase.MODEL_SCHEMA,
+        )
+        for ((payload, expectedPhase) in cases) {
+            val error = assertThrows(CorruptedVaultException::class.java) { Vault.load(fixture(payload), password) }
+            val diagnostic = error.cause as VaultPayloadDiagnosticException
+            assertEquals(expectedPhase, diagnostic.phase)
+            assertNull(diagnostic.cause)
+            val trace = java.io.StringWriter()
+            error.printStackTrace(java.io.PrintWriter(trace))
+            assertFalse(trace.toString().contains(marker))
+            assertFalse(trace.toString().contains("MY======"))
+        }
+    }
+
     @Test fun v1RefusesReceiptFieldsAndHeaderPayloadMismatch() {
         for (payload in listOf(
             """{"version":1,"entries":[],"transfer_receipts":[]}""",

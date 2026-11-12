@@ -65,3 +65,15 @@ No full-volume/OOM or directory-sync guarantee is established. Core tests do
 not authenticate network peers or audit the native profile composition.
 The unchanged supplied transport specification's T0 is incomplete and T1–T12
 are NOT RUN; these codec tests do not mark T11 as passed.
+
+## Review follow-up
+
+PR #67 review requested useful parser failure attribution. Load errors now carry
+only a fixed diagnostic phase (UTF8, JSON_SYNTAX, JSON_TYPES, MODEL_SCHEMA or
+MODEL_VALIDATION). Original parser exceptions are deliberately not chained:
+their messages may include decrypted input. A regression checks phase attribution
+and the entire rendered exception chain for synthetic account/key markers.
+The payload serializer also derives its version from the validated snapshot.
+The previously recorded 356-case result precedes these follow-up changes;
+the full pinned Python/Kotlin runner passed **357 tests, zero failures/errors/skips**,
+including the new diagnostic-chain regression, and rebuilt the debug APK.

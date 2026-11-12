@@ -196,3 +196,8 @@ The current app has no `INTERNET` permission and no implemented account sync,
 analytics, or cloud workflow. The Wearable dependency alone does not constitute
 a transfer feature. ADB over Wi-Fi is a development connection outside the
 normal application workflow; turn debugging off when finished testing.
+
+V2 payload failures retain fixed diagnostic stages (UTF8, JSON_SYNTAX,
+JSON_TYPES, MODEL_SCHEMA, MODEL_VALIDATION), not original parser exception
+causes that could contain decrypted account/key text. This supports storage
+failure attribution without exposing input through an exception chain.
