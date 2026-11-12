@@ -1,0 +1,47 @@
+name: Isolated Watch transport PoC
+on:
+  push:
+    branches: ["feature/*", "main"]
+    paths: ["native/**", "app/src/main/java/org/desktop2fa/desktop/watch/common/**", ".github/workflows/transfer-watch-poc.yml"]
+  pull_request:
+    paths: ["native/**", "app/src/main/java/org/desktop2fa/desktop/watch/common/**", ".github/workflows/transfer-watch-poc.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: google/boringssl
+          ref: 594a44291086dcc7cef06cabec4c0b47afd674c0
+          path: build/boringssl-source
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v3
+      - name: Install pinned native toolchains
+        run: |
+          sdkmanager "platforms;android-37" "build-tools;37.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+      - name: Compile standalone synthetic Watch test app and run JVM frame regressions
+        run: |
+          ./gradlew -p native/poc/android -Pd2faBoringSSLSource="$PWD/build/boringssl-source" :app:testReleaseUnitTest :app:assembleRelease --stacktrace
+      - name: Check private exports in all packaged Android ABIs
+        run: |
+          python native/poc/verify_android_poc.py native/poc/android/app/build/outputs/apk/release/app-release.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: isolated-watch-transport-poc
+          retention-days: 3
+          if-no-files-found: error
+          path: |
+            native/poc/android/app/build/outputs/apk/release/app-release.apk
+            LICENSE
+            build/boringssl-source/LICENSE

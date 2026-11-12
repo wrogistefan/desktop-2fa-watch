@@ -84,6 +84,10 @@ jobs:
           ctest --test-dir build/interop --output-on-failure
           python native/poc/interop.py --library build/interop/libd2fa_transfer.so \
             --jar native/poc/kotlin/build/libs/d2fa-native-interop-poc.jar
+      - name: Exercise isolated LAN smoke peer against the actual native core
+        env:
+          D2FA_SMOKE_LIBRARY: build/interop/libd2fa_transfer.so
+        run: python -m unittest discover -s native/poc -p test_smoke_server.py -v
       - name: Verify non-test exports without rebuilding dependency sources
         run: |
           cmake -S native/transfer -B build/interop -DD2FA_TEST_API=OFF

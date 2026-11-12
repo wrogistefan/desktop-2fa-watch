@@ -1,0 +1,103 @@
+"""Synthetic frame/parser and real native loopback smoke regressions."""
+import base64
+import os
+from pathlib import Path
+import socket
+import struct
+import threading
+import time
+import unittest
+import smoke_server as s
+
+
+class ParserTests(unittest.TestCase):
+    def test_strict_json(self):
+        for data in [b'[]', b'{"v":1,"v":1}', b'{"v":1,"\\u0076":1}', b'{"v":1.0}',
+                     b'{"v":1e0}', b'{"v":NaN}', b'\xef\xbb\xbf{}', b'{"a":"\xff"}',
+                     b'{"a":' + b'[' * 8 + b'0' + b']' * 8 + b'}']:
+            with self.subTest(data_kind=len(data)), self.assertRaises((s.SmokeFailure, UnicodeError)):
+                s.parse(data)
+        s.expect(s.parse(b'{"v":1,"type":"PING"}'), "PING", set())
+        for version in [True, "1", 1.0]:
+            with self.assertRaises(s.SmokeFailure):
+                s.expect({"v":version, "type":"PING"}, "PING", set())
+
+    def test_code_and_point(self):
+        self.assertEqual(s.code_bytes("0000 0001"), b"00000001")
+        for code in ["1234567", "123456789", "1234-5678", "1234567a", "１２３４５６７８"]:
+            with self.assertRaises(s.SmokeFailure): s.code_bytes(code)
+        good = base64.b64encode(bytes(32)).decode("ascii")
+        self.assertEqual(s.point(good), bytes(32))
+        for point in [good[:-1], good[:-2] + "B=", " " * 44]:
+            with self.assertRaises(s.SmokeFailure): s.point(point)
+
+    def test_frame_limit_before_payload(self):
+        class Input:
+            def __init__(self, data): self.data = bytearray(data)
+            def settimeout(self, _): pass
+            def recv(self, n):
+                out = self.data[:min(n, 1)]; del self.data[:len(out)]; return bytes(out)
+        for length in [0, 2049, 0xffffffff]:
+            source = Input(struct.pack(">I", length) + b'x')
+            with self.assertRaises(s.SmokeFailure): s.read_frame(source, time.monotonic() + 5)
+            self.assertEqual(source.data, b'x')
+        source = Input(s.encoded(s.message("PING"), 2048) + b'TLS')
+        s.expect(s.read_frame(source, time.monotonic() + 5), "PING", set())
+        self.assertEqual(source.data, b'TLS')
+        with self.assertRaises(s.SmokeFailure): s.exact(source, 1, time.monotonic() - 1)
+
+
+@unittest.skipUnless(os.environ.get("D2FA_SMOKE_LIBRARY"), "Native library not provided")
+class NativeLanTests(unittest.TestCase):
+    def test_real_native_channel_and_wrong_code(self):
+        # Loopback here verifies this harness only, never Watch Wi-Fi selection or timing.
+        core = s.Core(Path(os.environ["D2FA_SMOKE_LIBRARY"]))
+        for wrong in [False, True]:
+            outcomes = []
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+                listener.bind(("127.0.0.1", 0)); listener.listen(1)
+                def bob():
+                    try:
+                        connection, _ = listener.accept()
+                        with connection:
+                            s.serve(core, connection, lambda: "00000002" if wrong else "00000001")
+                        outcomes.append(True)
+                    except Exception: outcomes.append(False)
+                worker = threading.Thread(target=bob, daemon=True); worker.start()
+                handle = 0
+                authenticated = False
+                try:
+                    with socket.create_connection(listener.getsockname(), timeout=5) as sock:
+                        wid = bytes(range(16))
+                        s.send(sock, s.encoded(s.message("START", profile=s.PROFILE,
+                               expected_sid=None, wid=wid.hex()), 2048), time.monotonic() + 5)
+                        challenge = s.read_frame(sock, time.monotonic() + 5)
+                        s.expect(challenge, "CHALLENGE", {"profile", "sid", "wid"})
+                        sid = s.identifier(challenge["sid"])
+                        handle = core.lib.d2fa_create(0, sid, 16, wid, 16, b"00000001", 8)
+                        self.assertTrue(handle)
+                        a = core.ffi.new("uint8_t[]", 32)
+                        self.assertEqual(core.lib.d2fa_message(handle, a, 32), 32)
+                        s.send(sock, s.encoded(s.message("PAKE_A", sid=sid.hex(), wid=wid.hex(),
+                               message=base64.b64encode(bytes(core.ffi.buffer(a, 32))).decode("ascii")), 2048),
+                               time.monotonic() + 5)
+                        b = s.read_frame(sock, time.monotonic() + 5)
+                        self.assertEqual(core.lib.d2fa_finish(handle, s.point(b["message"]), 32), 1)
+                        pipe = s.TlsPipe(core, handle, sock)
+                        pipe.handshake(time.monotonic() + 5)
+                        authenticated = True
+                        pipe.write(s.message("HELLO", session_id=sid.hex()), time.monotonic() + 5)
+                        s.expect(pipe.read(time.monotonic() + 5), "READY", {"session_id", "max_accounts", "max_frame"})
+                        pipe.write(s.message("PING"), time.monotonic() + 5)
+                        s.expect(pipe.read(time.monotonic() + 5), "PONG", set())
+                except Exception:
+                    if not wrong: raise
+                finally:
+                    if handle: core.lib.d2fa_close(handle)
+                    worker.join(timeout=10)
+                self.assertFalse(worker.is_alive())
+                self.assertEqual(authenticated, not wrong)
+                self.assertEqual(outcomes, [not wrong])
+
+
+if __name__ == "__main__": unittest.main()
