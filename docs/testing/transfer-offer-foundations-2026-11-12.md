@@ -18,8 +18,10 @@ UTF-8 replacement before parsing, so it tested a valid replacement character.
 The regression now sends the literal JSON surrogate escape bytes; the focused
 rerun passed. Production decoding continues to reject malformed UTF-8.
 
-Full JVM/actual pinned Python interoperability/APK checks are pending at this
-report update. Desktop transfer code has not run the new shared corpus yet.
+Full `python tools/interop/run.py --desktop-source ../../app/build/desktop-pinned`
+passed: **378 JVM tests, zero failures/errors/skips**, actual pinned Python bridge
+and debug APK included (3m 24s). The shared corpus contains 24 exact-byte vectors.
+These are local checks; CI still needs to verify the published branch. Desktop transfer code has not run the new shared corpus yet.
 Physical/device transaction and lifecycle gates remain open; this is no audit.
 The proposed extension from bidi overrides to all directional controls awaits
 owner clarification and is not silently enabled.
