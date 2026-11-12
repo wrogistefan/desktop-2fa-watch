@@ -3,6 +3,19 @@
 This manual covers the development version after the 0.2.0 MVP. The app runs independently on a Wear OS watch
 and generates TOTP codes locally. A phone companion and cloud account are not required.
 
+## Storage compatibility for future transfer
+
+This development version adds support for the Watch v2 encrypted storage format.
+It does not migrate your vault on update, unlock or manual account addition.
+Existing v1 files keep their format and password. Transfer and the migration
+consent screen are not available yet; the accepted migration design requires
+explicit consent and an encrypted safety copy before upgrading a user's file.
+
+Older Watch versions and the pinned Desktop 0.10.0 reader cannot open a v2 file.
+Future selected-account transfer uses a separate protocol and does not require
+changing the Desktop vault format. A retained pre-migration copy will not contain
+accounts added later. See the [format/recovery design](transfer/vault-v2-proposal.md).
+
 ## Installation
 
 Build and run the app from Android Studio, or install the debug APK using ADB.

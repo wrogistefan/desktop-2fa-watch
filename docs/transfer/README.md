@@ -6,8 +6,9 @@ addressed before merge. That file is an unchanged copy of the supplied document.
 Its v0.3 document version, v1 wire protocol, and future Watch storage version
 are separate version spaces.
 
-**Current state:** no transfer implementation, network permission, native wrapper
-or storage migration is added by this documentation change. The owner accepted
+**Current state:** the v2 storage codec, receipt validation and receipt-preserving
+manual candidates are implemented. No receiver, network permission, native wrapper
+or storage migration is added by this storage-foundation change. The owner accepted
 the [v2 format, migration and recovery design](vault-v2-proposal.md) on
 2026-11-12 after reviewing its Desktop compatibility consequences, and required
 explicit documentation. Design approval is not an implementation or release result;

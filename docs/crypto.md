@@ -1,9 +1,10 @@
 # Cryptographic Design
 
-The [accepted Watch v2 design](transfer/vault-v2-proposal.md) defines the future
+The [accepted Watch v2 design](transfer/vault-v2-proposal.md) defines the
 transfer-receipt format, header AAD, explicit opt-in migration, retained encrypted
-v1 safety copy and read-only recovery. It does not change the current v1
-implementation. Design acceptance is not test evidence or release approval;
+v1 safety copy and read-only recovery. The v2 codec/receipt validation is now
+implemented alongside the unchanged v1 format. Migration, transfer and their
+user interfaces are not implemented by this storage-foundation change. Design acceptance is not test evidence or release approval;
 Desktop wire compatibility does not imply direct v2 file compatibility.
 
 Physical v1 KDF measurement remains #30. The opt-in
@@ -69,8 +70,8 @@ The decrypted JSON has this shape (example values are synthetic):
 `issuer` and `account_name` are nullable. Defaults are encoded; unknown fields
 at the root or entry level are rejected during loading rather than silently
 removed on a later save. No automatic format migration is performed.
-Binary format version and JSON payload version are separate values, both
-currently 1. They do not change with the application version bump to 0.2.0.
+Binary format version and JSON payload version are separate checks. Ordinary
+v1 files retain both values as 1; v2 uses 2 in both positions as described below. They do not change with the application version bump to 0.2.0.
 Both must be explicit and supported: the header byte is `0x01`, and the JSON
 `version` is the integer literal `1`. Missing/null, quoted, Boolean, decimal,
 exponent or out-of-range payload versions are rejected without coercion.
@@ -84,6 +85,29 @@ accepted unversioned/mistyped JSON is now rejected intact. There is no automatic
 guess, repair or metadata-stripping path. Unknown root/entry fields are also
 rejected before a writable vault is exposed, rather than discarded on save.
 
+## Watch vault format, version 2
+
+The [accepted exact format](transfer/vault-v2-proposal.md) is implemented at the
+codec boundary: `D2FA`, byte `0x02`, 16-byte salt, 12-byte nonce, ciphertext and
+16-byte tag. KDF/password encoding and 10 MiB limit are unchanged. V2 uses the
+five header bytes as AES-GCM AAD. V1 retains no AAD and its original JSON schema.
+The reader never falls back between versions after authentication failure.
+
+V2 payload fields are exactly `version:2`, `entries`, `transfer_receipts`; all
+three are required. Receipts and entries are serialized/encrypted/replaced as
+one snapshot through the existing atomic writer. At most 128 receipts are
+accepted; malformed/duplicate receipt IDs, hashes, item IDs or overlapping item
+lists fail before write and before exposing loaded data. V2 JSON additionally
+rejects duplicate keys, malformed UTF-8, non-integer numbers and nesting beyond
+eight containers. Strict parsing is not retroactively applied to v1.
+
+Manual candidates defensively capture receipt lists, compare them with the
+reloaded baseline, and preserve them when adding accounts. Stored historical
+account spelling, nullable labels and parameters remain unchanged. V2 support
+is not automatic migration: `Vault.create()` still creates v1, and normal v1
+unlock/save continues to use v1. The explicit migration/safety-copy UI and
+network receiver remain future steps. See [current test evidence](testing/vault-v2-regressions.md).
+
 ## Save and load
 
 Manual and internal batch additions now share a lifecycle-owned commit operation
@@ -91,7 +115,8 @@ Manual and internal batch additions now share a lifecycle-owned commit operation
 authenticated committed data under the session's process-wide I/O mutex. A stale
 baseline is rejected unchanged; the complete batch uses one call to the existing
 save/verification path. It never saves a valid prefix of an invalid batch. There
-is no multi-process writer, data-format/KDF migration, receipt or transport added.
+is no multi-process writer, automatic migration or transport. Manual additions
+preserve existing v2 receipts as well as accounts.
 Cancellation after publication remains a possible commit, not rollback. See
 [writer assumptions](development.md#serialized-additions-36).
 

@@ -12,3 +12,8 @@ open class VaultIOException(message: String = "Vault IO error", cause: Throwable
 
 /** Name selection must not choose an arbitrary historical duplicate. */
 class AmbiguousEntryException : IllegalArgumentException("Multiple accounts match; select explicitly")
+
+/** Fixed diagnostic categories; never chain a parser exception carrying decrypted input. */
+internal enum class VaultPayloadPhase { UTF8, JSON_SYNTAX, JSON_TYPES, MODEL_SCHEMA, MODEL_VALIDATION }
+internal class VaultPayloadDiagnosticException(val phase: VaultPayloadPhase) :
+    IllegalArgumentException("Vault payload rejected at ${phase.name}")

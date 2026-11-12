@@ -1,9 +1,10 @@
 # Security Model
 
-The [accepted Watch v2 design](transfer/vault-v2-proposal.md) defines the future
+The [accepted Watch v2 design](transfer/vault-v2-proposal.md) defines the
 transfer-receipt format, header AAD, explicit opt-in migration, retained encrypted
-v1 safety copy and read-only recovery. It does not change the current v1
-implementation. Design acceptance is not test evidence or release approval;
+v1 safety copy and read-only recovery. The v2 codec/receipt validation is now
+implemented alongside the unchanged v1 format. Migration, transfer and their
+user interfaces are not implemented by this storage-foundation change. Design acceptance is not test evidence or release approval;
 Desktop wire compatibility does not imply direct v2 file compatibility.
 
 This describes the 0.2.0 MVP and its current boundaries. The app has not had an
@@ -65,9 +66,10 @@ requires storage review with its actual known/uncertain result and manual unlock
 never a blind automatic retry. A non-secret, file-scoped in-memory completion
 notice hands a disposed owner's outcome to a new Activity and survives further
 Activity recreation until explicit storage Retry acknowledges it. Notice identity
-prevents an old callback from clearing a newer outcome. No receipt is persisted;
-whole-process death loses this metadata, so inspect committed accounts after a
-restart before manually retrying. Recreated processes never recover an active
+prevents an old callback from clearing a newer outcome. This completion notice
+is memory-only; whole-process death loses it. It is separate from v2 encrypted
+transfer receipts. There is still no receiver producing those receipts, so
+inspect committed accounts after a restart before manually retrying. Recreated processes never recover an active
 session from saved state or cached credentials.
 
 Manual and internal batch additions use one privately copied, validated candidate
@@ -179,7 +181,7 @@ automatic stripping or migration is performed. Source-level format parity does
 not establish complete desktop interoperability; follow
 [issue #10](https://github.com/wrogistefan/desktop-2fa-watch/issues/10).
 The binary header and payload versions are independent checks. Payload version
-must be explicitly present as integer literal 1; missing or coerced values are
+must be explicitly present as an integer literal matching the supported header (1 or 2); missing or coerced values are
 not accepted as evidence of v1. The writer refuses unsupported model versions
 before mutation. This prevents ambiguous/lossy rewrites without changing KDF or
 encryption; it does not add rollback protection or recovery for unsupported data.
@@ -194,3 +196,8 @@ The current app has no `INTERNET` permission and no implemented account sync,
 analytics, or cloud workflow. The Wearable dependency alone does not constitute
 a transfer feature. ADB over Wi-Fi is a development connection outside the
 normal application workflow; turn debugging off when finished testing.
+
+V2 payload failures retain fixed diagnostic stages (UTF8, JSON_SYNTAX,
+JSON_TYPES, MODEL_SCHEMA, MODEL_VALIDATION), not original parser exception
+causes that could contain decrypted account/key text. This supports storage
+failure attribution without exposing input through an exception chain.
