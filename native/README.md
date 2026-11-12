@@ -75,8 +75,9 @@ python native/poc/interop.py --library build/interop/libd2fa_transfer.so \
 
 The native workflow additionally instruments the wrapper/BoringSSL with
 ASan/UBSan, executes upstream `crypto_test`/`ssl_test`, and rebuilds without
-`D2FA_TEST_API` before checking exported symbols. It is Linux-only evidence;
-Windows/macOS/Wear OS and release packaging are separate open gates.
+`D2FA_TEST_API` before checking exported symbols. Linux results are recorded in the ledger; Windows/macOS host jobs are now
+prepared but need their own executed results. Wear OS and release packaging
+remain separate open gates.
 
 ## Test API and shipping restrictions
 
@@ -93,3 +94,14 @@ Newer upstream commits exist; their security impact has not yet been reviewed.
 There is no guarantee that this baseline is the latest or vulnerability-free.
 Controlled buffers are cleared where possible; Python/JVM/library/OS copies
 cannot be guaranteed erased. No memory dump/report upload is configured.
+
+## Desktop host matrix
+
+The workflow additionally targets Windows Server 2022 (Visual Studio 2022,
+NASM 2.16.03) and macOS 14 host runners. It checks 1000 JNI/CFFI exchanges and
+non-test exports on each; a bounded pipe-reader thread avoids unsupported
+Windows pipe selectors. macOS exports are restricted explicitly, and Windows
+uses a private static CRT. These are test/build targets, not new minimum OS
+support claims. Developer artifacts contain only the non-test core and licenses,
+never test-key binaries, runtime data, frame logs or dumps. No published app
+release, account receiver or end-user installation acceptance is implied.

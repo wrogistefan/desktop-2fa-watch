@@ -73,3 +73,25 @@ A later local wrapper rerun after input/output queue-bound checks passed 1/1
 beyond the configured queue. CI must verify this latest implementation too.
 The T0–T12 aggregate gates above remain open: these Linux-host subsets do not
 establish real Wear OS, supported desktop distribution or application readiness.
+
+## Completed Linux host rerun
+
+Run [43270087000](https://github.com/wrogistefan/desktop-2fa-watch/actions/runs/43270087000),
+implementation `a803a11`, passed wrapper ASan/UBSan, Python/CFFI ↔ Kotlin/JNI
+1000 exchanges and the non-test export/key-log checks. Toolchains recorded:
+Ubuntu 24.04 runner, Clang 18.1.3, CMake 3.31.6, Go 1.24.13, Python 3.13.11,
+CFFI 2.0.0, Kotlin 2.2.10 and Temurin JDK 17.0.21+9.
+
+The upstream crypto suite reported **1891 passed, one skipped**, plus seven
+upstream-disabled tests not executed. The skipped `AEADTest.WycheproofAESEAX`
+contains upstream guards for unsupported EAX key/nonce sizes (192-bit keys and
+nonce-size cases reported in the log). EAX is outside the selected TLS profile;
+no upstream code or skip policy was changed. The SSL suite passed **483/483**.
+These are executed enabled-suite results, not a claim that every upstream test
+or every platform passed. The complete T0–T12 gates remain open as shown above.
+
+Windows/macOS host jobs are now prepared separately, using the same BoringSSL
+pin/profile. The test control pipe is portable across those hosts, exports are
+restricted/checked per platform, and Windows uses a private static CRT. The
+jobs have not yet passed at this report update. These runner targets do not
+change the application's supported OS/API policy or establish Wear OS behavior.

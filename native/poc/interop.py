@@ -7,11 +7,11 @@ import argparse
 import os
 from pathlib import Path
 import secrets
-import selectors
+import queue
+import threading
 import struct
 import subprocess
 import tempfile
-import time
 
 from cffi import FFI
 
@@ -26,27 +26,39 @@ class Peer:
         self.process = subprocess.Popen(
             [java, "-Djava.library.path=" + str(library.parent), "-jar", str(jar)],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-        self.selector = selectors.DefaultSelector()
-        self.selector.register(self.process.stdout, selectors.EVENT_READ)
+        self.responses = queue.Queue(maxsize=1)
+        self.reader = threading.Thread(target=self._read_responses, daemon=True)
+        self.reader.start()
 
-    def exact(self, length):
-        deadline = time.monotonic() + 15
+    def _exact(self, length):
         out = bytearray()
         while len(out) < length:
-            require(deadline > time.monotonic())
-            require(self.selector.select(deadline - time.monotonic()))
             chunk = os.read(self.process.stdout.fileno(), length - len(out))
             require(chunk)
             out.extend(chunk)
         return bytes(out)
 
+    def _read_responses(self):
+        # Windows selectors do not support anonymous pipes. One bounded reader
+        # thread keeps the same complete-response timeout on all three hosts.
+        try:
+            while True:
+                length = struct.unpack(">I", self._exact(4))[0]
+                require(length <= 16416)
+                self.responses.put(self._exact(length))
+        except Exception:
+            try:
+                self.responses.put_nowait(None)
+            except queue.Full:
+                pass
+
     def rpc(self, opcode, payload=b""):
         packet = bytes([opcode]) + payload
         self.process.stdin.write(struct.pack(">I", len(packet)) + packet)
         self.process.stdin.flush()
-        length = struct.unpack(">I", self.exact(4))[0]
-        require(length <= 16416)
-        return self.exact(length)
+        result = self.responses.get(timeout=15)
+        require(result is not None)
+        return result
 
     def integer(self, opcode, handle, tail=b""):
         return struct.unpack(">i", self.rpc(opcode, struct.pack(">Q", handle) + tail))[0]
@@ -60,13 +72,16 @@ class Peer:
         return result[4:]
 
     def close(self):
-        self.process.stdin.close()
+        try:
+            self.process.stdin.close()
+        except (BrokenPipeError, OSError):
+            pass
         try:
             self.process.wait(timeout=5)
         except subprocess.TimeoutExpired:
             self.process.kill()
             self.process.wait(timeout=5)
-        self.selector.close()
+        self.reader.join(timeout=5)
         self.process.stdout.close()
         self.process.stderr.close()
 
@@ -89,7 +104,6 @@ def run(args):
         int d2fa_test_key(uint64_t, uint8_t *, size_t);
     """)
     library = args.library.resolve()
-    core = ffi.dlopen(str(library))
     buffer = ffi.new("uint8_t[]", 16384)
     key = ffi.new("uint8_t[]", 64)
     with tempfile.TemporaryDirectory(prefix="d2fa-synthetic-keylog-check-") as temp:
@@ -101,6 +115,7 @@ def run(args):
         os.environ["SSLKEYLOGFILE"] = str(keylog)
         peer = None
         try:
+            core = ffi.dlopen(str(library))
             peer = Peer(args.java, args.jar.resolve(), library, env)
 
             def drain_bob(bob, alice, fragment=16384):
