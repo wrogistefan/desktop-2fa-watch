@@ -105,3 +105,5 @@ uses a private static CRT. These are test/build targets, not new minimum OS
 support claims. Developer artifacts contain only the non-test core and licenses,
 never test-key binaries, runtime data, frame logs or dumps. No published app
 release, account receiver or end-user installation acceptance is implied.
+
+A separate [Watch LAN smoke app](poc/android/README.md) exercises the manual IPv4 startup without vault/account access. It is a developer-only APK, with [explicit test evidence and remaining gates](../docs/testing/transfer-watch-poc-2026-11-12.md).
