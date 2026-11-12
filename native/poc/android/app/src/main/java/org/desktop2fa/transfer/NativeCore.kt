@@ -12,6 +12,5 @@ object NativeCore {
     external fun drain(handle: Long, capacity: Int): ByteArray?
     external fun write(handle: Long, data: ByteArray): Int
     external fun read(handle: Long, capacity: Int): ByteArray?
-    external fun disconnect(handle: Long): Int
     external fun close(handle: Long)
 }

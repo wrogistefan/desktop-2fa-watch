@@ -54,9 +54,32 @@ ADB device was available during the local check. No APK was installed on the
 main application, no user vault was opened and no device data was cleared.
 Physical Wi-Fi-only routing, runtime permission, screen-off/background and
 network-loss cleanup, firewall, device ABI and 100-session median/p95 still
-need execution. The terminal server's blocking getpass does not implement
-automatic prompt expiry; Watch independently enforces its own limits.
+need execution. The initial terminal server used blocking getpass. Review identified that
+server-side input expiry should be enforced while waiting, not only after Enter;
+the follow-up below replaces it. Watch independently enforces its own limits.
 
 T0–T12 aggregate gates remain open. The smoke path does not implement account
 validation/import, REVIEW/RESULT, durable receipt commits, STATUS/CANCEL,
 automatic reconnect or mDNS and cannot justify enabling real-secret reception.
+
+## Review follow-up
+
+Replace the documented blocking terminal limitation with bounded hidden input:
+Windows no-echo console polling and POSIX cbreak/select, restoring terminal
+flags in finally. Poll code expiry and pending socket; abort on disconnect or
+premature peer bytes. No worker thread can leave a terminal mode behind. No
+input echo fallback, file persistence or code-bearing CLI/environment is used.
+
+Local Windows Python regressions: **9 discovered, 8 passed, one POSIX-only test
+skipped**. These include clock-controlled expiry without Enter, input limits,
+backspace, Ctrl-C, peer disconnect/premature data, mocked Windows console input,
+and the actual native successful/wrong-code loopback. CI now runs this suite
+on Linux, Windows and macOS; the POSIX PTY regression checks no echo and terminal
+restoration on success and expiry. These new CI results remain pending until run.
+
+Clarify the Android export allow/deny guard, remove the unused Watch disconnect
+binding and explicitly reject number fractions/exponents in the shared lexer.
+Keep ACCESS_LOCAL_NETWORK's API-37 enforcement guard: the review's API-33 claim
+confuses this with older nearby-Wi-Fi access. The official local network
+permission guide requires it for Android 17 with target SDK 37. Actual permission
+and lifecycle behavior still require device testing.

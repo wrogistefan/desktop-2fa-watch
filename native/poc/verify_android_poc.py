@@ -28,8 +28,9 @@ with zipfile.ZipFile(apk) as archive, tempfile.TemporaryDirectory() as temp:
         library.write_bytes(archive.read(name))
         output = subprocess.check_output([str(nm), "-D", "--defined-only", str(library)], text=True)
         symbols = [line.split()[-1] for line in output.splitlines() if line.strip()]
-        if ("d2fa_create" not in symbols or any(
-                not (s.startswith("d2fa_") or s.startswith("Java_org_desktop2fa_transfer_NativeCore_"))
-                or s.startswith("d2fa_test_") or s.endswith("_testKey") for s in symbols)):
+        allowed = all(symbol.startswith("d2fa_") or
+                      symbol.startswith("Java_org_desktop2fa_transfer_NativeCore_") for symbol in symbols)
+        denied = any(symbol.startswith("d2fa_test_") or symbol.endswith("_testKey") for symbol in symbols)
+        if "d2fa_create" not in symbols or not allowed or denied:
             raise SystemExit("Android private export guard failed")
 print("PASS: separate application ID, three ABIs, no public BoringSSL/test-key API")

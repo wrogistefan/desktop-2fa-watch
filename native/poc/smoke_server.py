@@ -5,15 +5,15 @@ This is deliberately not the Desktop configurator or a complete v0.3 receiver.
 """
 import argparse
 import base64
-import getpass
 import ipaddress
 import json
+import os
 import re
 import secrets
+import select
 import socket
 import struct
 import sys
-import warnings
 import time
 from pathlib import Path
 from cffi import FFI
@@ -117,6 +117,81 @@ def code_bytes(value):
         value = value[:4] + value[5:]
     require(re.fullmatch("[0-9]{8}", value) is not None)
     return value.encode("ascii")
+
+
+def collect_code(next_character, deadline):
+    """No echo, bounded input, no secret-bearing diagnostics. Backends must be cancellable."""
+    buffer = bytearray()
+    try:
+        while True:
+            remaining(deadline)
+            character = next_character(deadline)
+            remaining(deadline)
+            require(type(character) is bytes and len(character) == 1)
+            value = character[0]
+            if value in (10, 13):
+                return code_bytes(buffer.decode("ascii"))
+            if value == 3:
+                raise KeyboardInterrupt()
+            if value in (8, 127):
+                if buffer:
+                    buffer[-1] = 0
+                    del buffer[-1]
+            else:
+                require(value in b"0123456789 " and len(buffer) < 9)
+                buffer.append(value)
+    finally:
+        buffer[:] = bytes(len(buffer))
+
+
+def pending_input(deadline, connection):
+    remaining(deadline)
+    # After PAKE_A no bytes are legal until the server sends PAKE_B. Readability
+    # here indicates premature data or peer closure; do not leave a stale prompt.
+    readable, _, _ = select.select([connection], [], [], 0)
+    require(not readable)
+
+
+def read_terminal_code(deadline, connection):
+    require(sys.stdin.isatty())
+    print("Code shown on the watch: ", end="", flush=True)
+    try:
+        if os.name == "nt":
+            import msvcrt
+            def character(limit):
+                while True:
+                    pending_input(limit, connection)
+                    if msvcrt.kbhit():
+                        value = msvcrt.getwch()
+                        require(value not in ("\x00", "\xe0"))
+                        try:
+                            return value.encode("ascii")
+                        except UnicodeError:
+                            raise SmokeFailure() from None
+                    time.sleep(min(0.02, remaining(limit)))
+            return collect_code(character, deadline)
+        else:
+            import termios
+            import tty
+            descriptor = sys.stdin.fileno()
+            previous = termios.tcgetattr(descriptor)
+            try:
+                termios.tcflush(descriptor, termios.TCIFLUSH)
+                tty.setcbreak(descriptor, termios.TCSANOW)  # ECHO/ICANON off, ISIG retained.
+                def character(limit):
+                    while True:
+                        pending_input(limit, connection)
+                        ready, _, _ = select.select([descriptor], [], [], min(0.1, remaining(limit)))
+                        if ready:
+                            return os.read(descriptor, 1)
+                return collect_code(character, deadline)
+            finally:
+                try:
+                    termios.tcflush(descriptor, termios.TCIFLUSH)
+                finally:
+                    termios.tcsetattr(descriptor, termios.TCSANOW, previous)
+    finally:
+        print(flush=True)
 
 
 def read_frame(sock, deadline, limit=2048):
@@ -233,8 +308,8 @@ def serve(core, connection, read_code):
         require(identifier(a["sid"]) == sid and identifier(a["wid"]) == wid)
         a_bytes = point(a["message"])
         expiry = time.monotonic() + 180
-        password = code_bytes(read_code())
-        remaining(expiry)  # Terminal input itself is blocking; see documented PoC limitation.
+        password = code_bytes(read_code(expiry))
+        remaining(expiry)
         deadline = min(expiry, time.monotonic() + 15)
         handle = core.lib.d2fa_create(1, sid, 16, wid, 16, password, 8)
         password = None
@@ -264,7 +339,6 @@ def main():
     args = parser.parse_args()
     try:
         require(sys.stdin.isatty())
-        warnings.simplefilter("error", getpass.GetPassWarning)
         address = ipaddress.IPv4Address(args.bind)
         require(not (address.is_unspecified or address.is_multicast or address.is_loopback))
         core = Core(args.library)
@@ -276,7 +350,7 @@ def main():
             print("Enter this address on the separate Watch test app. No accounts are accepted.", flush=True)
             connection, _ = listener.accept()
             with connection:
-                serve(core, connection, lambda: getpass.getpass("Code shown on the watch: "))
+                serve(core, connection, lambda deadline: read_terminal_code(deadline, connection).decode("ascii"))
         print("PASS: authenticated synthetic channel; no accounts transferred")
     except (Exception, KeyboardInterrupt):
         print("FAIL: test stopped or could not authenticate (details redacted)")

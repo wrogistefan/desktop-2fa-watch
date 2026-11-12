@@ -74,7 +74,9 @@ internal object StrictJsonText {
                         if (text[pos] !in '1'..'9') invalid()
                         while (pos < text.length && text[pos] in '0'..'9') pos++
                     }
-                    // Fractions, exponents and adjacent values fail the next delimiter check.
+                    // This format deliberately permits only JSON integer syntax.
+                    if (pos < text.length && text[pos] in ".eE") invalid()
+                    // Other adjacent values fail the next delimiter check.
                 }
                 else -> invalid()
             }

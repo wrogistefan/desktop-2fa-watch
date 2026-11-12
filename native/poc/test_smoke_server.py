@@ -6,6 +6,9 @@ import socket
 import struct
 import threading
 import time
+import sys
+from unittest.mock import patch
+import io
 import unittest
 import smoke_server as s
 
@@ -47,6 +50,90 @@ class ParserTests(unittest.TestCase):
         with self.assertRaises(s.SmokeFailure): s.exact(source, 1, time.monotonic() - 1)
 
 
+class HiddenInputTests(unittest.TestCase):
+    def test_grouping_backspace_and_input_bounds(self):
+        values = iter(bytes([b]) for b in b"0000 0002\x081\r")
+        self.assertEqual(s.collect_code(lambda _: next(values), time.monotonic() + 5), b"00000001")
+        for raw in [b"1234567\n", b"1234567890\n", b"a", b"\x00"]:
+            values = iter(bytes([b]) for b in raw)
+            with self.assertRaises(s.SmokeFailure):
+                s.collect_code(lambda _: next(values), time.monotonic() + 5)
+        with self.assertRaises(KeyboardInterrupt):
+            s.collect_code(lambda _: b"\x03", time.monotonic() + 5)
+
+    def test_deadline_is_checked_while_typing_without_enter(self):
+        current = [0.0]
+        def character(_):
+            current[0] = 180.0
+            return b"1"
+        with patch.object(s.time, "monotonic", lambda: current[0]), self.assertRaises(s.SmokeFailure):
+            s.collect_code(character, 180.0)
+
+    def test_pending_prompt_rejects_closed_or_premature_peer_data(self):
+        import select
+        for closed in [True, False]:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+                listener.bind(("127.0.0.1", 0)); listener.listen(1)
+                with socket.create_connection(listener.getsockname()) as client, listener.accept()[0] as server:
+                    s.pending_input(time.monotonic() + 5, server)
+                    if closed: client.shutdown(socket.SHUT_WR)
+                    else: client.sendall(b"x")
+                    self.assertTrue(select.select([server], [], [], 2)[0])
+                    with self.assertRaises(s.SmokeFailure): s.pending_input(time.monotonic() + 5, server)
+
+    @unittest.skipUnless(os.name == "nt", "Windows console adapter only")
+    def test_windows_console_polling_has_no_echo_and_stops_on_timeout(self):
+        import msvcrt
+        import types
+        output = io.StringIO()
+        values = iter("00000001\r")
+        with patch.object(sys, "stdin", types.SimpleNamespace(isatty=lambda: True)), \
+             patch.object(sys, "stdout", output), \
+             patch.object(s, "pending_input"), \
+             patch.object(msvcrt, "kbhit", return_value=True), \
+             patch.object(msvcrt, "getwch", side_effect=lambda: next(values)):
+            self.assertEqual(s.read_terminal_code(time.monotonic() + 5, None), b"00000001")
+        self.assertNotIn("00000001", output.getvalue())
+        with patch.object(sys, "stdin", types.SimpleNamespace(isatty=lambda: True)), \
+             patch.object(sys, "stdout", io.StringIO()), \
+             patch.object(s, "pending_input", side_effect=s.SmokeFailure()), \
+             patch.object(msvcrt, "kbhit", return_value=False):
+            with self.assertRaises(s.SmokeFailure): s.read_terminal_code(time.monotonic() + 5, None)
+
+    @unittest.skipIf(os.name == "nt", "POSIX terminal adapter only")
+    def test_posix_pty_no_echo_and_terminal_restored_on_success_and_expiry(self):
+        import pty
+        import termios
+        import tty
+        import select
+        import types
+        for expire in [False, True]:
+            master, slave = pty.openpty()
+            previous = termios.tcgetattr(slave)
+            entered = threading.Event()
+            real_cbreak = tty.setcbreak
+            def cbreak(*args):
+                real_cbreak(*args); entered.set()
+            def writer():
+                if entered.wait(2) and not expire: os.write(master, b"00000001\n")
+            worker = threading.Thread(target=writer, daemon=True); worker.start()
+            output = io.StringIO()
+            try:
+                with patch.object(sys, "stdin", types.SimpleNamespace(isatty=lambda: True, fileno=lambda: slave)), \
+                     patch.object(sys, "stdout", output), patch.object(tty, "setcbreak", side_effect=cbreak), \
+                     patch.object(s, "pending_input", side_effect=s.SmokeFailure() if expire else None):
+                    if expire:
+                        with self.assertRaises(s.SmokeFailure): s.read_terminal_code(time.monotonic() + 5, None)
+                    else:
+                        self.assertEqual(s.read_terminal_code(time.monotonic() + 5, None), b"00000001")
+                self.assertEqual(previous, termios.tcgetattr(slave))
+                self.assertFalse(select.select([master], [], [], 0)[0])  # No input echo in the PTY.
+                self.assertNotIn("00000001", output.getvalue())
+            finally:
+                worker.join(timeout=3)
+                os.close(master); os.close(slave)
+
+
 @unittest.skipUnless(os.environ.get("D2FA_SMOKE_LIBRARY"), "Native library not provided")
 class NativeLanTests(unittest.TestCase):
     def test_real_native_channel_and_wrong_code(self):
@@ -60,7 +147,7 @@ class NativeLanTests(unittest.TestCase):
                     try:
                         connection, _ = listener.accept()
                         with connection:
-                            s.serve(core, connection, lambda: "00000002" if wrong else "00000001")
+                            s.serve(core, connection, lambda _: "00000002" if wrong else "00000001")
                         outcomes.append(True)
                     except Exception: outcomes.append(False)
                 worker = threading.Thread(target=bob, daemon=True); worker.start()

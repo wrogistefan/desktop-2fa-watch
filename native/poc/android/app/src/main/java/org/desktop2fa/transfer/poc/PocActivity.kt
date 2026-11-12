@@ -147,6 +147,8 @@ class PocActivity : Activity() {
     }
     private fun begin() {
         if (!started || attempt != null || attempts >= 3) return
+        // Android 17/API 37 enforces this runtime permission for target SDK 37.
+        // https://developer.android.com/privacy-and-security/local-network-permission
         if (Build.VERSION.SDK_INT >= 37 && checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) {
             status.text = "Allow local network access, then tap Start."
             requestPermissions(arrayOf(Manifest.permission.ACCESS_LOCAL_NETWORK), 1)
