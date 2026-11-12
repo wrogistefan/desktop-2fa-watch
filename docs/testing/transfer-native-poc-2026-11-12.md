@@ -22,8 +22,9 @@ Every aggregate gate below remains open until its complete scope has evidence.
   1/1 CTest case (1.54 seconds total test execution): 1000 fresh native C++
   exchanges with full 64-byte K equality, TLS nonsecret marker delivery, a full
   reconnect, leading-zero code, wrong-code/role/wid rejection and pre-TLS
-  application-I/O rejection. This does not execute JNI or CFFI. A final rerun
-  covers the subsequent explicit SSL_connect/SSL_accept and handle-bound edits.
+  application-I/O rejection. This does not execute JNI or CFFI. The final rerun
+  after explicit SSL_connect/SSL_accept and handle-bound edits also passed 1/1
+  (1.17 seconds total test execution), covering implementation `ef25c1b`.
 - `.\gradlew.bat -p native/poc/kotlin jar --stacktrace` passed on Windows;
   it compiles the isolated peer, not a JNI runtime or Wear OS binary.
 
