@@ -84,6 +84,10 @@ jobs:
           ctest --test-dir build/interop --output-on-failure
           python native/poc/interop.py --library build/interop/libd2fa_transfer.so \
             --jar native/poc/kotlin/build/libs/d2fa-native-interop-poc.jar
+      - name: Exercise isolated LAN smoke peer against the actual native core
+        env:
+          D2FA_SMOKE_LIBRARY: build/interop/libd2fa_transfer.so
+        run: python -m unittest discover -s native/poc -p test_smoke_server.py -v
       - name: Verify non-test exports without rebuilding dependency sources
         run: |
           cmake -S native/transfer -B build/interop -DD2FA_TEST_API=OFF
@@ -140,6 +144,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python native/poc/interop.py --library build/platform/Release/d2fa_transfer.dll --jar native/poc/kotlin/build/libs/d2fa-native-interop-poc.jar
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:D2FA_SMOKE_LIBRARY=(Resolve-Path build/platform/Release/d2fa_transfer.dll).Path
+          python -m unittest discover -s native/poc -p test_smoke_server.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake -S native/transfer -B build/platform -DD2FA_TEST_API=OFF
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build build/platform --config Release --target d2fa_transfer --parallel 2
@@ -165,6 +172,7 @@ jobs:
           ctest --test-dir build/platform --output-on-failure
           python native/poc/interop.py --library build/platform/libd2fa_transfer.dylib \
             --jar native/poc/kotlin/build/libs/d2fa-native-interop-poc.jar
+          D2FA_SMOKE_LIBRARY="$PWD/build/platform/libd2fa_transfer.dylib" python -m unittest discover -s native/poc -p test_smoke_server.py -v
           cmake -S native/transfer -B build/platform -DD2FA_TEST_API=OFF
           cmake --build build/platform --target d2fa_transfer --parallel 2
           python native/poc/verify_exports.py build/platform/libd2fa_transfer.dylib

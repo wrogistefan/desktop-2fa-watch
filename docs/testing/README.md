@@ -80,3 +80,5 @@ verification distinctions and storage-review feedback after post-save errors.
 The [recovery path follow-up](recovery-path-regressions.md) records the assessment
 of late #46 review findings, no-follow opens, changed selections and debug-host
 containment tests, including the limits of metadata-based checks.
+
+- [Isolated Watch transport PoC, 2026-11-12](transfer-watch-poc-2026-11-12.md): synthetic-only standalone harness, executed JVM/Windows checks and pending device gates.

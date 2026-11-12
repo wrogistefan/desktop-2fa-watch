@@ -112,3 +112,15 @@ licenses. The `nm -gU` guard remains: uppercase `-U` excludes undefined symbols
 in Apple's implementation; lowercase `-u` selects them. Windows `vswhere -find`
 was exercised successfully by this run. Neither observation replaces the
 pending macOS execution.
+
+## Completed desktop host matrix
+
+Run [43291727056](https://github.com/wrogistefan/desktop-2fa-watch/actions/runs/43291727056),
+implementation `bbc2327`, passed Linux sanitizer/upstream suites, Linux interop,
+Windows Server 2022 x64 and macOS 15 arm64 host CTest, 1000 Python/CFFI ↔
+Kotlin/JNI exchanges on each host, and non-test export/key-log guards. In
+particular Apple's actual `nm -gU` guard passed. PR #70 review discussions
+record the source/toolchain evidence resolving that disputed review finding.
+These are host runner checks, not firewall/manual-installation/real-Watch or
+full T0–T12 acceptance. The earlier macOS-14 cancellation remains a failed
+setup attempt, not compatibility evidence.
