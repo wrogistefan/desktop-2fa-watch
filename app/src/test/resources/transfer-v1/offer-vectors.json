@@ -1,0 +1,182 @@
+{
+  "warning": "SYNTHETIC TEST DATA ONLY. One-byte secrets are deliberately weak and must never be used for 2FA.",
+  "vectors": [
+    {
+      "name": "one-byte-canonical",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "60ce8b76baccc623b17d994034bb81c11f3543a2f071aedb46ce2efc29dde795",
+      "accounts": [
+        {
+          "item_id": "00000000000000000000000000000001",
+          "kind": "totp",
+          "issuer": "Synthetic",
+          "account": "test-only",
+          "secret": "AA",
+          "algorithm": "SHA1",
+          "digits": 6,
+          "period": 30
+        }
+      ]
+    },
+    {
+      "name": "unicode-sha512-eight-45",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Zażółć 😀\",\"account\":\"  synthetic@example.test  \",\"secret\":\"AA\",\"algorithm\":\"SHA512\",\"digits\":8,\"period\":45}]}",
+      "sha256": "ebcf0fd801075bb658c1bd39f6f91f92c01bc633509c26a79f1c1e6af1892399",
+      "accounts": [
+        {
+          "item_id": "00000000000000000000000000000001",
+          "kind": "totp",
+          "issuer": "Zażółć 😀",
+          "account": "  synthetic@example.test  ",
+          "secret": "AA",
+          "algorithm": "SHA512",
+          "digits": 8,
+          "period": 45
+        }
+      ]
+    },
+    {
+      "name": "empty-issuer-short-period",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":1}]}",
+      "sha256": "5c6357523b3c2b58286fe7a908ea6780c32330194f0d7631af5ff36d053da0ac",
+      "accounts": [
+        {
+          "item_id": "00000000000000000000000000000001",
+          "kind": "totp",
+          "issuer": "",
+          "account": "test-only",
+          "secret": "AA",
+          "algorithm": "SHA1",
+          "digits": 6,
+          "period": 1
+        }
+      ]
+    },
+    {
+      "name": "lowercase-secret",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"aa\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "67244aca71153d76bf09199788879550eb0865d79274997991d961d08353fc0b",
+      "error": "INVALID_ACCOUNT"
+    },
+    {
+      "name": "padded-secret",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA======\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "95ba66f266edc2448f216098eac373db47ca79f422f2ed80ca9446145c9b9041",
+      "error": "INVALID_ACCOUNT"
+    },
+    {
+      "name": "nonzero-pad-bits",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AB\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "0933ecdf86a3f35e3f816bb47d1254bf6a974b1c6cae03110904c051ebcbe5ae",
+      "error": "INVALID_ACCOUNT"
+    },
+    {
+      "name": "seven-digits",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":7,\"period\":30}]}",
+      "sha256": "75b86cc725c88f54bd3d5cc3ed675300c9e561161a2ddc9430bd79bba15bcb4f",
+      "error": "UNSUPPORTED_TOTP"
+    },
+    {
+      "name": "quoted-digits",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":\"6\",\"period\":30}]}",
+      "sha256": "91aff502eac6c7189b158b5e2fd50c64e737cf99bc4a693060091d20e8d5916d",
+      "error": "INVALID_ACCOUNT"
+    },
+    {
+      "name": "zero-period",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":0}]}",
+      "sha256": "98f505b8dbfe01549e6490e2c16563e51f0b19aaf219789283bee90417556087",
+      "error": "UNSUPPORTED_TOTP"
+    },
+    {
+      "name": "long-period",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":86401}]}",
+      "sha256": "91f25bebbb48564a939747cd6fe1bc657b53c6604c17dc3d2502f88a378017c4",
+      "error": "UNSUPPORTED_TOTP"
+    },
+    {
+      "name": "empty-account",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "feabe89bf8ff139b4f02758b15722f9ef8782d37b54cb66af06a9b17f04a08b0",
+      "error": "INVALID_ACCOUNT"
+    },
+    {
+      "name": "space-only-account",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"   \",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "73084533094a5ca3bb5fbb569b51713b96229c5d3bbb7f43a60592938d85555b",
+      "error": "INVALID_ACCOUNT"
+    },
+    {
+      "name": "control-name",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"synthetic\\n\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "aceb96ba438cccd7d966c9dccda755536ddc1f57cba38c16c9109cc8a8e18f6c",
+      "error": "INVALID_ACCOUNT"
+    },
+    {
+      "name": "bidi-override",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"x‮y\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "55eb0c19d9119f87c668e2acca2e2fa63bd345fa2a60b8a0c86369801f3708cf",
+      "error": "INVALID_ACCOUNT"
+    },
+    {
+      "name": "quoted-kind",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"hotp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "047deaecdff1a3954432dd1355ee61bf7ebefaf9605bffea7c4192667a5f6e03",
+      "error": "UNSUPPORTED_TOTP"
+    },
+    {
+      "name": "null-issuer",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":null,\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "4c4b1b3e2df7ce58756242834387e9992e40daa423c37032bbe1dadf9f9083a5",
+      "error": "INVALID_ACCOUNT"
+    },
+    {
+      "name": "extra-record-field",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30,\"extra\":1}]}",
+      "sha256": "cd07e00b86a5f59e9622b5cb10c5d453d666599545af934d9a95be4c175ed779",
+      "error": "INVALID_ACCOUNT"
+    },
+    {
+      "name": "empty-array",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[]}",
+      "sha256": "14422ab1b0971bdfa8e624a02d224e66af0662c7e8acc13d3c94ab052b07faa6",
+      "error": "LIMIT_EXCEEDED"
+    },
+    {
+      "name": "unsupported-version",
+      "frame_utf8": "{\"v\":2,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "a9388fb35c5d608598982377f712deec8fb03f8e8e8c103e338d40c415b84597",
+      "error": "UNSUPPORTED_VERSION"
+    },
+    {
+      "name": "duplicate-item-id",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30},{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"other-test\",\"secret\":\"AE\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "9529fa59cb40053546b8047fc7c5af425b48e07564bc9e3dc5e8bae4d130596c",
+      "error": "DUPLICATE_IN_BATCH"
+    },
+    {
+      "name": "duplicate-key",
+      "frame_utf8": "{\"v\":1,\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "17fc1418418f55db50cceb1ed89d1f50a63ad505ebc95f1a46048f5aa0896959",
+      "error": "INVALID_MESSAGE"
+    },
+    {
+      "name": "escaped-duplicate-key",
+      "frame_utf8": "{\"v\":1,\"\\u0076\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "7d5a89f21bc0512ebbaa5b83072a3a76d856484481cadfbd3a93bdfb3e5e5e9c",
+      "error": "INVALID_MESSAGE"
+    },
+    {
+      "name": "float-version",
+      "frame_utf8": "{\"v\":1.0,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"test-only\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "8dd0a35beaf24c4d73a80417fb4206bdb158861fbdd42b2b18cb222a73c64a65",
+      "error": "INVALID_MESSAGE"
+    },
+    {
+      "name": "escaped-unpaired-surrogate",
+      "frame_utf8": "{\"v\":1,\"type\":\"OFFER\",\"transfer_id\":\"ffffffffffffffffffffffffffffffff\",\"accounts\":[{\"item_id\":\"00000000000000000000000000000001\",\"kind\":\"totp\",\"issuer\":\"Synthetic\",\"account\":\"\\ud800\",\"secret\":\"AA\",\"algorithm\":\"SHA1\",\"digits\":6,\"period\":30}]}",
+      "sha256": "8a7a1ff96e528256705a3b7e72b2cf17ffb895e9421d7de7339917351e442af1",
+      "error": "INVALID_ACCOUNT"
+    }
+  ]
+}
