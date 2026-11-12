@@ -82,3 +82,5 @@ of late #46 review findings, no-follow opens, changed selections and debug-host
 containment tests, including the limits of metadata-based checks.
 
 - [Isolated Watch transport PoC, 2026-11-12](transfer-watch-poc-2026-11-12.md): synthetic-only standalone harness, executed JVM/Windows checks and pending device gates.
+
+- [OFFER foundations, 2026-11-12](transfer-offer-foundations-2026-11-12.md): offline parser/planner and shared synthetic vectors; receipt/save integration remains pending.

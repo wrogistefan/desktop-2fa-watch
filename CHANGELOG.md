@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   checks and shared synthetic Desktop handoff vectors. No network receiver,
   approval UI or save integration is enabled.
 
+### Isolated transport experiment
+
+- Add a standalone synthetic Watch Wi-Fi smoke APK and Python/CFFI peer using
+  the approved native PAKE/importer/TLS profile. Keep the product app offline;
+  no vault/account access or receiver UI is enabled. Record host/Android build
+  evidence and required physical-watch gates before real-secret reception.
+
 ### Storage foundations
 
 - Add an explicit-consent migration backend that retains/verifies an encrypted

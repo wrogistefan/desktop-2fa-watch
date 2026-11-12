@@ -38,7 +38,18 @@ existing application build. These failed runs are not passing APK evidence.
 
 ## Pending evidence
 
-Full three-ABI APK build/packaging CI is pending at this update. No connected
+Local standalone `:app:assembleRelease` passed (10m 2s, first native build),
+including all three ABIs. The local `verify_android_poc.py` check passed:
+separate application ID, exact packaged ABI libraries, both license notices and
+no exported BoringSSL/test-key API. CI independently repeats these checks.
+After merging the reviewed migration backend from main, the full interoperability
+runner passed again: **367 tests, zero failures/errors/skips**, debug APK and
+actual pinned Python bridge included. These are local results, not device results.
+
+CI run [43295876403](https://github.com/wrogistefan/desktop-2fa-watch/actions/runs/43295876403),
+implementation `8c0dddd`, independently passed the standalone JVM tests,
+three-ABI APK build and private export/license/package guard on Ubuntu 24.04.
+The build step completed in 3m 51s after installing the pinned toolchains. No connected
 ADB device was available during the local check. No APK was installed on the
 main application, no user vault was opened and no device data was cleared.
 Physical Wi-Fi-only routing, runtime permission, screen-off/background and

@@ -7,8 +7,10 @@ import tempfile
 import zipfile
 
 sdk = Path(os.environ["ANDROID_HOME"])
-nm = sdk / "ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
-aapt = sdk / "build-tools/36.0.0/aapt2"
+host = {"win32": "windows-x86_64", "darwin": "darwin-x86_64"}.get(sys.platform, "linux-x86_64")
+suffix = ".exe" if os.name == "nt" else ""
+nm = sdk / ("ndk/28.2.13676358/toolchains/llvm/prebuilt/" + host + "/bin/llvm-nm" + suffix)
+aapt = sdk / ("build-tools/36.0.0/aapt2" + suffix)
 apk = Path(sys.argv[1])
 badging = subprocess.check_output([str(aapt), "dump", "badging", str(apk)], text=True)
 if "package: name='org.desktop2fa.transfer.poc'" not in badging or "sharedUserId" in badging:
