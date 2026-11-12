@@ -83,3 +83,5 @@ containment tests, including the limits of metadata-based checks.
 
 - [Watch migration-copy recovery, 2026-11-12](migration-recovery-2026-11-12.md): metadata inventory and explicit read-only opening; final run/device limitations are listed in the report.
 - [Isolated Watch transport PoC, 2026-11-12](transfer-watch-poc-2026-11-12.md): synthetic-only standalone harness, executed JVM/Windows checks and pending device gates.
+
+- [OFFER foundations, 2026-11-12](transfer-offer-foundations-2026-11-12.md): offline parser/planner and shared synthetic vectors; receipt/save integration remains pending.

@@ -84,3 +84,5 @@ storage foundations in PR #67. There is no socket service, permission change,
 receiver UI or use of real accounts. See the [acceptance ledger](../testing/transfer-native-poc-2026-11-12.md)
 for executed checks and T0–T12 gaps; source code or prepared CI is not proof of
 passing the required real-Wear/all-platform gate.
+
+- [OFFER validation and pure planning](offer-validation-v1.md): strict wire records, shared synthetic vectors, historical conflicts and private receipt candidates; no receiver/save integration.
