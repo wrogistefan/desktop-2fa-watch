@@ -31,7 +31,7 @@ class VaultVersionPolicyTest {
 
     @Test
     fun headerAndPayloadVersionsAreCheckedIndependently() {
-        for (header in listOf(0, 2, 255)) {
+        for (header in listOf(0, 3, 255)) {
             val file = fixture("""{"version":1,"entries":[]}""", header.toByte())
             val original = file.readBytes()
             assertThrows(UnsupportedFormatException::class.java) { Vault.load(file, password) }
@@ -50,7 +50,7 @@ class VaultVersionPolicyTest {
         val existing = File(folder.root, "existing.d2fa")
         Vault.create().saveNew(existing, password)
         val original = existing.readBytes()
-        for (version in listOf(-1, 0, 2, Int.MAX_VALUE)) {
+        for (version in listOf(-1, 0, 3, Int.MAX_VALUE)) {
             val vault = Vault(VaultData(version = version))
             assertThrows(UnsupportedFormatException::class.java) { vault.save(existing, password) }
             assertArrayEquals(original, existing.readBytes())

@@ -1,6 +1,8 @@
 # Desktop Vault Compatibility
 
-The owner-provided [transfer v0.3 profile](transfer/desktop-2fa-transfer-v0.3.md) is separate from vault-file compatibility and replaces the proposed E1/E2 wire/collision direction for future implementation. Its durable receipts require the [accepted Watch v2 storage design](transfer/vault-v2-proposal.md). Existing v1 files and implementation remain unchanged.
+The owner-provided [transfer v0.3 profile](transfer/desktop-2fa-transfer-v0.3.md) is separate from vault-file compatibility and replaces the proposed E1/E2 wire/collision direction for future implementation. Its durable receipts require the [accepted Watch v2 storage design](transfer/vault-v2-proposal.md). Existing v1 files and their wire/storage rules remain unchanged. Watch can now
+read/write v2 snapshots, but no automatic migration or transfer receiver is added.
+See [v2 test evidence](testing/vault-v2-regressions.md).
 
 The current reference is Desktop-2FA **v0.10.0**, commit
 [`7d1089d6bee0f3f82678ca8a13988c742840fba0`](https://github.com/wrogistefan/desktop-2fa/tree/7d1089d6bee0f3f82678ca8a13988c742840fba0).
@@ -94,7 +96,9 @@ Watch rejects unknown root and entry fields (including nested extension objects)
 before exposing a writable vault. They cannot silently disappear during a later
 manual addition. A higher version is not a request to reinterpret data as v1.
 
-Header byte `0x01` and an explicitly present JSON integer literal `1` are required.
+For v1, header byte `0x01` and an explicitly present JSON integer literal `1`
+are required. The new Watch v2 reader instead requires byte `0x02`, payload
+integer `2` and authenticated header AAD; it never interprets one as the other.
 Missing/null, string, Boolean, fractional/exponent and out-of-range values fail
 as invalid data; other Int versions fail as unsupported. Unsupported models also
 cannot be saved over existing files or used to create new ones. Errors preserve

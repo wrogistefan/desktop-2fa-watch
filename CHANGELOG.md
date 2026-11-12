@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Storage foundations
+
+- Add a separate Watch vault v2 codec with authenticated header and strict
+  encrypted receipt validation. Preserve v1 output and existing v2 receipts
+  through manual additions, including stale-baseline checks. No automatic
+  migration, transfer receiver, network permission or migration UI is enabled.
+
 ### Documentation
 
 - Import the owner-provided transfer specification v0.3 and document the accepted

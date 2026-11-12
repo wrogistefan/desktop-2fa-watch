@@ -38,12 +38,15 @@ object CryptoUtils {
      * Encrypts data using AES-256-GCM.
      * Returns 12-byte nonce + ciphertext + 16-byte authentication tag.
      */
-    fun encrypt(key: ByteArray, data: ByteArray): ByteArray {
+    fun encrypt(key: ByteArray, data: ByteArray): ByteArray = encrypt(key, data, null)
+
+    internal fun encrypt(key: ByteArray, data: ByteArray, aad: ByteArray?): ByteArray {
         val nonce = ByteArray(12).apply { SecureRandom().nextBytes(this) }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         val gcmSpec = GCMParameterSpec(128, nonce)
         val secretKeySpec = SecretKeySpec(key, "AES")
         cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmSpec)
+        if (aad != null) cipher.updateAAD(aad)
         val ciphertext = cipher.doFinal(data)
         return nonce + ciphertext
     }
@@ -52,7 +55,9 @@ object CryptoUtils {
      * Decrypts data using AES-256-GCM.
      * Blob format: 12-byte nonce + ciphertext + 16-byte authentication tag (min 28 bytes).
      */
-    fun decrypt(key: ByteArray, blob: ByteArray): ByteArray {
+    fun decrypt(key: ByteArray, blob: ByteArray): ByteArray = decrypt(key, blob, null)
+
+    internal fun decrypt(key: ByteArray, blob: ByteArray, aad: ByteArray?): ByteArray {
         if (blob.size < 12 + 16) {
             throw IllegalArgumentException("Encrypted blob is too short (minimum 28 bytes required)")
         }
@@ -62,6 +67,7 @@ object CryptoUtils {
         val gcmSpec = GCMParameterSpec(128, nonce)
         val secretKeySpec = SecretKeySpec(key, "AES")
         cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, gcmSpec)
+        if (aad != null) cipher.updateAAD(aad)
         return cipher.doFinal(ciphertext)
     }
 

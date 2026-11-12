@@ -1,5 +1,8 @@
 # UI Test Reports
 
+The [vault v2 codec report](vault-v2-regressions.md) records storage/receipt
+regressions and distinguishes them from pending migration and transport gates.
+
 The [physical SM-L705F report](physical-watch-2026-11-11.md) records current
 synthetic device runs, initial fixture failures and remaining manual/measurement
 checks. It does not close the physical roadmap gates.

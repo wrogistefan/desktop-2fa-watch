@@ -33,7 +33,7 @@ class AccountAdditionCandidateTest {
             assertEquals(listOf(old), baseline.entries)
         }
         assertThrows(IllegalArgumentException::class.java) { AccountAdditionCandidate(VaultData(), emptyList()) }
-        assertThrows(IllegalArgumentException::class.java) { AccountAdditionCandidate(VaultData(2), listOf(added)) }
+        assertThrows(IllegalArgumentException::class.java) { AccountAdditionCandidate(VaultData(99), listOf(added)) }
         assertThrows(IllegalArgumentException::class.java) {
             AccountAdditionCandidate(VaultData(entries = mutableListOf(old.copy(period = 0))), listOf(added))
         }

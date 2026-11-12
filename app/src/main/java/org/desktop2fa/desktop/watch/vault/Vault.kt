@@ -1,11 +1,12 @@
 package org.desktop2fa.desktop.watch.vault
 
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.desktop2fa.desktop.watch.model.AccountValidation
 import org.desktop2fa.desktop.watch.model.SetupKey
 import org.desktop2fa.desktop.watch.model.TotpEntry
 import org.desktop2fa.desktop.watch.model.VaultData
+import org.desktop2fa.desktop.watch.model.VaultPayloadV2
+import org.desktop2fa.desktop.watch.model.VaultPayloadValidation
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -71,24 +72,29 @@ class Vault(val data: VaultData = VaultData()) {
         validatePassword(password)
         // Validate the exact immutable-entry snapshot that will be serialized,
         // before any write, directory mutation or expensive KDF.
-        val snapshot = data.copy(entries = data.entries.toMutableList())
-        if (snapshot.version != 1) {
+        val snapshot = data.copy(entries = data.entries.toMutableList(),
+            transferReceipts = data.transferReceipts.map { it.snapshot() })
+        if (snapshot.version !in 1..2) {
             throw UnsupportedFormatException("Unsupported vault data version: ${snapshot.version}")
         }
-        snapshot.entries.forEach(AccountValidation::requireValid)
+        VaultPayloadValidation.requireValid(snapshot)
 
         try {
             val absFile = file.absoluteFile
             val parentDir = absFile.parentFile ?: File(".")
             parentDir.mkdirs()
 
-            val header = VAULT_MAGIC + VAULT_VERSION
+            val header = VAULT_MAGIC + byteArrayOf(snapshot.version.toByte())
             val salt = CryptoUtils.generateSalt(16)
             val key = CryptoUtils.deriveKey(password, salt)
 
-            val jsonString = json.encodeToString(VaultData.serializer(), snapshot)
+            val jsonString = if (snapshot.version == 1) json.encodeToString(VaultData.serializer(), snapshot)
+            else json.encodeToString(VaultPayloadV2.serializer(),
+                VaultPayloadV2(2, snapshot.entries, snapshot.transferReceipts))
             val rawJson = jsonString.toByteArray(Charsets.UTF_8)
-            val encrypted = CryptoUtils.encrypt(key, rawJson)
+            val encrypted = try {
+                CryptoUtils.encrypt(key, rawJson, header.takeIf { snapshot.version == 2 })
+            } finally { key.fill(0); rawJson.fill(0) }
 
             val totalBytes = header + salt + encrypted
             if (totalBytes.size > MAX_VAULT_SIZE) {
@@ -159,7 +165,8 @@ class Vault(val data: VaultData = VaultData()) {
                 throw UnsupportedFormatException("Invalid vault file format: incorrect magic header")
             }
 
-            if (!blob.copyOfRange(4, 5).contentEquals(VAULT_VERSION)) {
+            val version = blob[4].toInt() and 0xff
+            if (version !in 1..2) {
                 throw UnsupportedFormatException("Unsupported vault file version")
             }
 
@@ -174,28 +181,33 @@ class Vault(val data: VaultData = VaultData()) {
 
             val decryptedJsonBytes: ByteArray
             try {
-                decryptedJsonBytes = CryptoUtils.decrypt(key, encrypted)
+                decryptedJsonBytes = CryptoUtils.decrypt(key, encrypted,
+                    blob.copyOfRange(0, HEADER_LEN).takeIf { version == 2 })
             } catch (ex: Exception) {
                 throw InvalidPasswordException("Invalid password or corrupted vault", ex)
-            }
-
-            val rawJsonString = String(decryptedJsonBytes, Charsets.UTF_8)
+            } finally { key.fill(0) }
 
             val vaultData: VaultData
             try {
-                vaultData = json.decodeFromString(VaultData.serializer(), rawJsonString)
-            } catch (e: SerializationException) {
-                throw CorruptedVaultException("Vault contains invalid data", e)
-            }
+                val rawJsonString = if (version == 2) StrictVaultJson.decode(decryptedJsonBytes)
+                    else String(decryptedJsonBytes, Charsets.UTF_8)
+                if (version == 2) StrictVaultJson.validatePayloadTypes(rawJsonString)
+                vaultData = if (version == 1) json.decodeFromString(VaultData.serializer(), rawJsonString)
+                else json.decodeFromString(VaultPayloadV2.serializer(), rawJsonString).let {
+                    VaultData(it.version, it.entries.toMutableList(), it.transferReceipts)
+                }
+            } catch (_: Exception) {
+                throw CorruptedVaultException("Vault contains invalid data")
+            } finally { decryptedJsonBytes.fill(0) }
 
-            if (vaultData.version != 1) {
+            if (vaultData.version !in 1..2 || vaultData.version != version) {
                 throw UnsupportedFormatException("Unsupported vault data version: ${vaultData.version}")
             }
-
             try {
-                vaultData.entries.forEach(AccountValidation::requireValid)
+                VaultPayloadValidation.requireValid(vaultData)
             } catch (_: IllegalArgumentException) {
-                throw CorruptedVaultException("Vault contains invalid account data")
+                throw CorruptedVaultException(if (version == 1) "Vault contains invalid account data"
+                    else "Vault contains invalid account or receipt data")
             }
 
             return Vault(vaultData)

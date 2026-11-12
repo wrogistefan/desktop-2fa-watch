@@ -1,9 +1,10 @@
 # Watch vault v2: accepted format, migration and recovery design
 
-Status: **DESIGN ACCEPTED; NOT IMPLEMENTED**, 2026-11-12.
+Status: **DESIGN ACCEPTED; CODEC IMPLEMENTED; MIGRATION/TRANSFER PENDING**, 2026-11-12.
 After reviewing why durable receipts require a new version and how this affects
 Desktop, the owner approved v2 and required explicit, precise documentation.
-This accepts the design; it is not evidence of implementation, tests or release readiness.
+This records the accepted design; implementation evidence is tracked separately
+and does not itself establish release readiness.
 The imported [transfer specification v0.3](desktop-2fa-transfer-v0.3.md),
 especially Sections 7–8, requires durable encrypted receipts. This supersedes
 the old E2 memory-only direction for the newly authorized transfer work.
@@ -169,5 +170,6 @@ of the PAKE/importer/TLS composition or guaranteed memory erasure.
   and physical-watch KDF/lifecycle checks. Emulator/JVM results do not replace
   physical or cross-platform evidence.
 
-No such v2 tests have been run: this document records an accepted design,
-not a completed implementation. The acceptance gates remain mandatory.
+Codec and receipt-boundary tests are recorded in the [v2 regression report](../testing/vault-v2-regressions.md).
+Migration, receiver, native transport and device tests are not completed by the
+codec implementation. The acceptance gates remain mandatory.
