@@ -210,3 +210,10 @@ leave its bytes intact, and still load the retained v1 copy with all fields and
 fixed-time codes unchanged. Existing two-way v1 round trips and corpus hashes
 remain checked. This exercises the library, not the Desktop GUI; see the
 [migration backend report](testing/vault-migration-backend-2026-11-12.md).
+
+Migration safety-copy recovery is Watch-local: inventory and explicit read-only
+opening never change a Desktop vault or the Watch v1/v2 formats. The original
+v1 password is required. A safety copy can predate later changes; no writable
+restore or automatic downgrade is supplied. A healthy main keeps its normal
+unlock path; a missing main with residual migration files cannot initialize an
+empty replacement.

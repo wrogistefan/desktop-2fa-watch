@@ -183,3 +183,23 @@ no app entry point. This does not yet implement the Receive consent screen,
 archive inventory/read-only recovery UI, lifecycle coordination or directory
 sync/power-loss acceptance. Those remain mandatory before exposing migration.
 A successful helper call in a synthetic JVM test is not user-facing readiness.
+
+## Migration safety-copy discovery and read-only recovery
+
+Watch startup now includes the fixed no-backup migration directory in its
+metadata inventory. A healthy main remains authoritative; the retained safety
+copy is not treated as a pending write. Ordinary backup/temp artifacts still
+require review. If main is absent but the migration directory remains, even
+empty or holding a partial copy, setup is blocked. An inspection error is not
+absence. No path is promoted, repaired, overwritten or deleted.
+
+After an unlock error, Review recovery files opens the existing read-only
+selection flow. The migration source is labelled as pre-transfer and potentially
+missing newer accounts. Opening requires explicit source selection and the
+original password, unchanged fingerprints before/after authenticated bounded
+load and a supported v1 payload. Saving is blocked by the existing recovery
+session policy. A missing no-backup root is a positive absence result and does
+not break ordinary offline startup. Symlinks/nonregular paths are rejected.
+
+This exposes no migration consent action or transfer receiver. Device UI,
+lifecycle, backup and durability acceptance remain mandatory before reception.

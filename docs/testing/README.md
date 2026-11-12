@@ -80,3 +80,5 @@ verification distinctions and storage-review feedback after post-save errors.
 The [recovery path follow-up](recovery-path-regressions.md) records the assessment
 of late #46 review findings, no-follow opens, changed selections and debug-host
 containment tests, including the limits of metadata-based checks.
+
+- [Watch migration-copy recovery, 2026-11-12](migration-recovery-2026-11-12.md): metadata inventory and explicit read-only opening; final run/device limitations are listed in the report.

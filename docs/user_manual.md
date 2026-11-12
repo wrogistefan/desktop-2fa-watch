@@ -209,3 +209,13 @@ reporting UI problems; never attach real account keys, passwords or live codes.
 
 Report reproducible problems with synthetic data through
 [GitHub Issues](https://github.com/wrogistefan/desktop-2fa-watch/issues).
+
+### Read-only copy from before transfer migration
+
+If a prior, explicitly confirmed Watch migration retained a v1 safety copy,
+Review recovery files can list it as **Before transfer migration**. Use the
+original password and choose the source explicitly. This view cannot save or
+restore over the current vault. It may omit accounts added after the copy was
+made. If main is missing but migration files remain, creating a new empty vault
+is disabled. An unreadable copy or wrong password leaves all files unchanged.
+The current app still has no transfer/migration activation screen.

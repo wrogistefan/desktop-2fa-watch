@@ -64,7 +64,7 @@ open class MainActivity : ComponentActivity() {
         private set
 
     internal open fun createSessionStorage(context: Context): VaultSessionStorage =
-        VaultSessionStorage(File(context.filesDir, "vault.d2fa")) { VaultSecurityManager.clearPassword(context) }
+        VaultSessionStorage(File(context.filesDir, "vault.d2fa"), context.noBackupFilesDir) { VaultSecurityManager.clearPassword(context) }
 
     protected open fun monotonicMillis(): Long = SystemClock.elapsedRealtime()
     protected open fun wallClockMillis(): Long = System.currentTimeMillis()
@@ -381,6 +381,11 @@ open class MainActivity : ComponentActivity() {
                                     enabled = !operationPending
                                 ) {
                                     Text("Unlock")
+                                }
+                                if (errorMessage != null) {
+                                    Button(onClick = { act { listRecovery() } }, enabled = !operationPending) {
+                                        Text("Review recovery files")
+                                    }
                                 }
                             }
                         }

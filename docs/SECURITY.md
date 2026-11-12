@@ -209,3 +209,18 @@ mutex and ownership/locking rules, inventory the copy during startup/recovery,
 and require local consent. The retained copy is app-private data, not an external
 backup; uninstall/reset/clearing app storage can remove it along with the vault.
 It does not include later additions and cannot recover a lost password.
+
+### Migration recovery inventory
+
+The Watch storage boundary also inspects the fixed no-backup safety-copy path.
+Only positive absence permits setup; residual migration directories block empty
+initialization when main is missing. A retained archive does not block a healthy
+main. Unknown metadata or symlinks/nonregular paths require review. The inventory
+is metadata, not authentication: explicit selection plus bounded password-authenticated
+v1 loading and before/after fingerprint checks are required for read-only access.
+The existing session forbids edits/saves in recovery mode. No automatic restore,
+rollback, cleanup, downgrade or merging is provided. The copy may be stale and
+does not recover a lost password. App-private metadata checks assume a trusted
+OS; they are not a defense against an OS/root attacker replacing files. Actual
+Android backup/device-transfer, lifecycle and physical durability evidence is
+still required. No transfer receiver is enabled by this inventory change.

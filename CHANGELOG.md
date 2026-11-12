@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Storage foundations
 
+- Discover retained Watch migration copies during startup/recovery, block empty
+  initialization if main is missing with migration artifacts, and offer explicitly
+  selected password-authenticated read-only v1 viewing after unlock errors.
+  Keep healthy main unlock behavior and leave all recovery files untouched.
+
+
 - Add an explicit-consent migration backend that retains/verifies an encrypted
   v1 safety copy and reconciles uncertain v2 publication by authenticated read.
   No app entry point or automatic migration is enabled. Archive recovery,
