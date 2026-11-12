@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Import the owner-provided transfer specification v0.3 and document the accepted
+  Watch v2 storage/receipt, opt-in migration and recovery design. Explain the
+  distinction between transfer wire compatibility and direct vault-file
+  compatibility with Desktop. No receiver, format migration or v2 implementation
+  is included in this documentation change.
+
 ## [0.3.0] - 2026-11-11
 
 Local foundations for future transfer; no transport or receiver is implemented. Vault v1 and KDF parameters are unchanged. Keep the existing vault password: remembered-password auto-unlock has been removed. No automatic vault migration is required. Roadmap #13 and outstanding device/platform checks remain open.

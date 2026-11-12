@@ -1,27 +1,32 @@
-# Watch transfer storage: concrete proposal for owner review
+# Watch vault v2: accepted format, migration and recovery design
 
-Status: **PROPOSED, NOT APPROVED OR IMPLEMENTED**, 2026-11-12.
-The owner requested this design before authorizing a storage migration.
+Status: **DESIGN ACCEPTED; NOT IMPLEMENTED**, 2026-11-12.
+After reviewing why durable receipts require a new version and how this affects
+Desktop, the owner approved v2 and required explicit, precise documentation.
+This accepts the design; it is not evidence of implementation, tests or release readiness.
 The imported [transfer specification v0.3](desktop-2fa-transfer-v0.3.md),
 especially Sections 7–8, requires durable encrypted receipts. This supersedes
-the old E2 memory-only direction only after explicit owner approval.
+the old E2 memory-only direction for the newly authorized transfer work.
+Approval to develop migration does not replace each end user's explicit consent
+on their own watch before any existing vault is migrated.
 
-## Decision requested
+## Accepted decision
 
-Approve a Watch-specific v2 vault reader/writer and explicit, one-time opt-in
+Implement a Watch-specific v2 vault reader/writer and explicit, one-time opt-in
 migration before enabling transfer. Ordinary v1 use continues to write v1.
 Desktop does not need to implement this storage format to implement transfer:
 its wire contract is v1 in the supplied specification. Do not label this as a
 shared Desktop vault v2 or change Desktop files automatically.
 
-## Exact proposed format
+## Exact accepted format
 
 Keep the `vault.d2fa` location and existing 10 MiB limit. The envelope is
 `D2FA || 0x02 || salt[16] || nonce[12] || ciphertext || tag[16]`.
 Argon2id v19, 4 iterations, 131072 KiB, parallelism 2, 32-byte key,
 UTF-8 password and AES-256-GCM remain unchanged. Every save generates a fresh
 salt and nonce. For v2, authenticate the exact five header bytes as GCM AAD;
-v1 continues to use no AAD. Readers dispatch only supported header versions,
+v1 continues to use no AAD. Header AAD is an explicit v2 design choice,
+not a requirement of durable receipts or of the network protocol. Readers dispatch only supported header versions,
 then require the matching explicit integer payload version after authentication.
 An unknown version is never retried as another version or as a new empty vault.
 
@@ -112,6 +117,25 @@ desktop restart; a fresh session and duplicate checks are required.
 
 ## Compatibility, backup and threats
 
+| Application / operation | Required behavior |
+| --- | --- |
+| Existing Watch or pinned Desktop 0.10.0 opens Watch v2 | Reject the unsupported header; do not modify, reset or reinterpret the file |
+| Updated Watch opens an ordinary supported v1 file | Read and write v1; unlocking or manual addition does not migrate it |
+| Updated Watch opts into transfer on v1 | Explain compatibility and recovery limits; migrate only after explicit local consent |
+| Desktop sends selected accounts | Implement transfer wire v1; no Watch v2 reader or Desktop vault migration required |
+| Desktop keeps its own vault | Continue using its existing format; transfer does not remove or migrate its accounts |
+| Desktop directly reads a Watch v2 file in a future import feature | Requires a separately scoped v2 reader; this work does not provide it |
+| User downgrades Watch after migration | Older Watch cannot open the v2 main file; no automatic downgrade is provided |
+
+The network document version **v0.3**, JSON wire field **v:1**, binary Watch
+header **0x02**, JSON vault **version:2**, and application release number are
+independent. None permits guessing another format. The initial supported
+Desktop source reference remains commit
+`7d1089d6bee0f3f82678ca8a13988c742840fba0` (v0.10.0); claims about newer readers
+require actual inspection/testing. This design does not reserve a shared
+Desktop storage version or claim that Desktop implements Watch v2.
+
+
 Old readers reject v2 and must leave it intact. New readers must continue
 reading/writing ordinary v1 without migrating on unlock. The existing pinned
 Desktop v1 corpus stays immutable and must continue passing. No whole-vault
@@ -145,4 +169,5 @@ of the PAKE/importer/TLS composition or guaranteed memory erasure.
   and physical-watch KDF/lifecycle checks. Emulator/JVM results do not replace
   physical or cross-platform evidence.
 
-No such v2 tests have been run: this change is a design proposal only.
+No such v2 tests have been run: this document records an accepted design,
+not a completed implementation. The acceptance gates remain mandatory.

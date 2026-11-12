@@ -1,6 +1,6 @@
 # Desktop Vault Compatibility
 
-The owner-provided [transfer v0.3 profile](transfer/desktop-2fa-transfer-v0.3.md) is separate from vault-file compatibility and replaces the proposed E1/E2 wire/collision direction for future implementation. Its durable receipts require the [pending Watch v2 storage decision](transfer/vault-v2-proposal.md). Existing v1 files and implementation remain unchanged.
+The owner-provided [transfer v0.3 profile](transfer/desktop-2fa-transfer-v0.3.md) is separate from vault-file compatibility and replaces the proposed E1/E2 wire/collision direction for future implementation. Its durable receipts require the [accepted Watch v2 storage design](transfer/vault-v2-proposal.md). Existing v1 files and implementation remain unchanged.
 
 The current reference is Desktop-2FA **v0.10.0**, commit
 [`7d1089d6bee0f3f82678ca8a13988c742840fba0`](https://github.com/wrogistefan/desktop-2fa/tree/7d1089d6bee0f3f82678ca8a13988c742840fba0).

@@ -7,9 +7,11 @@ Its v0.3 document version, v1 wire protocol, and future Watch storage version
 are separate version spaces.
 
 **Current state:** no transfer implementation, network permission, native wrapper
-or storage migration is added by this documentation change. The owner requested
-the [concrete v2 format/recovery proposal](vault-v2-proposal.md) before deciding
-on migration. Do not treat that proposal as approved.
+or storage migration is added by this documentation change. The owner accepted
+the [v2 format, migration and recovery design](vault-v2-proposal.md) on
+2026-11-12 after reviewing its Desktop compatibility consequences, and required
+explicit documentation. Design approval is not an implementation or release result;
+each end user must still consent locally before their v1 vault is migrated.
 
 ## Relationship to roadmap #13
 
@@ -21,14 +23,14 @@ secret reception before the supplied specification's acceptance gates.
 | --- | --- |
 | E1 selected-account package | Use the supplied strict OFFER schema, 1–50 items, canonical unpadded uppercase Base32, mandatory names/parameters and v1 budgets; do not reuse E1's nullable-label wire contract |
 | E2 manual collision choices | Skip matching secret/parameters; reject parameter/name conflicts and duplicates inside the incoming batch; no intentional duplicate-copy choice |
-| E2 memory-only receipts | v0.3 requires the latest 128 encrypted receipts, committed with additions; requires an explicitly approved storage decision |
+| E2 memory-only receipts | v0.3 requires the latest 128 encrypted receipts, committed with additions; Watch v2 design accepted on 2026-11-12; implementation/evidence pending |
 | Deferred E3/E4 drafts (#60/#58) | Historical references; do not combine their provisional framing, budgets or transport ideas with v0.3 |
 | Current vault v1 / pinned Desktop corpus | Preserve existing valid data and tests; wire interoperability does not require identical vault formats |
 | #10 whole-vault import/export | Separate scope, unchanged |
 
 ## Implementation sequence
 
-1. Review/approve Watch storage and recovery design. Keep ordinary v1 operation
+1. Implement the accepted Watch storage and recovery design with regression tests. Keep ordinary v1 operation
    unchanged while native proof-of-concept work proceeds independently.
 2. Build an isolated shared BoringSSL core at the exact pinned revision with
    JNI/CFFI adapters. Run the SPAKE2/importer/TLS gate with synthetic nonsecret
@@ -63,7 +65,7 @@ compileSdk/targetSdk 37. Native build versions, supported ABIs, desktop packages
 and API-specific LAN/discovery permissions still need verification. No SDK/OS
 support change has been made. T0 is incomplete; T1–T12 are **NOT RUN**.
 
-The pending storage proposal explicitly covers migration, no-backup safety copy,
+The accepted storage design explicitly covers migration, no-backup safety copy,
 older-reader rejection and recovery. A second integration concern is the current
 60-second inactivity lock versus up to five minutes of transfer review: existing
 locking wins unless the owner separately approves a changed session policy.

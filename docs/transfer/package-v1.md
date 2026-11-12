@@ -1,6 +1,6 @@
 # Selected-account package v1 (#31 / E1)
 
-> Historical E1/E2 reference. The owner supplied [transfer specification v0.3](desktop-2fa-transfer-v0.3.md) on 2026-11-12. Its wire schema, strict whole-batch collision rules and durable receipts differ from this proposal. See the [integration status](README.md); storage migration remains an owner decision. Do not combine the two contracts.
+> Historical E1/E2 reference. The owner supplied [transfer specification v0.3](desktop-2fa-transfer-v0.3.md) on 2026-11-12. Its wire schema, strict whole-batch collision rules and durable receipts differ from this proposal. See the [integration status](README.md); the Watch v2 storage design was accepted on 2026-11-12, with implementation and local migration consent still required. Do not combine the two contracts.
 
 Status: **documentation-only proposed contract**. No sender, parser, endpoint,
 permission or transfer UI is implemented. Approval of the complete E1–E4 profile,

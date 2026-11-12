@@ -1,5 +1,11 @@
 # Security Model
 
+The [accepted Watch v2 design](transfer/vault-v2-proposal.md) defines the future
+transfer-receipt format, header AAD, explicit opt-in migration, retained encrypted
+v1 safety copy and read-only recovery. It does not change the current v1
+implementation. Design acceptance is not test evidence or release approval;
+Desktop wire compatibility does not imply direct v2 file compatibility.
+
 This describes the 0.2.0 MVP and its current boundaries. The app has not had an
 independent security audit. Report vulnerabilities through [Security Policy](../SECURITY.md).
 
