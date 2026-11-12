@@ -29,7 +29,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
       - name: Install pinned native toolchains
         run: |
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;37.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
       - name: Compile standalone synthetic Watch test app and run JVM frame regressions
         run: |
           ./gradlew -p native/poc/android -Pd2faBoringSSLSource="$PWD/build/boringssl-source" :app:testDebugUnitTest :app:assembleRelease --stacktrace

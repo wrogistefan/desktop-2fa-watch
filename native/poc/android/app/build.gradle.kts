@@ -19,7 +19,8 @@ android {
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64") }
         externalNativeBuild.cmake {
             arguments += listOf("-DD2FA_BORINGSSL_SOURCE=$pocBoringSSLSource", "-DD2FA_JNI=ON",
-                "-DD2FA_TEST_API=OFF", "-DBUILD_TESTING=OFF", "-DANDROID_STL=c++_static")
+                "-DD2FA_TEST_API=OFF", "-DBUILD_TESTING=OFF", "-DANDROID_STL=c++_static",
+                "-DCMAKE_JOB_POOLS=poc_compile=2", "-DCMAKE_JOB_POOL_COMPILE=poc_compile")
             targets += "d2fa_transfer"
         }
     }
