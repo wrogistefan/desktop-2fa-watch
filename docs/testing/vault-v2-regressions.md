@@ -21,9 +21,10 @@ as unsupported, now replaced with unsupported version 3/99. The tests still
 reject v1-header/v2-payload mismatches and preserve source files; tampered v2
 headers fail authentication. Those initial failures are not reported as passes.
 
-A subsequent full run passed with the actual pinned Desktop bridge and debug
-APK. A final rerun covers the subsequently added explicit JSON type checks.
-The command is:
+Final verification passed **356 tests, zero failures/errors/skips**, including
+the actual pinned Python bridge and the added explicit JSON type checks.
+The debug APK built successfully. The verified implementation commit is
+`249bde8` (the following report update changes documentation only). Command:
 
 ```powershell
 python tools/interop/run.py --desktop-source ..\..\app\build\desktop-pinned
