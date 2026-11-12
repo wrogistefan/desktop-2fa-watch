@@ -25,3 +25,16 @@ These are local checks; CI still needs to verify the published branch. Desktop t
 Physical/device transaction and lifecycle gates remain open; this is no audit.
 The proposed extension from bidi overrides to all directional controls awaits
 owner clarification and is not silently enabled.
+
+## Review follow-up
+
+The storage readiness guard now reports typed STORAGE_ERROR with no cause for
+v1 or invalid snapshots, rather than leaking IllegalArgumentException to a
+caller handling transfer failures. It does not change legacy vault validation
+or migrate a valid v1 snapshot. The added regression checks both prepare/status,
+unchanged historical seven-digit data and absence of diagnostic causes.
+
+Full local rerun after this change passed **379 JVM tests, zero failures/errors/
+skips**, actual pinned Python bridge and debug APK included. It completed in
+13m 26s under local build load; this is not a Watch performance measurement.
+CI must verify the updated PR head independently before merge.

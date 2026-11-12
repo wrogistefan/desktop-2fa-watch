@@ -10,7 +10,7 @@ import java.security.MessageDigest
 
 internal enum class TransferError {
     INVALID_MESSAGE, UNSUPPORTED_VERSION, INVALID_ACCOUNT, UNSUPPORTED_TOTP,
-    LIMIT_EXCEEDED, DUPLICATE_IN_BATCH, NAME_CONFLICT, PARAMETER_CONFLICT, TX_CONFLICT,
+    LIMIT_EXCEEDED, DUPLICATE_IN_BATCH, NAME_CONFLICT, PARAMETER_CONFLICT, TX_CONFLICT, STORAGE_ERROR,
 }
 
 /** Fixed diagnostics only: never attach parser exceptions or account values. */

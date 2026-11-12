@@ -58,6 +58,11 @@ must override an earlier duplicate. If multiple conflict categories apply,
 PARAMETER_CONFLICT is reported first, then NAME_CONFLICT; either rejects all
 items. Nullable historical names do not equal an incoming empty string.
 
+A v1 or invalid storage snapshot returns the typed STORAGE_ERROR preparation
+failure, without a parser/validation cause. A supported v1 vault is simply not
+transfer-ready; it remains unchanged and requires the separate explicit migration
+workflow. This layer never widens or tightens the shared legacy vault schema.
+
 An existing receipt with identical transfer_id/digest returns AlreadySaved;
 a different digest returns TX_CONFLICT. No receipt returns unknown, never proof
 that an old transfer was not saved. Replay does not refresh FIFO order.

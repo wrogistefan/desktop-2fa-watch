@@ -169,4 +169,17 @@ class TransferOfferTest {
         }
     }
 
+    @Test fun unavailableStorageUsesTypedErrorsWithoutChangingLegacyDataOrLeakingCauses() {
+        val legacy = VaultData(1, mutableListOf(existing().copy(digits=7)))
+        val before = legacy.entries.toList()
+        val parsed = offer()
+        val error = failure(TransferError.STORAGE_ERROR) { TransferPlanner.status(legacy, parsed.transferId, parsed.sha256) }
+        assertNull(error.cause); assertTrue(error.itemIds.isEmpty())
+        failure(TransferError.STORAGE_ERROR) { TransferPlanner.prepare(legacy, parsed) }
+        assertEquals(1, legacy.version); assertEquals(before, legacy.entries); assertTrue(legacy.transferReceipts.isEmpty())
+        val invalid = VaultData(2, mutableListOf(existing().copy(period=0)))
+        val invalidError = failure(TransferError.STORAGE_ERROR) { TransferPlanner.prepare(invalid, parsed) }
+        assertNull(invalidError.cause)
+    }
+
 }
