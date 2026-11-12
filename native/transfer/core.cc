@@ -93,8 +93,9 @@ bool profile(const Context &ctx) {
       !SSL_in_early_data(ctx.tls.get()) && !SSL_session_reused(ctx.tls.get());
 }
 int io_result(Context &ctx, int result) {
+  const int error = result > 0 ? SSL_ERROR_NONE : SSL_get_error(ctx.tls.get(), result);
+  if (BIO_pending(ctx.output) > kQueue) return ctx.fail();
   if (result > 0) return result;
-  const int error = SSL_get_error(ctx.tls.get(), result);
   if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_WRITE) return 0;
   return ctx.fail();
 }
@@ -194,7 +195,7 @@ int d2fa_tls_step(uint64_t handle) {
     ERR_clear_error();
     const int result = ctx.role == 0 ? SSL_connect(ctx.tls.get()) : SSL_accept(ctx.tls.get());
     if (result != 1) return io_result(ctx, result);
-    if (!profile(ctx)) return ctx.fail();
+    if (BIO_pending(ctx.output) > kQueue || !profile(ctx)) return ctx.fail();
     ctx.authenticated = ctx.was_authenticated = true;
     return 1;
   });

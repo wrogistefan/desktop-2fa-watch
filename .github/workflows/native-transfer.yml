@@ -38,12 +38,16 @@ jobs:
             -DD2FA_TEST_API=ON -DD2FA_SANITIZE=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug
       - name: Build wrapper and upstream unit tests
         run: cmake --build build/sanitized --target d2fa_core_test crypto_test ssl_test --parallel 2
-      - name: Run wrapper and upstream tests with ASan and UBSan
+      - name: Run wrapper with ASan and UBSan
         run: |
           ulimit -c 0
           ctest --test-dir build/sanitized --output-on-failure
-          build/sanitized/boringssl/crypto_test
-          build/sanitized/boringssl/ssl_test
+      - name: Run upstream tests from their test-data root
+        working-directory: build/boringssl-source
+        run: |
+          ulimit -c 0
+          ../sanitized/boringssl/crypto_test
+          ../sanitized/boringssl/ssl_test
   interop:
     runs-on: ubuntu-24.04
     timeout-minutes: 30

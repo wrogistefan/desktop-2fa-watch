@@ -84,6 +84,22 @@ int main() {
     check(d2fa_tls_write(pair.a, marker, sizeof(marker)) == -1);
     check(d2fa_tls_start(pair.a) == -1);
   }
+  {
+    Pair bounded;
+    check(bounded.exchange());
+    check(d2fa_tls_start(bounded.a) == 1);
+    std::array<uint8_t, 16384> input{};
+    for (int i = 0; i < 4; ++i) check(d2fa_tls_feed(bounded.a, input.data(), input.size()) == 16384);
+    check(d2fa_tls_feed(bounded.a, input.data(), 1) == -1);
+    check(d2fa_tls_step(bounded.a) == -1);
+  }
+  {
+    Pair bounded;
+    check(bounded.exchange()); check(handshake(bounded));
+    std::array<uint8_t, 16384> input{};
+    for (int i = 0; i < 3; ++i) check(d2fa_tls_write(bounded.a, input.data(), input.size()) == 16384);
+    check(d2fa_tls_write(bounded.a, input.data(), input.size()) == -1);
+  }
   for (int i = 0; i < 1000; ++i) {
     Pair pair;
     check(pair.exchange()); check(pair.keys_match());

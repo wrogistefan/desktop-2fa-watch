@@ -50,3 +50,26 @@ Record completed commands/results below before changing any status. Full-key
 test values, codes, frames and PSKs must never be included in the evidence.
 No physical watch model/API or 100-authentication median/p95 measurements exist
 for this experiment. Do not infer them from emulator/WSL/CI execution.
+
+## First CI execution and follow-up
+
+Run [43268341814](https://github.com/wrogistefan/desktop-2fa-watch/actions/runs/43268341814),
+implementation `a476ac4`:
+
+- **PASS** Linux host Python 3.13.11/CFFI 2.0.0 ↔ Kotlin 2.2.10/JNI/JDK 17:
+  1000 exchanges, matching full K, TLS nonsecret markers, reconnect, leading
+  zeroes, wrong-code/wid rejection, and no file at the SSLKEYLOGFILE test path.
+- **PASS** non-test rebuild export guard: no BoringSSL symbols or full-key test
+  entry point in the wrapper's exported symbols.
+- **PASS** wrapper CTest under ASan/UBSan (1000 exchanges; 1/1 CTest case).
+- **FAIL** upstream test execution setup: crypto_test started 1892 tests but
+  aborted when `./crypto/blake2/blake2b256_tests.txt` was unavailable from the
+  repository root. This is not a passing upstream suite or a sanitizer finding.
+  The workflow now runs upstream executables from the pinned source/test-data
+  root. A complete rerun is required before marking that subset passed.
+
+A later local wrapper rerun after input/output queue-bound checks passed 1/1
+(1.54 seconds); it includes refusing input beyond 65536 bytes and output growth
+beyond the configured queue. CI must verify this latest implementation too.
+The T0–T12 aggregate gates above remain open: these Linux-host subsets do not
+establish real Wear OS, supported desktop distribution or application readiness.
