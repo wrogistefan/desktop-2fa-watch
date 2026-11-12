@@ -18,6 +18,7 @@ class MigrationRecoveryTest {
     private fun archive(root: File, bytes: ByteArray = fixture()): File = migrationArchive(root).also {
         it.parentFile!!.mkdir(); it.writeBytes(bytes)
     }
+    // Unexpected runtime exceptions must fail the test, not masquerade as controlled rejection.
     private inline fun rejected(block: () -> Unit) {
         try { block(); fail("Expected rejection") } catch (_: VaultException) {}
     }
@@ -122,7 +123,12 @@ class MigrationRecoveryTest {
         val copy = migrationArchive(root); copy.parentFile!!.mkdir()
         val target = temporary.newFile().also { it.writeBytes(fixture()) }
         try { Files.createSymbolicLink(copy.toPath(), target.toPath()) }
-        catch (unsupported: Exception) { org.junit.Assume.assumeNoException("Symlink creation unavailable on this host", unsupported) }
+        catch (unsupported: Exception) {
+            // Linux CI must execute this case. Windows may lack symlink privilege.
+            if (!System.getProperty("os.name").startsWith("Windows") ||
+                (unsupported !is java.nio.file.FileSystemException && unsupported !is UnsupportedOperationException)) throw unsupported
+            org.junit.Assume.assumeNoException("Symlink creation unavailable on Windows", unsupported)
+        }
         rejected { migrationAwareInventory(main, root) }
         val linkedRoot = File(temporary.newFolder(), "linked-root")
         Files.createSymbolicLink(linkedRoot.toPath(), root.toPath())

@@ -3,7 +3,7 @@
 This report covers the isolated [native experiment](../../native/README.md),
 not real-secret reception or the Watch v2 migration. Follow the unchanged
 [v0.3 acceptance criteria](../transfer/desktop-2fa-transfer-v0.3.md#12-proof-of-concept-and-test-plan--implementation-agent-handoff).
-Every aggregate gate below remains open until its complete scope has evidence.
+Overall transfer acceptance remains open. PASS applies only to the explicitly labelled scope; host checks do not establish physical-device acceptance.
 
 ## Environment and completed preliminary checks
 
@@ -32,19 +32,19 @@ Every aggregate gate below remains open until its complete scope has evidence.
 
 | Gate | Status | Evidence / remaining work |
 | --- | --- | --- |
-| T0 sources/APIs/fixes/toolchains | NOT RUN (incomplete) | Exact HEAD/API presence confirmed; security-fix review, Android build versions and all-platform toolchains remain open |
-| T1 upstream tests/sanitizers | NOT RUN | Workflow prepared; record actual upstream/ASan/UBSan result after execution |
-| T2 1000 Python/CFFI ↔ Kotlin/JNI exchanges | NOT RUN | Private-pipe harness prepared; requires executed workflow and real Wear OS counterpart, not only host JVM |
-| T3 byte encodings/roles/leading zeroes | NOT RUN | Native C++ leading-zero/role cases passed; complete host/JNI/encoding mismatch matrix remains open |
-| T4 wrong code/point/importer/IDs/PSK | NOT RUN | Native C++ wrong-code/wid cases passed; complete point/importer/PSK mutation matrix remains open |
-| T5 no fallback/TLS1.2/ALPN/0-RTT/psk_ke | NOT RUN | Configuration and post-handshake checks implemented; adversarial peer tests remain open |
-| T6 MITM/replay/mixed sessions | NOT RUN | No network/MITM experiment yet |
-| T7 reconnect/restart | NOT RUN | Native C++ full-handshake reconnect passed; app/desktop restart not implemented |
-| T8 expiration/attempt/timeouts | NOT RUN | Application preflight/lifetime state machine not implemented |
-| T9 malformed inputs/framing | NOT RUN | Native boundary sizes checked; v1 framing/preflight parser not implemented |
-| T10 distributions/real Wear OS | NOT RUN | No shipped binaries, watch ABIs or cross-platform acceptance |
-| T11 vault transaction integration | NOT RUN | Separate v2 foundations in PR #67; no receiver/receipt transaction integration |
-| T12 packaging/logs/lifecycle | NOT RUN | Export/key-log checks prepared; Android lifecycle and release packaging remain open |
+| T0 sources/APIs/fixes/toolchains | NOT RUN (incomplete) | Exact pin/APIs and host/Android toolchains recorded; upstream security-fix assessment remains open |
+| T1 upstream tests/sanitizers | PASS (Linux host) | Enabled upstream suites and wrapper ASan/UBSan passed; exact skips/toolchains below; no claim of Android sanitizer execution |
+| T2 1000 Python/CFFI ↔ Kotlin/JNI exchanges | NOT RUN (complete device scope) | Host Linux/Windows/macOS 1000-exchange/full-K/TLS-marker checks passed; real Wear OS JNI counterpart not exercised |
+| T3 byte encodings/roles/leading zeroes | NOT RUN (incomplete) | Host leading-zero/role/wid cases passed; full ASCII/UTF-8/NUL/device matrix remains open |
+| T4 wrong code/point/importer/IDs/PSK | NOT RUN (incomplete) | Host wrong-code/wid rejection passed; full point/importer/PSK mutation matrix remains open |
+| T5 no fallback/TLS1.2/ALPN/0-RTT/psk_ke | NOT RUN | Configuration/profile checks and pinned API behavior inspected; adversarial peer matrix remains open |
+| T6 MITM/replay/mixed sessions | NOT RUN | No complete network/MITM experiment |
+| T7 reconnect/restart | NOT RUN (incomplete) | Host full-handshake reconnect passed; application STATUS/restart flow remains open |
+| T8 expiration/attempt/timeouts | NOT RUN (incomplete) | Synthetic preflight/whole-frame deadlines and hidden-input expiry tests passed; full session/review/device state coverage remains open |
+| T9 malformed inputs/framing | NOT RUN (incomplete) | Strict JSON/Base64/framing and bounded native I/O regressions passed; full point/adversarial/device matrix remains open |
+| T10 distributions/real Wear OS | NOT RUN (incomplete) | Three Watch ABIs and host developer binaries built/guarded; real-device, compiler-free installation and network/firewall acceptance remain open |
+| T11 vault transaction integration | NOT RUN | Codec/migration/offline planning foundations exist; receiver approval/save/cancellation integration remains open |
+| T12 packaging/logs/lifecycle | NOT RUN (incomplete) | Non-test export/license/package/key-log checks passed; physical lifecycle, backup and release acceptance remain open |
 
 Record completed commands/results below before changing any status. Full-key
 test values, codes, frames and PSKs must never be included in the evidence.

@@ -19,6 +19,7 @@ internal class SyntheticWatchContext(base: Context, val directory: File) : Conte
 
     override fun getApplicationContext(): Context = this
     override fun getFilesDir(): File = directory
+    override fun getNoBackupFilesDir(): File = File(directory, "no-backup")
     override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
         super.getSharedPreferences("${directory.name}_$name", mode)
 
@@ -58,7 +59,7 @@ open class SyntheticMainActivity : MainActivity() {
     override fun vaultContext(): Context = syntheticContext
 
     internal override fun createSessionStorage(context: Context): VaultSessionStorage =
-        object : VaultSessionStorage(File(context.filesDir, "vault.d2fa"), { VaultSecurityManager.clearPassword(context) }) {
+        object : VaultSessionStorage(File(context.filesDir, "vault.d2fa"), context.noBackupFilesDir, { VaultSecurityManager.clearPassword(context) }) {
             private fun <T> controlled(name: String, work: () -> T): T {
                 beforeIo(name)
                 return work().also { afterIo(name) }

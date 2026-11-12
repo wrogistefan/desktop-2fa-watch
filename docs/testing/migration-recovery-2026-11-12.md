@@ -33,3 +33,32 @@ corrupted Gradle's binary result store (Buffer underflow). Neither overlapping
 report is acceptance evidence. All vault inputs were synthetic fixtures. A clean,
 serial full run or independent fresh CI is required; do not infer a vault/storage
 failure from that reporting error.
+
+## Clean serial verification
+
+After both overlapping runs finished, `:app:cleanTestDebugUnitTest` passed, then
+`python tools/interop/run.py --desktop-source ../../app/build/desktop-pinned`
+passed alone: **378 JVM tests, zero failures/errors, one skipped** (Windows
+symlink-creation privilege), actual pinned synthetic Python bridge and debug
+APK included, 5m 3s. The symlink test now permits skipping only on Windows;
+Linux CI must execute it or fail. The earlier overlapping runs remain invalid.
+
+The debug synthetic context now overrides noBackupFilesDir inside its private
+cache fixture and uses the same migration-aware storage constructor as the
+production screen. It never inspects real app no-backup data. A prepared device
+test exercises unlock error → explicit recovery selection → authenticated v1
+read-only view → blocked addition → Lock, with unchanged source ciphertext.
+It uses no secret-bearing Intents, screenshots or code-tree diagnostics. Test
+APK compilation is separate from execution: no device test has been run yet.
+
+The review suggestion to catch any Exception in the rejection helper is not
+adopted: only VaultException counts as controlled rejection. An unexpected
+runtime failure must fail a test rather than be mistaken for safe rejection.
+
+## 2026-11-13 follow-up
+
+The final `:app:assembleDebug :app:assembleDebugAndroidTest` build passed after
+the synthetic no-backup isolation and containment-safe fixture cleanup edits.
+The final focused MigrationRecoveryTest run passed **11 discovered, zero
+failures/errors, one Windows-only symlink skip**. The prepared device test was
+compiled, not run. Linux CI must execute the symlink case.
