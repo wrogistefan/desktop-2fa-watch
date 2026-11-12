@@ -44,10 +44,14 @@ python native/poc/smoke_server.py --library C:/path/to/d2fa_transfer.dll --bind 
 
 The server binds one explicit IPv4 interface and an OS-selected port, accepts
 one connection and exits. It neither changes the firewall nor advertises mDNS.
-Codes are never read from CLI/environment; noninteractive input and getpass's
-echo fallback are refused. The terminal prompt blocks: expiry is checked after
-entry, so automatic prompt cancellation remains a Desktop UI requirement.
-Watch independently closes on its own deadlines. This prevents full T8 claims.
+Codes are never read from CLI/environment. A bounded, hidden terminal reader
+polls the monotonic deadline and pending socket on Windows/POSIX; no echo
+fallback or blocking getpass is used. Expiry, peer closure or premature peer
+data cancels input without waiting for Enter. POSIX terminal flags are restored
+in finally; Windows uses no-echo character polling without changing console
+mode. Input is bounded to nine ASCII characters including an optional grouping
+space. Watch independently closes on its own deadlines. This remains partial
+T8 evidence; it does not establish all product/session/device states.
 
 ## Protection and limits
 
