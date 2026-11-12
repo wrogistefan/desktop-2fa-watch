@@ -1,6 +1,6 @@
 # Watch vault v2: accepted format, migration and recovery design
 
-Status: **DESIGN ACCEPTED; CODEC IMPLEMENTED; MIGRATION/TRANSFER PENDING**, 2026-11-12.
+Status: **DESIGN ACCEPTED; CODEC AND MIGRATION BACKEND IMPLEMENTED; APP INTEGRATION/TRANSFER PENDING**, 2026-11-12.
 After reviewing why durable receipts require a new version and how this affects
 Desktop, the owner approved v2 and required explicit, precise documentation.
 This records the accepted design; implementation evidence is tracked separately
@@ -173,3 +173,13 @@ of the PAKE/importer/TLS composition or guaranteed memory erasure.
 Codec and receipt-boundary tests are recorded in the [v2 regression report](../testing/vault-v2-regressions.md).
 Migration, receiver, native transport and device tests are not completed by the
 codec implementation. The acceptance gates remain mandatory.
+
+## Current migration implementation boundary
+
+The [backend report](../testing/vault-migration-backend-2026-11-12.md) records the
+explicit-consent helper, exclusive retained encrypted copy, unchanged-source
+checks, atomic v2 publication and authenticated outcome reconciliation. It has
+no app entry point. This does not yet implement the Receive consent screen,
+archive inventory/read-only recovery UI, lifecycle coordination or directory
+sync/power-loss acceptance. Those remain mandatory before exposing migration.
+A successful helper call in a synthetic JVM test is not user-facing readiness.

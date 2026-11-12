@@ -99,6 +99,15 @@ class PinnedInteropTest {
         val fresh = work.resolve("kotlin-fresh.d2fa")
         Vault(expected).saveNew(fresh, password)
         val sourceHash = hash(source)
+        val watchV2 = work.resolve("watch-v2.d2fa")
+        Vault(expected).saveNew(watchV2, password)
+        val originalV1 = hash(watchV2)
+        val noBackup = work.resolve("no-backup").apply { mkdirs() }
+        val migration = migrateVaultToV2(watchV2, noBackup, password, expected, VaultMigrationConsent.CONFIRMED)
+        assertTrue("Synthetic migration verified", !migration.requiresReview)
+        val archive = migrationArchive(noBackup)
+        assertTrue("Migration retained exact v1 bytes", hash(archive).contentEquals(originalV1))
+        val watchV2Hash = hash(watchV2)
         val process = ProcessBuilder(requireNotNull(System.getenv("D2FA_INTEROP_PYTHON")),
             repo.resolve("tools/interop/desktop_bridge.py").path,
             "--desktop-source", requireNotNull(System.getenv("D2FA_DESKTOP_SOURCE")),
@@ -117,6 +126,10 @@ class PinnedInteropTest {
         assertTrue(report.getValue("cases").jsonPrimitive.int == 23)
         assertTrue(report.getValue("round_trips").jsonPrimitive.int == 2)
         assertTrue(report.getValue("fixed_time_codes").jsonPrimitive.int == 117)
+        assertTrue("Pinned Desktop rejects v2 explicitly", report.getValue("watch_v2_rejected").jsonPrimitive.boolean)
+        assertTrue("Pinned Desktop can read retained v1 copy", report.getValue("v1_archive_read").jsonPrimitive.boolean)
+        assertTrue("Rejected Watch v2 unchanged", hash(watchV2).contentEquals(watchV2Hash))
+        assertTrue("Retained v1 copy unchanged", hash(archive).contentEquals(originalV1))
         assertTrue("Original Python bytes unchanged", hash(source).contentEquals(sourceHash))
     }
 }

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Storage foundations
 
+- Add an explicit-consent migration backend that retains/verifies an encrypted
+  v1 safety copy and reconciles uncertain v2 publication by authenticated read.
+  No app entry point or automatic migration is enabled. Archive recovery,
+  lifecycle/consent UI and device durability checks remain prerequisites.
+
 - Add a separate Watch vault v2 codec with authenticated header and strict
   encrypted receipt validation. Preserve v1 output and existing v2 receipts
   through manual additions, including stale-baseline checks. No automatic

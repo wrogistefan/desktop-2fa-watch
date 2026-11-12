@@ -1,4 +1,4 @@
-"""Actual pinned Desktop verification and two public synthetic round trips."""
+"""Pinned Desktop v1 round trips, migrated Watch v2 rejection and retained v1 reading."""
 import argparse
 import hashlib
 import json
@@ -90,9 +90,24 @@ def main():
         vault.save(work / (name + "-via-python.d2fa"), password, overwrite=False)
         assert file_hash(path) == original, "Kotlin source changed"
 
+    watch_v2 = work / "watch-v2.d2fa"
+    archive = work / "no-backup/transfer-migration/vault-v1.d2fa"
+    v2_before, archive_before = file_hash(watch_v2), file_hash(archive)
+    try:
+        Vault.load(watch_v2, password)
+    except UnsupportedFormat:
+        pass
+    else:
+        raise AssertionError("Pinned Desktop unexpectedly accepted Watch v2")
+    retained = Vault.load(archive, password)
+    assert retained.data.model_dump() == expected, "Retained v1 fields differ"
+    codes_match(retained)
+    assert file_hash(watch_v2) == v2_before and file_hash(archive) == archive_before
+
     assert {name: file_hash(CORPUS / name) for name in before} == before
     report = dict(desktop_commit=pin["commit"], cases=len(manifest["cases"]),
-                  fixed_time_codes=len(fixed) * len(expected["entries"]), round_trips=2)
+                  fixed_time_codes=len(fixed) * len(expected["entries"]), round_trips=2,
+                  watch_v2_rejected=True, v1_archive_read=True)
     (work / "bridge-result.json").write_text(json.dumps(report), encoding="utf-8")
     print("Pinned Desktop scenarios and synthetic round-trip fields/codes verified")
 
