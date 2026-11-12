@@ -38,3 +38,14 @@ Full local rerun after this change passed **379 JVM tests, zero failures/errors/
 skips**, actual pinned Python bridge and debug APK included. It completed in
 13m 26s under local build load; this is not a Watch performance measurement.
 CI must verify the updated PR head independently before merge.
+
+## 2026-11-13 review clarification
+
+Move the v2 prerequisite outside the payload-validation catch; only model
+validation errors are translated there. Document STORAGE_ERROR as the existing
+wire code for unavailable/invalid storage, never an automatic retry or migration
+instruction. Do not invent a new wire code without a versioned spec change.
+Added unchanged-snapshot regressions for duplicate receipt IDs, malformed digest
+and empty receipt item lists. Final focused run passed **13 tests, zero failures/
+errors/skips**. Fresh CI must verify the complete updated suite; the earlier
+379-test full run remains evidence for the preceding revision only.

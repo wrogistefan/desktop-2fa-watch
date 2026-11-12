@@ -34,11 +34,11 @@ internal class TransferAdditionCandidate internal constructor(
 internal object TransferPlanner {
     /** Unknown is absence from retained receipts, never proof of no historical save. */
     fun status(snapshot: VaultData, transferId: String, sha256: String): TransferReceipt? {
+        if (snapshot.version != 2) throw TransferValidationFailure(TransferError.STORAGE_ERROR)
         try {
-            require(snapshot.version == 2) { "Transfer requires explicitly migrated vault v2" }
             VaultPayloadValidation.requireValid(snapshot)
         } catch (_: IllegalArgumentException) {
-            // A valid v1 vault is not transfer-ready; never migrate or change its schema here.
+            // Invalid entries or receipts are local storage failures, never a migration/retry signal.
             throw TransferValidationFailure(TransferError.STORAGE_ERROR)
         }
         if (!Regex("[0-9a-f]{32}").matches(transferId) || !Regex("[0-9a-f]{64}").matches(sha256))

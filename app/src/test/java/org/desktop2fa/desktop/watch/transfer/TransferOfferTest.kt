@@ -182,4 +182,18 @@ class TransferOfferTest {
         assertNull(invalidError.cause)
     }
 
+    @Test fun invalidV2ReceiptsUseStorageErrorWithoutChangingAnySnapshot() {
+        val receipt = TransferReceipt(id(2), "0".repeat(64), listOf(id(3)), emptyList())
+        val cases = listOf(listOf(receipt, receipt), listOf(receipt.copy(offerSha256="bad")),
+            listOf(receipt.copy(addedItemIds=emptyList())))
+        for (receipts in cases) {
+            val baseline = VaultData(2, mutableListOf(existing()), receipts)
+            val before = receipts.map { it.snapshot() }
+            val error = failure(TransferError.STORAGE_ERROR) { TransferPlanner.prepare(baseline, offer()) }
+            assertNull(error.cause); assertTrue(error.itemIds.isEmpty())
+            assertEquals(before, baseline.transferReceipts)
+            assertEquals(listOf(existing()), baseline.entries)
+        }
+    }
+
 }

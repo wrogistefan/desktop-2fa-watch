@@ -61,7 +61,12 @@ items. Nullable historical names do not equal an incoming empty string.
 A v1 or invalid storage snapshot returns the typed STORAGE_ERROR preparation
 failure, without a parser/validation cause. A supported v1 vault is simply not
 transfer-ready; it remains unchanged and requires the separate explicit migration
-workflow. This layer never widens or tightens the shared legacy vault schema.
+workflow. This is the existing wire STORAGE_ERROR code, not a signal to retry,
+create a vault or migrate automatically. The local Watch activation workflow
+must inspect its own authenticated version and obtain separate explicit consent;
+the peer cannot direct a migration or infer a repair action from this code.
+Invalid entries/receipts need local storage review. This layer never widens or
+tightens the shared legacy vault schema.
 
 An existing receipt with identical transfer_id/digest returns AlreadySaved;
 a different digest returns TX_CONFLICT. No receipt returns unknown, never proof
