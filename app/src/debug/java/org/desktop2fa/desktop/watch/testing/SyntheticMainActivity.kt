@@ -19,6 +19,9 @@ internal class SyntheticWatchContext(base: Context, val directory: File) : Conte
 
     override fun getApplicationContext(): Context = this
     override fun getFilesDir(): File = directory
+    // Deliberately model a positively absent first-use directory without creating
+    // fixture files as a getter side effect. Archive tests create it explicitly.
+    // Never delegate to the real application's no-backup storage.
     override fun getNoBackupFilesDir(): File = File(directory, "no-backup")
     override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
         super.getSharedPreferences("${directory.name}_$name", mode)

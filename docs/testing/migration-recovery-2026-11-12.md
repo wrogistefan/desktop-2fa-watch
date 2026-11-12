@@ -62,3 +62,12 @@ the synthetic no-backup isolation and containment-safe fixture cleanup edits.
 The final focused MigrationRecoveryTest run passed **11 discovered, zero
 failures/errors, one Windows-only symlink skip**. The prepared device test was
 compiled, not run. Linux CI must execute the symlink case.
+
+Final device-test review follow-up replaces implicit parent/selection failures
+with a descriptive required-parent check and an explicit exactly-one assertion.
+Cleanup preserves a primary test failure and attaches cleanup failures as
+suppressed, while retaining every containment check. The synthetic absent-root
+getter is intentional and documented; fixtures create the directory explicitly.
+Linux symlink/permission failures are not skipped, because that CI case is
+required evidence. The updated app/test APK build passed again (6 seconds).
+Device execution remains NOT RUN.

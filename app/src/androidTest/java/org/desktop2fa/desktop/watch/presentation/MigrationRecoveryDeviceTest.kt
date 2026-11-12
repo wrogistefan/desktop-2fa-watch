@@ -28,10 +28,12 @@ class MigrationRecoveryDeviceTest {
         val isolated = SyntheticWatchContext(context, directory)
         val root = isolated.noBackupFilesDir
         val copy = migrationArchive(root)
+        val archiveDirectory = requireNotNull(copy.parentFile) { "Synthetic archive requires a parent directory" }
         val main = File(directory, "vault.d2fa")
         var scenario: ActivityScenario<SyntheticMainActivity>? = null
+        var primaryFailure: Throwable? = null
         try {
-            assertTrue(copy.parentFile!!.mkdirs())
+            assertTrue(archiveDirectory.mkdirs())
             val password = "Synthetic-Migration-Recovery-42!"
             val source = Vault.create().apply {
                 addEntry("synthetic archive", "synthetic old account", "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
@@ -66,7 +68,9 @@ class MigrationRecoveryDeviceTest {
             }
             active.onActivity { activity ->
                 val session = requireNotNull(activity.currentSession)
-                val candidate = session.recoveryCandidates.single { it.label.startsWith("Before transfer migration") }
+                val candidates = session.recoveryCandidates.filter { it.label.startsWith("Before transfer migration") }
+                assertEquals("Exactly one synthetic migration source must be offered", 1, candidates.size)
+                val candidate = candidates[0]
                 activity.userAction(session, session.uiToken()) { session.passwordInput = password; session.openRecovery(candidate) }
             }
             compose.waitUntil(40_000) {
@@ -84,16 +88,25 @@ class MigrationRecoveryDeviceTest {
                 assertNull(session.activeVault)
             }
             assertArrayEquals(mainBytes, main.readBytes()); assertArrayEquals(original, copy.readBytes())
+        } catch (failure: Throwable) {
+            primaryFailure = failure
+            throw failure
         } finally {
-            scenario?.close()
-            // Delete only named fixtures in the directory this test exclusively created.
-            val owned = directory.canonicalFile
-            check(owned.parentFile == context.cacheDir.canonicalFile && owned.name.startsWith("synthetic-migration-ui-"))
-            listOf(copy, copy.parentFile!!, root, main).forEach { target ->
-                check(target.canonicalFile.toPath().startsWith(owned.toPath()))
-                target.delete()
+            try {
+                scenario?.close()
+                // Never relax containment to clean up after a failed test.
+                val owned = directory.canonicalFile
+                check(owned.parentFile == context.cacheDir.canonicalFile && owned.name.startsWith("synthetic-migration-ui-"))
+                listOf(copy, archiveDirectory, root, main).forEach { target ->
+                    check(target.canonicalFile.toPath().startsWith(owned.toPath()))
+                    target.delete()
+                }
+                directory.delete()
+            } catch (cleanupFailure: Throwable) {
+                val original = primaryFailure
+                if (original == null) throw cleanupFailure
+                if (original !== cleanupFailure) original.addSuppressed(cleanupFailure)
             }
-            directory.delete()
         }
     }
 }
