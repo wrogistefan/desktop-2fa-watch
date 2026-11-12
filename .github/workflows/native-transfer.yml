@@ -1,0 +1,91 @@
+name: Native transfer PoC
+on:
+  push:
+    branches: ["feature/*", "main"]
+    paths: ["native/**", ".github/workflows/native-transfer.yml"]
+  pull_request:
+    paths: ["native/**", ".github/workflows/native-transfer.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sanitizers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CC: clang
+      CXX: clang++
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: google/boringssl
+          ref: 594a44291086dcc7cef06cabec4c0b47afd674c0
+          path: build/boringssl-source
+          persist-credentials: false
+      - name: Record toolchains and configure pinned sources
+        run: |
+          ulimit -c 0
+          cmake --version
+          clang --version
+          go version
+          cmake -S native/transfer -B build/sanitized -G Ninja \
+            -DD2FA_BORINGSSL_SOURCE="$PWD/build/boringssl-source" \
+            -DD2FA_TEST_API=ON -DD2FA_SANITIZE=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug
+      - name: Build wrapper and upstream unit tests
+        run: cmake --build build/sanitized --target d2fa_core_test crypto_test ssl_test --parallel 2
+      - name: Run wrapper with ASan and UBSan
+        run: |
+          ulimit -c 0
+          ctest --test-dir build/sanitized --output-on-failure
+      - name: Run upstream tests from their test-data root
+        working-directory: build/boringssl-source
+        run: |
+          ulimit -c 0
+          ../sanitized/boringssl/crypto_test
+          ../sanitized/boringssl/ssl_test
+  interop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: google/boringssl
+          ref: 594a44291086dcc7cef06cabec4c0b47afd674c0
+          path: build/boringssl-source
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.11'
+      - uses: gradle/actions/setup-gradle@v3
+      - name: Build Kotlin test peer and native JNI/CFFI core
+        run: |
+          ulimit -c 0
+          python -m pip install -r native/poc/requirements.txt
+          ./gradlew -p native/poc/kotlin jar --stacktrace
+          cmake -S native/transfer -B build/interop -G Ninja \
+            -DD2FA_BORINGSSL_SOURCE="$PWD/build/boringssl-source" \
+            -DD2FA_TEST_API=ON -DD2FA_JNI=ON -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/interop --target d2fa_core_test --parallel 2
+      - name: Test shared native core and 1000 cross-language exchanges
+        run: |
+          ulimit -c 0
+          ctest --test-dir build/interop --output-on-failure
+          python native/poc/interop.py --library build/interop/libd2fa_transfer.so \
+            --jar native/poc/kotlin/build/libs/d2fa-native-interop-poc.jar
+      - name: Verify non-test exports without rebuilding dependency sources
+        run: |
+          cmake -S native/transfer -B build/interop -DD2FA_TEST_API=OFF
+          cmake --build build/interop --target d2fa_transfer --parallel 2
+          python native/poc/verify_exports.py build/interop/libd2fa_transfer.so
