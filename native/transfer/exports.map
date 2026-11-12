@@ -1,0 +1,4 @@
+{
+  global: d2fa_*; Java_org_desktop2fa_transfer_NativeCore_*;
+  local: *;
+};

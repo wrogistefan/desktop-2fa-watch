@@ -71,3 +71,13 @@ older-reader rejection and recovery. A second integration concern is the current
 locking wins unless the owner separately approves a changed session policy.
 Network heartbeats must never count as user activity. The UI must explain that
 locking discards pending approval and may require starting a fresh session.
+
+## Isolated native proof of concept
+
+The [developer-only native experiment](../../native/README.md) now contains the
+shared SPAKE2/importer/TLS core, a bounded C ABI, JNI adapter and a private-pipe
+Python/CFFI ↔ Kotlin/JNI harness. It is separate from the app and from the v2
+storage foundations in PR #67. There is no socket service, permission change,
+receiver UI or use of real accounts. See the [acceptance ledger](../testing/transfer-native-poc-2026-11-12.md)
+for executed checks and T0–T12 gaps; source code or prepared CI is not proof of
+passing the required real-Wear/all-platform gate.
