@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Transfer validation foundations
+
+- Add strict offline OFFER parsing and pure v2 batch/receipt preparation with
+  exact-byte digests, whole-batch conflict rejection, historical duplicate
+  checks and shared synthetic Desktop handoff vectors. No network receiver,
+  approval UI or save integration is enabled.
+
 ### Isolated transport experiment
 
 - Add a standalone synthetic Watch Wi-Fi smoke APK and Python/CFFI peer using
