@@ -1,0 +1,2 @@
+_d2fa_*
+_Java_org_desktop2fa_transfer_NativeCore_*

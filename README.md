@@ -16,7 +16,7 @@ The **v0.3.0** tag marks the local foundations for future selected-account trans
 
 ---
 
-The owner-provided [transfer specification v0.3 and implementation status](docs/transfer/README.md) now define the proposed communication profile. The [Watch v2 storage migration design](docs/transfer/vault-v2-proposal.md) is accepted, including its older-reader limitations; implementation and verification remain pending, and transfer remains unavailable.
+The owner-provided [transfer specification v0.3 and implementation status](docs/transfer/README.md) now define the proposed communication profile. The [Watch v2 storage migration design](docs/transfer/vault-v2-proposal.md) is accepted, including its older-reader limitations; the storage codec and isolated native proof of concept are implemented. Migration UI, the account receiver and required platform/device checks remain pending; transfer remains unavailable.
 
 ## ✨ Features
 
