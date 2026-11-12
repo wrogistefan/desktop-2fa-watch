@@ -92,3 +92,23 @@ Darwin state bit while still comparing all configuration flags/control character
 and explicitly checking ECHO/ICANON. This changes the Watch repository's test
 harness only, not Desktop-2FA or the native cryptographic profile. A fresh macOS
 CI pass is required; the failed run is not recorded as passed.
+
+## Completed review follow-up gate
+
+Run [43318081878](https://github.com/wrogistefan/desktop-2fa-watch/actions/runs/43318081878),
+`cf6336c`, passed all native workflow jobs: Linux sanitizers/upstream suites,
+Linux/Windows/macOS interop and hidden-input regressions, including the corrected
+macOS PTY restoration/no-echo check. Android PoC and main-app CI also passed
+for this head. Kilo's final review reported no new issues, and all five threads
+were addressed before PR #71 was squashed into main.
+
+The duplicate native run 43318090830 did not acquire its macOS runner; its
+annotation reports hosted-runner capacity constraints and the job has no steps.
+It is not counted as a passing run. The successful independent complete run
+above supplies the executed evidence for the same head.
+
+A later local rebuild was deliberately cancelled to reduce memory pressure;
+it is not a passed build. Use the successful CI artifact for the reviewed head.
+The earlier local three-ABI build and guard results remain historical evidence,
+not a claim that this cancelled rebuild completed. Physical-watch/device/network
+acceptance and the full receiver are still open.

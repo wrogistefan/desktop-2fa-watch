@@ -29,6 +29,10 @@ import org.desktop2fa.desktop.watch.vault.Vault
 import org.desktop2fa.desktop.watch.vault.VaultFiles
 import org.desktop2fa.desktop.watch.vault.VaultSaveOutcome
 import org.desktop2fa.desktop.watch.vault.openRecoveryView
+import org.desktop2fa.desktop.watch.vault.migrationAwareInventory
+import org.desktop2fa.desktop.watch.vault.openMigrationAwareRecoveryView
+import org.desktop2fa.desktop.watch.vault.VaultPresence
+import org.desktop2fa.desktop.watch.vault.VaultIOException
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -36,18 +40,30 @@ import java.util.concurrent.ConcurrentHashMap
 internal class LateSessionNotice(val message: String)
 
 /** Synchronous storage boundary; the session always calls it on its I/O dispatcher. */
-internal open class VaultSessionStorage(private val file: File, private val clearCache: () -> Boolean) {
+internal open class VaultSessionStorage(
+    private val file: File, private val noBackupDirectory: File?, private val clearCache: () -> Boolean,
+) {
+    constructor(file: File, clearCache: () -> Boolean) : this(file, null, clearCache)
+    private fun presence(): VaultPresence = noBackupDirectory?.let { migrationAwareInventory(file, it).presence }
+        ?: VaultFiles.inspect(file)
     private val noticeKey = file.absoluteFile.toPath().normalize().toString()
     fun recordNotice(message: String): LateSessionNotice = LateSessionNotice(message).also { notices[noticeKey] = it }
     fun pendingNotice(): LateSessionNotice? = notices[noticeKey]
     fun acknowledgeNotice(notice: LateSessionNotice) { notices.remove(noticeKey, notice) }
     open fun clearCredentials(): Boolean = clearCache()
-    open fun inspect(): VaultStartup = resolveVaultStartup(file)
-    open fun create(password: String): Vault = Vault.create().also { it.saveNew(file, password) }
+    open fun inspect(): VaultStartup = resolveVaultStartup(file) { presence() }
+    open fun create(password: String): Vault {
+        // The session calls this under its writer mutex; recheck before CREATE_NEW.
+        if (presence() != VaultPresence.MISSING) throw VaultIOException("Existing recovery data requires review")
+        return Vault.create().also { it.saveNew(file, password) }
+    }
     open fun unlock(password: String): Vault = Vault.load(file, password)
-    open fun inventory(): List<RecoveryCandidate> = VaultFiles.inventory(file).candidates
+    open fun inventory(): List<RecoveryCandidate> = noBackupDirectory?.let {
+        migrationAwareInventory(file, it).candidates
+    } ?: VaultFiles.inventory(file).candidates
     open fun recover(candidate: RecoveryCandidate, password: String): RecoveryView =
-        openRecoveryView(file, candidate, password)
+        noBackupDirectory?.let { openMigrationAwareRecoveryView(file, it, candidate, password) }
+            ?: openRecoveryView(file, candidate, password)
     open fun commit(candidate: AccountAdditionCandidate, password: String): AccountSaveResult {
         // The caller holds processOperations. Another live owner may have committed
         // since this UI snapshot was captured; never replace that newer data.
