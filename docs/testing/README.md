@@ -1,5 +1,8 @@
 # UI Test Reports
 
+The [migration backend report](vault-migration-backend-2026-11-12.md) records
+copy/publication fault tests and actual Desktop v2 rejection/v1 recovery reading.
+
 The [vault v2 codec report](vault-v2-regressions.md) records storage/receipt
 regressions and distinguishes them from pending migration and transport gates.
 

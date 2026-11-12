@@ -3,8 +3,8 @@
 The [accepted Watch v2 design](transfer/vault-v2-proposal.md) defines the
 transfer-receipt format, header AAD, explicit opt-in migration, retained encrypted
 v1 safety copy and read-only recovery. The v2 codec/receipt validation is now
-implemented alongside the unchanged v1 format. Migration, transfer and their
-user interfaces are not implemented by this storage-foundation change. Design acceptance is not test evidence or release approval;
+implemented alongside the unchanged v1 format. An explicit migration backend is implemented but has no app entry point.
+Archive recovery, consent/lifecycle integration and transfer remain pending. Design acceptance is not test evidence or release approval;
 Desktop wire compatibility does not imply direct v2 file compatibility.
 
 This describes the 0.2.0 MVP and its current boundaries. The app has not had an
@@ -201,3 +201,11 @@ V2 payload failures retain fixed diagnostic stages (UTF8, JSON_SYNTAX,
 JSON_TYPES, MODEL_SCHEMA, MODEL_VALIDATION), not original parser exception
 causes that could contain decrypted account/key text. This supports storage
 failure attribution without exposing input through an exception chain.
+
+The [migration backend](testing/vault-migration-backend-2026-11-12.md) preserves
+an exclusive encrypted v1 safety copy and never restores it automatically.
+It is not callable from the UI yet. Its future caller must use the session writer
+mutex and ownership/locking rules, inventory the copy during startup/recovery,
+and require local consent. The retained copy is app-private data, not an external
+backup; uninstall/reset/clearing app storage can remove it along with the vault.
+It does not include later additions and cannot recover a lost password.

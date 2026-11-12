@@ -122,25 +122,24 @@ ambiguous account name to an issuer. Missing matches still throw
 and changes nothing on ambiguity/missing selection. Unique callers keep their
 signatures/behavior. `findEntries` remains an enumeration of both labels, not an
 implicit selector. Historical duplicate/null/empty records still load/display;
-there is no format/ID migration or edit/remove UI. Future additive transfer uses
-E2 explicit collision/operation semantics and must not use first-match lookup.
+there is no format/ID migration or edit/remove UI. Future additive transfer follows the supplied v0.3 collision/retry contract
+and must not use first-match lookup.
 
-The [E2 collision/retry policy](transfer/collisions-retry.md) preserves existing
-accounts and uses explicit Watch choices instead of first-match lookup. Its
-owner-accepted memory-only direction requires manual reconciliation after Lock,
-restart or expiry. Communication/transfer remains a separate later design. It adds no
-v1 fields, sidecar, backup change or account-ID migration and does not promise
-exactly-once delivery across process death.
+The [historical E2 policy](transfer/collisions-retry.md) records the earlier
+manual collision choices and memory-only receipts. The owner-provided
+[transfer v0.3 specification](transfer/desktop-2fa-transfer-v0.3.md) supersedes
+those choices: skip unambiguous secret/parameter matches, reject the entire
+batch on conflicts or incoming duplicates, and atomically retain the latest
+128 encrypted receipts in Watch v2. It introduces no persistent account IDs,
+replacement, deletion or synchronization. UNKNOWN after receipt eviction is
+not proof that nothing was saved; duplicate checks and renewed local approval
+remain necessary when resending an unknown offer.
 
-The [selected-account package v1 proposal](transfer/package-v1.md) is a bounded,
-additive application contract, separate from D2FA v1 and any transport. It carries
-only user-selected explicit parameters, preserves nullable names and requires
-Watch preview/consent before one batch commit. It cannot replace the local vault
-or exchange vault passwords. Unsupported packages leave both vaults unchanged.
-The proposal adds no implementation/network permission. Collision/retry,
-receiver states and authenticated transport remain E2–E4 decisions; approval and
-all required evidence are gates before any later implementation. This direction
-does not close or redefine [whole-vault issue #10](https://github.com/wrogistefan/desktop-2fa-watch/issues/10).
+The [E1 package proposal](transfer/package-v1.md) remains historical planning,
+not the final wire schema. Desktop must use v0.3's exact mandatory fields,
+canonical encoding, TOTP limits, watch consent and authenticated transport.
+Vault passwords/files are outside that account-transfer protocol. The proposal
+and current implementation do not close or redefine [whole-vault issue #10](https://github.com/wrogistefan/desktop-2fa-watch/issues/10).
 
 The D1 corpus records explicit supported/rejected cases and complete fields,
 including historical unsupported keys and the missing-version difference. D1
@@ -193,12 +192,21 @@ follow-up work on a separate branch:
    replacement confirmation and preservation of the old vault on failure.
 5. Measure KDF costs on a physical watch and select a practical transfer channel.
 
-Desktop already has encrypted whole-vault import/export commands. The first
-watch workflow should use the same v1 file, without an intermediate plaintext
-export. An imported file's password, invalidated session and legacy credential
+Desktop already has encrypted whole-vault import/export commands. That separate
+#10 proposal would use the same v1 file without an intermediate plaintext
+export; the selected-account v0.3 protocol transfers account records. An imported file's password, invalidated session and legacy credential
 cleanup must be handled consistently after replacement.
 
 Automatic sync and account merging are outside that initial scope. The model
 has no stable IDs, edit timestamps, or deletion records for resolving conflicts.
 Do not independently reduce watch KDF parameters under the existing version
 byte: those parameters are implicit in the v1 format.
+
+## Executed v2 migration compatibility check
+
+The actual pinned Desktop 0.10.0 bridge now receives a synthetic Watch v2 file
+produced by the migration helper. It must reject it with `UnsupportedFormat`,
+leave its bytes intact, and still load the retained v1 copy with all fields and
+fixed-time codes unchanged. Existing two-way v1 round trips and corpus hashes
+remain checked. This exercises the library, not the Desktop GUI; see the
+[migration backend report](testing/vault-migration-backend-2026-11-12.md).

@@ -3,8 +3,8 @@
 The [accepted Watch v2 design](transfer/vault-v2-proposal.md) defines the
 transfer-receipt format, header AAD, explicit opt-in migration, retained encrypted
 v1 safety copy and read-only recovery. The v2 codec/receipt validation is now
-implemented alongside the unchanged v1 format. Migration, transfer and their
-user interfaces are not implemented by this storage-foundation change. Design acceptance is not test evidence or release approval;
+implemented alongside the unchanged v1 format. An explicit migration backend is implemented but has no app entry point.
+Archive recovery, consent/lifecycle integration and transfer remain pending. Design acceptance is not test evidence or release approval;
 Desktop wire compatibility does not imply direct v2 file compatibility.
 
 Physical v1 KDF measurement remains #30. The opt-in
@@ -259,3 +259,20 @@ or complete cross-platform vault interoperability.
 - [Vault.kt](../app/src/main/java/org/desktop2fa/desktop/watch/vault/Vault.kt)
 - [TotpGenerator.kt](../app/src/main/java/org/desktop2fa/desktop/watch/vault/TotpGenerator.kt)
 - [Desktop cryptographic design](https://github.com/wrogistefan/desktop-2fa/blob/main/docs/crypto.md)
+
+## Explicit migration backend (not yet user-accessible)
+
+`migrateVaultToV2` authenticates the exact bounded v1 bytes, checks a private
+baseline, and requires explicit per-user consent. It exclusively creates and
+syncs `noBackupFilesDir/transfer-migration/vault-v1.d2fa`, verifies byte count and
+SHA-256 locally, rechecks the source, and uses the existing atomic writer for v2.
+A failed copy never authorizes replacement or cleanup. An existing/partial copy
+blocks another migration. After uncertain publication, authenticated rereading
+classifies the actual complete snapshot; no copy-back or automatic retry occurs.
+
+The helper has **no application caller**. It must run under the existing session
+writer mutex/non-cancellable mutation boundary. Startup must inventory the
+retained archive and offer read-only recovery (including when main is missing)
+before migration can be offered. Consent/lifecycle integration, Android backup
+behavior and directory/power-loss durability are not established by these JVM
+tests. See [backend regression evidence](testing/vault-migration-backend-2026-11-12.md).

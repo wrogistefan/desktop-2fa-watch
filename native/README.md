@@ -35,7 +35,7 @@ The C ABI does not implement START/CHALLENGE JSON, LAN discovery/Wi-Fi binding,
 code generation/display/entry policy, three-attempt limits, monotonic deadlines,
 approval, reconnect pacing, locking or receipt transactions. Those are mandatory
 application-layer gates, not responsibilities this experiment has completed.
-No network service or new Android permission is added. No test RPC listener
+The host RPC harness adds no network service or Android permission; the separate Watch smoke APK described below adds networking only to its isolated package. No test RPC listener
 may become an application feature.
 
 ## Repeatable developer build
@@ -98,7 +98,7 @@ cannot be guaranteed erased. No memory dump/report upload is configured.
 ## Desktop host matrix
 
 The workflow additionally targets Windows Server 2022 (Visual Studio 2022,
-NASM 2.16.03) and macOS 14 host runners. It checks 1000 JNI/CFFI exchanges and
+NASM 2.16.03) and macOS 15 arm64 host runners. It checks 1000 JNI/CFFI exchanges and
 non-test exports on each; a bounded pipe-reader thread avoids unsupported
 Windows pipe selectors. macOS exports are restricted explicitly, and Windows
 uses a private static CRT. These are test/build targets, not new minimum OS
