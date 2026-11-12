@@ -1,4 +1,4 @@
-"""Actual pinned Desktop verification and two public synthetic round trips."""
+"""Pinned Desktop v1 round trips, migrated Watch v2 rejection and retained v1 reading."""
 import argparse
 import hashlib
 import json
