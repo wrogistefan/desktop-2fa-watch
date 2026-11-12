@@ -82,3 +82,4 @@ of late #46 review findings, no-follow opens, changed selections and debug-host
 containment tests, including the limits of metadata-based checks.
 
 - [Watch migration-copy recovery, 2026-11-12](migration-recovery-2026-11-12.md): metadata inventory and explicit read-only opening; final run/device limitations are listed in the report.
+- [Isolated Watch transport PoC, 2026-11-12](transfer-watch-poc-2026-11-12.md): synthetic-only standalone harness, executed JVM/Windows checks and pending device gates.

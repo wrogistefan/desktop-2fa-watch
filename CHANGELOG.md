@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Isolated transport experiment
+
+- Add a standalone synthetic Watch Wi-Fi smoke APK and Python/CFFI peer using
+  the approved native PAKE/importer/TLS profile. Keep the product app offline;
+  no vault/account access or receiver UI is enabled. Record host/Android build
+  evidence and required physical-watch gates before real-secret reception.
+
 ### Storage foundations
 
 - Discover retained Watch migration copies during startup/recovery, block empty
