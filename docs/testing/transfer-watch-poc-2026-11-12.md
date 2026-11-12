@@ -83,3 +83,12 @@ Keep ACCESS_LOCAL_NETWORK's API-37 enforcement guard: the review's API-33 claim
 confuses this with older nearby-Wi-Fi access. The official local network
 permission guide requires it for Android 17 with target SDK 37. Actual permission
 and lifecycle behavior still require device testing.
+
+The follow-up POSIX tests passed locally under WSL (9 discovered, 8 passed,
+Windows-only adapter skipped). CI exposed a macOS-only test assertion issue:
+Darwin adds PENDIN kernel pending-input state after returning to canonical mode
+(0x20000000); ECHO/ICANON were restored. The PTY test now excludes only that
+Darwin state bit while still comparing all configuration flags/control characters
+and explicitly checking ECHO/ICANON. This changes the Watch repository's test
+harness only, not Desktop-2FA or the native cryptographic profile. A fresh macOS
+CI pass is required; the failed run is not recorded as passed.

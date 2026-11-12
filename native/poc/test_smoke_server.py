@@ -126,7 +126,17 @@ class HiddenInputTests(unittest.TestCase):
                         with self.assertRaises(s.SmokeFailure): s.read_terminal_code(time.monotonic() + 5, None)
                     else:
                         self.assertEqual(s.read_terminal_code(time.monotonic() + 5, None), b"00000001")
-                self.assertEqual(previous, termios.tcgetattr(slave))
+                restored = termios.tcgetattr(slave)
+                # Darwin sets PENDIN after a canonical-mode transition. It is
+                # kernel pending-input state, not an ECHO/ICANON setting.
+                # https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/termios.h
+                if sys.platform == "darwin":
+                    state_bit = termios.PENDIN
+                    previous[3] &= ~state_bit
+                    restored[3] &= ~state_bit
+                self.assertEqual(previous, restored)
+                self.assertEqual(previous[3] & (termios.ECHO | termios.ICANON),
+                                 restored[3] & (termios.ECHO | termios.ICANON))
                 self.assertFalse(select.select([master], [], [], 0)[0])  # No input echo in the PTY.
                 self.assertNotIn("00000001", output.getvalue())
             finally:
