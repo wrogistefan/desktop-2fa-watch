@@ -95,3 +95,20 @@ pin/profile. The test control pipe is portable across those hosts, exports are
 restricted/checked per platform, and Windows uses a private static CRT. The
 jobs have not yet passed at this report update. These runner targets do not
 change the application's supported OS/API policy or establish Wear OS behavior.
+
+## Desktop host gate follow-up
+
+Run [43287476489](https://github.com/wrogistefan/desktop-2fa-watch/actions/runs/43287476489),
+`59e1401`: Windows Server 2022 passed CTest, 1000 JNI/CFFI exchanges and
+non-test exports. Linux jobs also passed. macOS 14 was cancelled before any
+steps: runner annotation `macos-14-arm64-us-default is not supported`. This is
+**not** macOS test evidence. The workflow now uses macOS 15 arm64, following
+[runner retirement](https://github.com/actions/runner-images/issues/13518).
+This is a CI host change, not a product minimum-OS decision.
+
+Review follow-up makes macOS shell failure handling explicit and stages only
+the current platform binary, retaining separately named project/BoringSSL
+licenses. The `nm -gU` guard remains: uppercase `-U` excludes undefined symbols
+in Apple's implementation; lowercase `-u` selects them. Windows `vswhere -find`
+was exercised successfully by this run. Neither observation replaces the
+pending macOS execution.

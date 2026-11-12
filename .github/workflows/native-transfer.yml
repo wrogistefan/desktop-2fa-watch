@@ -97,7 +97,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2022, macos-14]
+        os: [windows-2022, macos-15]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -152,7 +152,9 @@ jobs:
           exit $LASTEXITCODE
       - name: Build macOS host JNI/CFFI peer
         if: runner.os == 'macOS'
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install -r native/poc/requirements.txt
           ./gradlew -p native/poc/kotlin jar --stacktrace
           cmake -S native/transfer -B build/platform -G Ninja \
@@ -161,7 +163,9 @@ jobs:
           cmake --build build/platform --target d2fa_core_test --parallel 2
       - name: Verify macOS host profile and exports
         if: runner.os == 'macOS'
+        shell: bash
         run: |
+          set -euo pipefail
           ctest --test-dir build/platform --output-on-failure
           python native/poc/interop.py --library build/platform/libd2fa_transfer.dylib \
             --jar native/poc/kotlin/build/libs/d2fa-native-interop-poc.jar
@@ -169,15 +173,23 @@ jobs:
           cmake --build build/platform --target d2fa_transfer --parallel 2
           python native/poc/verify_exports.py build/platform/libd2fa_transfer.dylib
 
+      - name: Stage platform-specific developer binary and license notices
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/developer-artifact
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            cp build/platform/Release/d2fa_transfer.dll build/developer-artifact/
+          else
+            cp build/platform/libd2fa_transfer.dylib build/developer-artifact/
+          fi
+          cp native/transfer/core.h build/developer-artifact/
+          cp LICENSE build/developer-artifact/PROJECT-LICENSE
+          cp build/boringssl-source/LICENSE build/developer-artifact/BORINGSSL-LICENSE
       - name: Retain non-test developer binary and license notices
         uses: actions/upload-artifact@v4
         with:
           name: developer-transfer-core-${{ runner.os }}-${{ runner.arch }}
           retention-days: 3
           if-no-files-found: error
-          path: |
-            build/platform/Release/d2fa_transfer.dll
-            build/platform/libd2fa_transfer.dylib
-            native/transfer/core.h
-            LICENSE
-            build/boringssl-source/LICENSE
+          path: build/developer-artifact/
