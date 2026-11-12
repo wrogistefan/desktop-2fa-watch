@@ -24,8 +24,8 @@ android {
         }
     }
     externalNativeBuild.cmake { path = file("../../../transfer/CMakeLists.txt"); version = "3.22.1" }
-    sourceSets["main"].java.srcDir("../../../../app/src/main/java/org/desktop2fa/desktop/watch/common")
-    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/poc-notices"))
+    sourceSets["main"].kotlin.srcDir("../../../../app/src/main/java/org/desktop2fa/desktop/watch/common")
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/poc-notices").get().asFile)
     buildTypes { getByName("release") { isMinifyEnabled = false; signingConfig = signingConfigs.getByName("debug") } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 }

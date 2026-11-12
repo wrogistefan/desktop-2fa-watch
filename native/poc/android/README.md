@@ -12,7 +12,7 @@ unmodified BoringSSL checkout at `594a44291086dcc7cef06cabec4c0b47afd674c0`.
 CMake checks the commit. Native test API is OFF; the C++ runtime is static.
 
 ```powershell
-.\gradlew.bat -p native/poc/android -Pd2faBoringSSLSource=C:/path/to/pinned-boringssl :app:testReleaseUnitTest :app:assembleRelease --stacktrace
+.\gradlew.bat -p native/poc/android -Pd2faBoringSSLSource=C:/path/to/pinned-boringssl :app:testDebugUnitTest :app:assembleRelease --stacktrace
 ```
 
 The release-named developer variant is signed with the debug key, not a product
