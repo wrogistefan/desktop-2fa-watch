@@ -97,3 +97,5 @@ containment tests, including the limits of metadata-based checks.
 - [Transfer protocol and STATUS (2026-11-13)](transfer-protocol-2026-11-13.md): synthetic state transitions, real encrypted read-only queries and Lock/cancellation boundaries.
 
 - [Transfer owner adapter (2026-11-13)](transfer-owner-2026-11-13.md): synthetic end-to-end protocol/session integration and blocked-writer/lifecycle cases.
+
+- [Optional native app packaging (2026-11-13)](transfer-native-app-2026-11-13.md): generated APK identities, ABIs, exports, licenses and off/on/off isolation.

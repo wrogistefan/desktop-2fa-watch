@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Optional transfer native packaging
+
+- Add explicit default-off native core packaging to the Watch app, reusing the
+  pinned shared JNI binding with test API disabled, licenses and APK export/ABI
+  guards. Ordinary builds remain offline without transfer-native libraries.
+
 ### Transfer session adapter
 
 - Connect protocol effects to authenticated session reads and approved writes,

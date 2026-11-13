@@ -1,6 +1,7 @@
 package org.desktop2fa.transfer
 
-/** Isolated Watch PoC binding. No full-key test method; no vault access. */
+/** Shared Android JNI binding. No full-key test method; no vault access.
+ * Load only in explicitly enabled developer builds after the receive owner is acquired. */
 object NativeCore {
     init { System.loadLibrary("d2fa_transfer") }
     external fun create(role: Int, sid: ByteArray, wid: ByteArray, code: ByteArray): Long
