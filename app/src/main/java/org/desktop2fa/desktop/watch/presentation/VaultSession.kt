@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.desktop2fa.desktop.watch.model.TransferReceipt
 import org.desktop2fa.desktop.watch.model.VaultData
 import org.desktop2fa.desktop.watch.vault.VaultMigrationConsent
 import org.desktop2fa.desktop.watch.vault.VaultMigrationResult
@@ -59,6 +60,17 @@ internal class TransferMigrationReview(data: VaultData) {
     override fun toString() = "TransferMigrationReview(redacted)"
 }
 
+/** An authenticated read-only receipt query; Unknown is not proof of no historical save. */
+internal sealed interface TransferStatusResult {
+    class Found(receipt: TransferReceipt) : TransferStatusResult {
+        private val owned = receipt.snapshot()
+        val receipt get() = owned.snapshot()
+        override fun toString() = "Found(redacted)"
+    }
+    data object Unknown : TransferStatusResult
+    class Failed(val code: TransferError) : TransferStatusResult
+}
+
 /** Non-secret, process-local handoff; never a persisted receipt or active session. */
 internal class LateSessionNotice(val message: String)
 
@@ -98,11 +110,17 @@ internal open class VaultSessionStorage(
         if (presence() != VaultPresence.PRESENT) throw VaultIOException("Existing storage requires review")
         return migrateVaultToV2(file, archiveRoot, password, baseline, VaultMigrationConsent.CONFIRMED)
     }
-    open fun prepareTransfer(offer: TransferOffer, password: String): TransferPreparation {
+    private fun loadTransferVault(password: String): Vault {
         if (presence() != VaultPresence.PRESENT) throw TransferValidationFailure(TransferError.STORAGE_ERROR)
         val actual = Vault.load(file, password)
         if (presence() != VaultPresence.PRESENT) throw TransferValidationFailure(TransferError.STORAGE_ERROR)
-        return TransferPlanner.prepare(actual.data, offer)
+        return actual
+    }
+    open fun prepareTransfer(offer: TransferOffer, password: String): TransferPreparation =
+        TransferPlanner.prepare(loadTransferVault(password).data, offer)
+    open fun transferStatus(transferId: String, sha256: String, password: String): TransferReceipt? {
+        TransferPlanner.requireIdentifiers(transferId, sha256) // Cheap validation before file inspection/KDF.
+        return TransferPlanner.status(loadTransferVault(password).data, transferId, sha256)
     }
     open fun commitTransfer(candidate: TransferAdditionCandidate, password: String, approval: TransferSaveGate): TransferCommitResult =
         commitApprovedTransfer(candidate, file, password, approval)
@@ -144,6 +162,8 @@ internal class VaultSession(
     var addedAccountIndex by mutableStateOf<Int?>(null)
         private set
 
+    var transferStatus by mutableStateOf<TransferStatusResult?>(null)
+        private set
     var transferMigrationReview by mutableStateOf<TransferMigrationReview?>(null)
         private set
     var transferReview by mutableStateOf<TransferAdditionCandidate?>(null)
@@ -170,6 +190,7 @@ internal class VaultSession(
     fun acceptsUiToken(token: Any): Boolean = owns(token)
 
     private fun clearTransferState() {
+        transferStatus = null
         transferMigrationReview = null
         transferApproval?.cancel()
         transferApproval = null
@@ -517,6 +538,25 @@ internal class VaultSession(
         return transferEpoch
     }
 
+    /** UI-dispatcher only; incoming traffic must separately check the inactivity deadline. */
+    fun acceptsTransferToken(token: Any): Boolean = token === transferEpoch && writableTransferSession() &&
+        currentScreen == Screen.MAIN && transferResult !== TransferCommitResult.Cancelled &&
+        transferResult !is TransferCommitResult.Unconfirmed && transferError == null
+
+    /** Returns asynchronous acceptance only. No write, approval, migration or receipt FIFO refresh. */
+    fun queryTransferStatus(token: Any, transferId: String, sha256: String): Boolean {
+        if (!acceptsTransferToken(token) || operationPending) return false
+        transferStatus = null
+        val supplied = sessionPassword
+        operation(loading = false, work = { storage.transferStatus(transferId, sha256, supplied) }, success = {
+            if (acceptsTransferToken(token)) transferStatus = it?.let(TransferStatusResult::Found) ?: TransferStatusResult.Unknown
+        }, failure = {
+            if (acceptsTransferToken(token)) transferStatus = TransferStatusResult.Failed(
+                (it as? TransferValidationFailure)?.code ?: TransferError.STORAGE_ERROR)
+        })
+        return true
+    }
+
     /** UI-dispatcher action. Network callers must not count packets as local user input. */
     fun prepareTransfer(token: Any, offer: TransferOffer): Boolean {
         if (token !== transferEpoch || !transferOpen || operationPending || !writableTransferSession()) return false
@@ -605,6 +645,7 @@ internal class VaultSession(
         }
         if (!transferOpen && transferResult !== TransferCommitResult.Cancelled) return null
         transferOpen = false
+        transferStatus = null
         transferOffer = null
         transferReview = null
         transferResult = TransferCommitResult.Cancelled

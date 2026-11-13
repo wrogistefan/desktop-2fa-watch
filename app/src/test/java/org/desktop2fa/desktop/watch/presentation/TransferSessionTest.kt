@@ -23,6 +23,10 @@ class TransferSessionTest {
         @Volatile var beforePrepare: () -> Unit = {}
         @Volatile var beforeCommit: () -> Unit = {}
         @Volatile var atSave: () -> Unit = {}
+        @Volatile var beforeStatus: () -> Unit = {}
+        override fun transferStatus(transferId: String, sha256: String, password: String): org.desktop2fa.desktop.watch.model.TransferReceipt? {
+            beforeStatus(); return TransferPlanner.status(current.data, transferId, sha256)
+        }
         @Volatile var writes = 0
         @Volatile var migrations = 0
         @Volatile var beforeMigration: () -> Unit = {}
@@ -225,6 +229,48 @@ class TransferSessionTest {
         finally { gate.release.countDown() }
         runBlocking { occupied.join() }; f.idle()
         assertEquals(0, f.storage.migrations)
+    }
+    @Test fun statusIsAuthenticatedReadOnlyAndSurvivesNewManualSession() = Fixture().use { f ->
+        f.unlock(); val batch = offer(); val (token, candidate) = f.prepare(batch)
+        f.ui { approveTransfer(token, candidate) }; f.idle()
+        val snapshot = f.storage.current.data.copy(entries = f.storage.current.entries.toMutableList())
+        f.ui { assertTrue(queryTransferStatus(token, batch.transferId, batch.sha256)) }; f.idle()
+        f.ui { assertEquals(candidate.receipt, (transferStatus as TransferStatusResult.Found).receipt) }
+        f.ui { lock() }; f.idle(); f.unlock()
+        val next = f.ui { requireNotNull(beginTransfer()) }
+        f.ui { assertFalse(queryTransferStatus(token, batch.transferId, batch.sha256)); assertTrue(queryTransferStatus(next, batch.transferId, batch.sha256)) }; f.idle()
+        f.ui { assertTrue(transferStatus is TransferStatusResult.Found) }
+        assertEquals(snapshot, f.storage.current.data); assertEquals(1, f.storage.writes)
+    }
+    @Test fun unknownStatusDoesNotSaveOrReplacePendingApproval() = Fixture().use { f ->
+        f.unlock(); val batch = offer(); val (token, candidate) = f.prepare(batch)
+        f.ui { assertTrue(queryTransferStatus(token, batch.transferId, batch.sha256)) }; f.idle()
+        f.ui { assertSame(TransferStatusResult.Unknown, transferStatus); assertSame(candidate, transferReview) }
+        assertEquals(0, f.storage.writes); assertEquals(0, f.storage.migrations)
+    }
+    @Test fun statusDigestConflictIsFixedErrorAndDoesNotRewrite() = Fixture().use { f ->
+        f.unlock(); val batch = offer(); val (token, candidate) = f.prepare(batch)
+        f.ui { approveTransfer(token, candidate) }; f.idle()
+        f.ui { queryTransferStatus(token, batch.transferId, "f".repeat(64)) }; f.idle()
+        f.ui { assertEquals(TransferError.TX_CONFLICT, (transferStatus as TransferStatusResult.Failed).code) }
+        assertEquals(1, f.storage.writes)
+    }
+    @Test fun statusCompletionAfterLockOrCancelCannotRepopulateSession() {
+        for (lock in listOf(true, false)) Fixture().use { f ->
+            f.unlock(); val token = f.ui { requireNotNull(beginTransfer()) }; val gate = Gate()
+            f.storage.beforeStatus = { gate.block() }
+            f.ui { queryTransferStatus(token, "1".repeat(32), "2".repeat(64)) }; gate.await()
+            try { f.ui { if (lock) lock() else cancelTransfer(token); assertNull(transferStatus) } }
+            finally { gate.release.countDown() }
+            f.idle(); f.ui { assertNull(transferStatus); assertFalse(acceptsTransferToken(token)) }
+        }
+    }
+    @Test fun failedStatusNeverFabricatesUnknown() = Fixture().use { f ->
+        f.unlock(); val token = f.ui { requireNotNull(beginTransfer()) }
+        f.storage.beforeStatus = { throw java.io.IOException("synthetic provider detail") }
+        f.ui { queryTransferStatus(token, "1".repeat(32), "2".repeat(64)) }; f.idle()
+        f.ui { assertEquals(TransferError.STORAGE_ERROR, (transferStatus as TransferStatusResult.Failed).code) }
+        assertEquals(0, f.storage.writes)
     }
     companion object {
         private fun offer() = TransferOffer.parse(("""{"v":1,"type":"OFFER","transfer_id":"11111111111111111111111111111111","accounts":[{"item_id":"22222222222222222222222222222222","kind":"totp","issuer":"synthetic","account":"synthetic account","secret":"AA","algorithm":"SHA1","digits":6,"period":30}]}""").toByteArray())
