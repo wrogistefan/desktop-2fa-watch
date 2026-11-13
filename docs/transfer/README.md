@@ -110,3 +110,5 @@ passing the required real-Wear/all-platform gate.
 - [Explicit activation session contract](activation-v1.md): identity-bound local migration consent, retained v1 recovery copy and older-reader consequences; no app entry point yet.
 
 - [Protocol state and STATUS](protocol-state-v1.md): one-batch ordering, exact local approval, fresh authenticated receipt reads and monotonic budgets; session/transport effect adapter remains pending.
+
+- [Serialized session owner adapter](session-owner-v1.md): protocol-to-storage effects, lifecycle ownership, bounded output and process-wide receive lease; native/socket/UI caller remains pending.

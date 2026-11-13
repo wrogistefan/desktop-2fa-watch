@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Transfer session adapter
+
+- Connect protocol effects to authenticated session reads and approved writes,
+  with lifecycle invalidation, bounded output, reconnect settlement and a
+  process-wide receive lease. Add a deadline-only Activity network action.
+  Native/socket and receiver UI callers remain pending.
+
 ### Transfer protocol foundations
 
 - Add one-batch authenticated protocol ordering, consent/cancellation effects,

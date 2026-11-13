@@ -142,6 +142,14 @@ open class MainActivity : ComponentActivity() {
         if (currentSession === session && session.acceptsUiToken(token) && input() && session.acceptsUiToken(token)) action()
     }
 
+    /** Incoming transport events check ownership/deadlines without renewing local inactivity. */
+    internal fun networkAction(session: VaultSession, token: Any, action: () -> Unit): Boolean {
+        if (!started || currentSession !== session || !session.acceptsUiToken(token) ||
+            !checkSessionDeadline() || !session.acceptsUiToken(token)) return false
+        action()
+        return true
+    }
+
     override fun onStart() {
         super.onStart()
         started = true
