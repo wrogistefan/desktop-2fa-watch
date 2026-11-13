@@ -3,13 +3,14 @@
 The owner supplied [Desktop-2FA → Watch specification v0.3](desktop-2fa-transfer-v0.3.md)
 on 2026-11-12 and authorized implementation in separate branches/PRs, with review
 addressed before merge. That file is an unchanged copy of the supplied document.
-Its v0.3 document version, v1 wire protocol, and future Watch storage version
+Its v0.3 document version, v1 wire protocol, and Watch storage version
 are separate version spaces.
 
 **Current state:** the v2 storage codec, receipt validation and receipt-preserving
 manual candidates are implemented. The isolated native proof of concept is merged separately. The explicit
-migration backend is implemented but has no app entry point; read-only archive recovery is implemented; consent/lifecycle
-integration and the receiver remain pending. No receiver or network
+migration backend is implemented but has no app entry point; read-only archive
+recovery and internal transfer planning/approval ownership in the password session
+are implemented. The confirmation UI and network receiver remain pending. No receiver or network
 permission is enabled in the app. The owner accepted
 the [v2 format, migration and recovery design](vault-v2-proposal.md) on
 2026-11-12 after reviewing its Desktop compatibility consequences, and required
@@ -37,7 +38,7 @@ secret reception before the supplied specification's acceptance gates.
 | --- | --- |
 | E1 selected-account package | Use the supplied strict OFFER schema, 1–50 items, canonical unpadded uppercase Base32, mandatory names/parameters and v1 budgets; do not reuse E1's nullable-label wire contract |
 | E2 manual collision choices | Skip matching secret/parameters; reject parameter/name conflicts and duplicates inside the incoming batch; no intentional duplicate-copy choice |
-| E2 memory-only receipts | v0.3 requires the latest 128 encrypted receipts, committed with additions; Watch v2 design accepted on 2026-11-12; implementation/evidence pending |
+| E2 memory-only receipts | v0.3 requires the latest 128 encrypted receipts, committed with additions; Watch v2 design accepted on 2026-11-12; codec and publication/session foundations implemented; full receiver acceptance pending |
 | Deferred E3/E4 drafts (#60/#58) | Historical references; do not combine their provisional framing, budgets or transport ideas with v0.3 |
 | Current vault v1 / pinned Desktop corpus | Preserve existing valid data and tests; wire interoperability does not require identical vault formats |
 | #10 whole-vault import/export | Separate scope, unchanged |
@@ -66,18 +67,19 @@ no Watch password or whole-vault file is transmitted.
 
 ## Current evidence and open decisions
 
-On 2026-11-12, a local upstream source clone contained commit
-`594a44291086dcc7cef06cabec4c0b47afd674c0`. Source inspection confirmed declarations
-for `SPAKE2_CTX_new`, `SPAKE2_generate_msg`, `SPAKE2_process_msg`,
-`SPAKE2_MAX_KEY_SIZE=64`, `SSL_CREDENTIAL_new_pre_shared_key`,
-`SSL_set1_group_ids` and `SSL_get_negotiated_group`.
-This is partial T0 evidence only: no upstream fixes review, native build,
-wrapper, sanitizer, authentication or platform compatibility result is claimed.
+The isolated native implementation uses BoringSSL commit
+`594a44291086dcc7cef06cabec4c0b47afd674c0`. Host Linux/Windows/macOS JNI/CFFI
+1000-exchange tests and the documented Linux sanitizer/upstream suites passed.
+The separate synthetic Watch transport APK was built and guarded for three
+ABIs; its CI uses SDK 37, NDK 28.2.13676358 and CMake 3.22.1. The product app
+keeps minSdk 30/targetSdk 37 and remains offline at this stage.
 
-The local Android SDK has no installed NDK or CMake. Current app minSdk is 30,
-compileSdk/targetSdk 37. Native build versions, supported ABIs, desktop packages
-and API-specific LAN/discovery permissions still need verification. No SDK/OS
-support change has been made. T0 is incomplete; T1–T12 are **NOT RUN**.
+These results supersede the initial source-only checkpoint and initial lack of
+local native tooling. They do not complete T0–T12: upstream security-fix
+assessment, adversarial/composition cases and real-device/paired-app acceptance
+remain open. The [acceptance ledger](../testing/transfer-native-poc-2026-11-12.md)
+records exact executed scopes and unexecuted gates; only its labelled host
+subset T1 is passed, not the full transfer release gate.
 
 The accepted storage design explicitly covers migration, no-backup safety copy,
 older-reader rejection and recovery. A second integration concern is the current
@@ -91,8 +93,9 @@ locking discards pending approval and may require starting a fresh session.
 The [developer-only native experiment](../../native/README.md) now contains the
 shared SPAKE2/importer/TLS core, a bounded C ABI, JNI adapter and a private-pipe
 Python/CFFI ↔ Kotlin/JNI harness. It is separate from the app and from the v2
-storage foundations in PR #67. There is no socket service, permission change,
-receiver UI or use of real accounts. See the [acceptance ledger](../testing/transfer-native-poc-2026-11-12.md)
+storage foundations in PR #67. The isolated smoke APK/Python peer adds a
+synthetic Wi-Fi transport in its own UID, without account/OFFER support. The
+product app has no network receiver/permission or real-account transfer UI. See the [acceptance ledger](../testing/transfer-native-poc-2026-11-12.md)
 for executed checks and T0–T12 gaps; source code or prepared CI is not proof of
 passing the required real-Wear/all-platform gate.
 
