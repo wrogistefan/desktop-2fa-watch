@@ -99,3 +99,5 @@ passing the required real-Wear/all-platform gate.
 - [OFFER validation and pure planning](offer-validation-v1.md): strict wire records, shared synthetic vectors, historical conflicts and private receipt candidates; no receiver/save integration.
 
 - [Transfer commit boundary](commit-boundary-v1.md): local approval/cancellation gate and receipt-verified encrypted publication backend.
+
+- [Session storage integration](session-integration-v1.md): shared writer mutex, consent ownership, cancellation and Lock; receiver UI/network integration remains pending.

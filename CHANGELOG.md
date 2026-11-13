@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Transfer session foundations
+
+- Connect internal transfer planning/approval to the password session and shared
+  writer mutex, reject stale consent, block competing manual additions and hide
+  pending data on Lock/disposal. No receiver UI or network permission is enabled.
+
 ### Transfer commit foundations
 
 - Add a local approval/cancellation boundary and receipt-verified publication

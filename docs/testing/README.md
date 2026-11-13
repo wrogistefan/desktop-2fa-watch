@@ -87,3 +87,5 @@ containment tests, including the limits of metadata-based checks.
 - [OFFER foundations, 2026-11-12](transfer-offer-foundations-2026-11-12.md): offline parser/planner and shared synthetic vectors; receipt/save integration remains pending.
 
 - [Transfer publication backend, 2026-11-13](transfer-commit-2026-11-13.md): local approval gate, actual receipt verification and fault regressions; device tests deferred to final acceptance.
+
+- [Transfer session integration (2026-11-13)](transfer-session-2026-11-13.md): synthetic ownership, consent and Lock/cancellation checks.
