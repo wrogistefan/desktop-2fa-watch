@@ -1,0 +1,158 @@
+package org.desktop2fa.desktop.watch.presentation
+
+import kotlinx.coroutines.*
+import org.desktop2fa.desktop.watch.model.VaultData
+import org.desktop2fa.desktop.watch.transfer.*
+import org.desktop2fa.desktop.watch.vault.*
+import org.junit.Assert.*
+import org.junit.Test
+import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+
+class TransferSessionTest {
+    private class Gate {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        fun block() { entered.countDown(); check(release.await(10, TimeUnit.SECONDS)) }
+        fun await() { assertTrue(entered.await(5, TimeUnit.SECONDS)) }
+    }
+    private class Storage : VaultSessionStorage(File("synthetic-transfer-${System.nanoTime()}.d2fa"), { true }) {
+        @Volatile var current = Vault(VaultData(2))
+        @Volatile var beforePrepare: () -> Unit = {}
+        @Volatile var beforeCommit: () -> Unit = {}
+        @Volatile var atSave: () -> Unit = {}
+        @Volatile var writes = 0
+        override fun unlock(password: String) = current
+        override fun prepareTransfer(offer: TransferOffer, password: String): TransferPreparation {
+            beforePrepare(); return TransferPlanner.prepare(current.data, offer)
+        }
+        override fun commitTransfer(candidate: TransferAdditionCandidate, password: String, approval: TransferSaveGate): TransferCommitResult {
+            beforeCommit()
+            return commitApprovedTransfer(candidate, File("synthetic-unused"), password, approval, object : TransferCommitIO() {
+                override fun load(file: File, password: String) = current
+                override fun inspect(file: File) = VaultPresence.PRESENT
+                override fun mainPresent(file: File) = true
+                override fun save(vault: Vault, file: File, password: String): VaultSaveOutcome {
+                    atSave(); writes++; current = vault; return VaultSaveOutcome.COMMITTED
+                }
+            })
+        }
+    }
+    private class Fixture : AutoCloseable {
+        val storage = Storage()
+        val ui = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+        val io = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+        val job = SupervisorJob()
+        val session = VaultSession(CoroutineScope(job + ui), storage, io)
+        fun <T> ui(action: VaultSession.() -> T): T = runBlocking { withContext(ui) { session.action() } }
+        fun idle() = runBlocking { withTimeout(5_000) { while (ui { operationPending }) delay(1) } }
+        fun unlock() { ui { passwordInput = "Synthetic-only-42!"; unlock() }; idle() }
+        fun prepare(offer: TransferOffer = offer()): Pair<Any, TransferAdditionCandidate> {
+            val token = ui { requireNotNull(beginTransfer()) }
+            ui { assertTrue(prepareTransfer(token, offer)) }; idle()
+            return token to ui { requireNotNull(transferReview) }
+        }
+        override fun close() {
+            ui { dispose() }; runBlocking { withTimeout(5_000) { job.cancelAndJoin() } }; io.close(); ui.close()
+        }
+    }
+    @Test fun explicitApprovalPublishesAndReplayNeedsNoSecondWrite() = Fixture().use { f ->
+        f.unlock(); val (token, candidate) = f.prepare()
+        assertEquals(0, f.storage.writes)
+        f.ui { assertTrue(approveTransfer(token, candidate)) }; f.idle()
+        f.ui { assertTrue(transferResult is TransferCommitResult.Saved); assertEquals(1, activeVault!!.entries.size) }
+        val replayToken = f.ui { requireNotNull(beginTransfer()) }
+        f.ui { assertTrue(prepareTransfer(replayToken, offer())) }; f.idle()
+        f.ui { assertNull(transferReview); assertTrue(transferResult is TransferCommitResult.Saved) }
+        assertEquals(1, f.storage.writes)
+    }
+    @Test fun v1CannotEnterTransferOrMigrateImplicitly() = Fixture().use { f ->
+        f.storage.current = Vault.create(); f.unlock()
+        f.ui { assertNull(beginTransfer()) }; assertEquals(1, f.storage.current.data.version)
+    }
+    @Test fun cancelDuringPreparationCannotPublishAReview() = Fixture().use { f ->
+        f.unlock(); val gate = Gate(); f.storage.beforePrepare = { gate.block() }
+        val token = f.ui { requireNotNull(beginTransfer()) }
+        f.ui { prepareTransfer(token, offer()) }; gate.await()
+        try { f.ui { assertEquals(TransferCancellation.CANCELLED, cancelTransfer(token)) } }
+        finally { gate.release.countDown() }
+        f.idle(); f.ui { assertNull(transferReview); assertSame(TransferCommitResult.Cancelled, transferResult) }
+        assertEquals(0, f.storage.writes)
+    }
+    @Test fun lockDuringPreparationInvalidatesOldOwner() = Fixture().use { f ->
+        f.unlock(); val gate = Gate(); f.storage.beforePrepare = { gate.block() }
+        val token = f.ui { requireNotNull(beginTransfer()) }
+        f.ui { prepareTransfer(token, offer()) }; gate.await()
+        try { f.ui { lock(); assertNull(transferReview); assertNull(activeVault) } }
+        finally { gate.release.countDown() }
+        f.idle(); f.storage.beforePrepare = {}; f.unlock()
+        f.ui { assertFalse(prepareTransfer(token, offer())); assertNull(transferReview) }
+    }
+    @Test fun lockBeforeSaveBoundaryCancelsApproval() = Fixture().use { f ->
+        f.unlock(); val (token, candidate) = f.prepare(); val gate = Gate()
+        f.storage.beforeCommit = { gate.block() }
+        f.ui { approveTransfer(token, candidate) }; gate.await()
+        try { f.ui { lock(); assertNull(activeVault); assertNull(transferReview) } }
+        finally { gate.release.countDown() }
+        f.idle(); assertEquals(0, f.storage.writes)
+        f.ui { assertNull(activeVault); assertNull(transferResult); assertEquals(Screen.STORAGE_ERROR, currentScreen) }
+    }
+    @Test fun lockAfterSaveBoundaryHidesUiWhilePublicationFinishes() = Fixture().use { f ->
+        f.unlock(); val (token, candidate) = f.prepare(); val gate = Gate()
+        f.storage.atSave = { gate.block() }
+        f.ui { approveTransfer(token, candidate) }; gate.await()
+        try { f.ui { assertEquals(TransferCancellation.TOO_LATE, cancelTransfer(token)); lock(); assertNull(activeVault) } }
+        finally { gate.release.countDown() }
+        f.idle(); assertEquals(1, f.storage.writes)
+        assertEquals(1, f.storage.current.data.transferReceipts.size)
+        f.ui { assertNull(activeVault); assertNull(transferResult); assertEquals(Screen.STORAGE_ERROR, currentScreen) }
+    }
+    @Test fun changedBaselineRequiresFreshReviewAndNewConsent() = Fixture().use { f ->
+        f.unlock(); val batch = offer(); val (token, candidate) = f.prepare(batch)
+        f.storage.current = Vault(VaultData(2)).apply { addEntry("other", "synthetic", "AE") }
+        f.ui { approveTransfer(token, candidate) }; f.idle()
+        f.ui {
+            assertSame(TransferCommitResult.Stale, transferResult)
+            assertFalse(approveTransfer(token, candidate))
+            assertTrue(prepareTransfer(token, batch))
+        }; f.idle()
+        val replacement = f.ui { requireNotNull(transferReview) }
+        assertNotSame(candidate, replacement)
+        f.ui { assertFalse(approveTransfer(token, candidate)); assertTrue(approveTransfer(token, replacement)) }; f.idle()
+        assertEquals(1, f.storage.writes); assertEquals(2, f.storage.current.entries.size)
+    }
+    @Test fun repeatedRemoteOfferCannotReplacePendingConsent() = Fixture().use { f ->
+        f.unlock(); val (token, candidate) = f.prepare()
+        f.ui {
+            assertNull(beginTransfer()); assertFalse(prepareTransfer(token, offer()))
+            assertSame(candidate, transferReview)
+            assertEquals(TransferCancellation.CANCELLED, cancelTransfer(token))
+            assertFalse(approveTransfer(token, candidate))
+        }; assertEquals(0, f.storage.writes)
+    }
+    @Test fun pendingTransferBlocksManualAdditionsAndSecondReceiver() = Fixture().use { f ->
+        f.unlock(); val (token, _) = f.prepare()
+        f.ui {
+            addAccount(); assertEquals(Screen.MAIN, currentScreen)
+            submitAdditions(listOf(org.desktop2fa.desktop.watch.model.TotpEntry("manual", "synthetic", "AE")))
+            assertFalse(operationPending); assertNull(beginTransfer())
+            cancelTransfer(token); addAccount(); assertEquals(Screen.ADD_ACCOUNT, currentScreen)
+        }; assertEquals(0, f.storage.writes)
+    }
+    @Test fun disposeAfterSaveBoundaryDoesNotInterruptOrRepublish() = Fixture().use { f ->
+        f.unlock(); val (token, candidate) = f.prepare(); val gate = Gate()
+        f.storage.atSave = { gate.block() }
+        f.ui { approveTransfer(token, candidate) }; gate.await()
+        try { f.ui { dispose(); assertNull(activeVault); assertNull(transferReview) } }
+        finally { gate.release.countDown() }
+        // Disposal intentionally leaves no active UI bookkeeping; drain the I/O owner.
+        runBlocking { withContext(f.io) {} }
+        assertEquals(1, f.storage.writes)
+        f.ui { assertNull(activeVault); assertNull(transferResult); assertNull(cancelTransfer(token)) }
+    }
+    companion object {
+        private fun offer() = TransferOffer.parse(("""{"v":1,"type":"OFFER","transfer_id":"11111111111111111111111111111111","accounts":[{"item_id":"22222222222222222222222222222222","kind":"totp","issuer":"synthetic","account":"synthetic account","secret":"AA","algorithm":"SHA1","digits":6,"period":30}]}""").toByteArray())
+    }
+}

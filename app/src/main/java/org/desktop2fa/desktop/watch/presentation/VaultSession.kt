@@ -33,6 +33,16 @@ import org.desktop2fa.desktop.watch.vault.migrationAwareInventory
 import org.desktop2fa.desktop.watch.vault.openMigrationAwareRecoveryView
 import org.desktop2fa.desktop.watch.vault.VaultPresence
 import org.desktop2fa.desktop.watch.vault.VaultIOException
+import org.desktop2fa.desktop.watch.transfer.TransferAdditionCandidate
+import org.desktop2fa.desktop.watch.transfer.TransferCancellation
+import org.desktop2fa.desktop.watch.transfer.TransferCommitResult
+import org.desktop2fa.desktop.watch.transfer.TransferError
+import org.desktop2fa.desktop.watch.transfer.TransferOffer
+import org.desktop2fa.desktop.watch.transfer.TransferPlanner
+import org.desktop2fa.desktop.watch.transfer.TransferPreparation
+import org.desktop2fa.desktop.watch.transfer.TransferSaveGate
+import org.desktop2fa.desktop.watch.transfer.TransferValidationFailure
+import org.desktop2fa.desktop.watch.transfer.commitApprovedTransfer
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -70,6 +80,14 @@ internal open class VaultSessionStorage(
         if (!candidate.matches(Vault.load(file, password).data)) return AccountSaveResult(VaultSaveOutcome.NOT_COMMITTED)
         return persistAccountCandidate(candidate.vault(), file, password)
     }
+    open fun prepareTransfer(offer: TransferOffer, password: String): TransferPreparation {
+        if (presence() != VaultPresence.PRESENT) throw TransferValidationFailure(TransferError.STORAGE_ERROR)
+        val actual = Vault.load(file, password)
+        if (presence() != VaultPresence.PRESENT) throw TransferValidationFailure(TransferError.STORAGE_ERROR)
+        return TransferPlanner.prepare(actual.data, offer)
+    }
+    open fun commitTransfer(candidate: TransferAdditionCandidate, password: String, approval: TransferSaveGate): TransferCommitResult =
+        commitApprovedTransfer(candidate, file, password, approval)
     companion object { private val notices = ConcurrentHashMap<String, LateSessionNotice>() }
 }
 
@@ -108,6 +126,18 @@ internal class VaultSession(
     var addedAccountIndex by mutableStateOf<Int?>(null)
         private set
 
+    var transferReview by mutableStateOf<TransferAdditionCandidate?>(null)
+        private set
+    var transferResult by mutableStateOf<TransferCommitResult?>(null)
+        private set
+    var transferError by mutableStateOf<TransferError?>(null)
+        private set
+    private var transferEpoch = Any()
+    private var transferOpen = false
+    private var transferOffer: TransferOffer? = null
+    private var transferApproval: TransferSaveGate? = null
+    private var transferCancelRequested = false
+
     private var sessionPassword = ""
     private var presentedNotice: LateSessionNotice? = null
     @Volatile private var generation = Any()
@@ -119,7 +149,20 @@ internal class VaultSession(
     fun uiToken(): Any = generation
     fun acceptsUiToken(token: Any): Boolean = owns(token)
 
+    private fun clearTransferState() {
+        transferApproval?.cancel()
+        transferApproval = null
+        transferEpoch = Any()
+        transferOpen = false
+        transferOffer = null
+        transferReview = null
+        transferResult = null
+        transferError = null
+        transferCancelRequested = false
+    }
+
     private fun clearSensitiveState() {
+        clearTransferState()
         activeVault = null
         sessionPassword = ""
         passwordInput = ""
@@ -133,6 +176,7 @@ internal class VaultSession(
     /** Invalidates before clearing UI. A synchronous write already in progress may still commit. */
     fun lock() {
         if (disposed) return
+        transferApproval?.cancel() // Linearize Lock against the publisher before invalidating UI ownership.
         val manualUnlock = recoverySource == null && currentScreen in
             setOf(Screen.MAIN, Screen.ADD_ACCOUNT, Screen.UNLOCK)
         generation = Any()
@@ -147,6 +191,7 @@ internal class VaultSession(
 
     /** Called before the composition scope is cancelled; never persist a session or draft. */
     fun dispose() {
+        transferApproval?.cancel()
         generation = Any()
         disposed = true
         clearSensitiveState()
@@ -339,7 +384,7 @@ internal class VaultSession(
     }
 
     fun addAccount() {
-        if (operationPending || disposed || recoverySource != null || activeVault == null) return
+        if (operationPending || disposed || transferOpen || recoverySource != null || activeVault == null) return
         wizardState = AccountWizardState()
         addedAccountIndex = null
         errorMessage = null
@@ -354,7 +399,7 @@ internal class VaultSession(
     }
 
     fun submitAccount() {
-        if (operationPending || disposed || recoverySource != null) return
+        if (operationPending || disposed || transferOpen || recoverySource != null) return
         val vault = activeVault ?: return
         val draft = wizardState.submit(vault.entries.map { it.accountName })
         wizardState = draft
@@ -365,7 +410,7 @@ internal class VaultSession(
 
     /** In-memory additions only; callers resolve consent/collisions before submission. */
     fun submitAdditions(additions: List<TotpEntry>) {
-        if (operationPending || disposed || recoverySource != null) return
+        if (operationPending || disposed || transferOpen || recoverySource != null) return
         val vault = activeVault ?: return
         val candidate = try {
             AccountAdditionCandidate(vault.data, additions)
@@ -393,6 +438,111 @@ internal class VaultSession(
             if (it.requiresReview) it.message
             else "Account was saved. Unlock and review before adding it again."
         })
+    }
+
+    private fun writableTransferSession(): Boolean = !disposed && recoverySource == null &&
+        activeVault?.data?.version == 2 && sessionPassword.isNotEmpty()
+
+    /** Call only for explicit local activation/new authenticated receive owner, never a remote retry. */
+    fun beginTransfer(): Any? {
+        if (operationPending || transferOpen || currentScreen != Screen.MAIN || !writableTransferSession()) return null
+        clearTransferState()
+        transferOpen = true
+        return transferEpoch
+    }
+
+    /** UI-dispatcher action. Network callers must not count packets as local user input. */
+    fun prepareTransfer(token: Any, offer: TransferOffer): Boolean {
+        if (token !== transferEpoch || !transferOpen || operationPending || !writableTransferSession()) return false
+        val previous = transferOffer
+        if (previous != null && (previous !== offer || transferResult !== TransferCommitResult.Stale)) return false
+        transferOffer = offer
+        transferReview = null
+        transferResult = null
+        transferError = null
+        val supplied = sessionPassword
+        operation(loading = false, work = { storage.prepareTransfer(offer, supplied) }, success = {
+            if (token === transferEpoch && transferOpen) when (it) {
+                is TransferPreparation.Review -> transferReview = it.candidate
+                is TransferPreparation.AlreadySaved -> {
+                    transferResult = TransferCommitResult.Saved(it.receipt, null, false)
+                    transferOffer = null
+                    transferOpen = false
+                }
+            }
+        }, failure = {
+            if (token === transferEpoch && transferOpen) {
+                transferOffer = null
+                transferReview = null
+                transferOpen = false
+                transferError = (it as? TransferValidationFailure)?.code ?: TransferError.STORAGE_ERROR
+            }
+        })
+        return true
+    }
+
+    /** The candidate identity is the consent token: an old REVIEW cannot approve a replacement. */
+    fun approveTransfer(token: Any, candidate: TransferAdditionCandidate): Boolean {
+        if (token !== transferEpoch || !transferOpen || operationPending || !writableTransferSession() ||
+            transferReview !== candidate || transferOffer == null) return false
+        val supplied = sessionPassword
+        val approval = TransferSaveGate()
+        transferApproval = approval
+        transferReview = null
+        transferResult = null
+        operation(loading = false, mutation = true, work = {
+            storage.commitTransfer(candidate, supplied, approval)
+        }, success = { result ->
+            if (token === transferEpoch) {
+                transferApproval = null
+                val actual = if (transferCancelRequested && result === TransferCommitResult.Stale)
+                    TransferCommitResult.Cancelled else result
+                when (actual) {
+                    TransferCommitResult.Stale -> transferResult = actual // Same OFFER may be re-prepared, never auto-approved.
+                    TransferCommitResult.Cancelled -> {
+                        transferOffer = null; transferOpen = false; transferResult = actual
+                    }
+                    is TransferCommitResult.Saved -> {
+                        if (actual.requiresStorageReview) review("Transfer was saved. Storage recovery files require review.")
+                        else actual.vault?.let { activeVault = it }
+                        transferOffer = null; transferOpen = false; transferResult = actual
+                    }
+                    is TransferCommitResult.Unconfirmed -> {
+                        review("Could not confirm the transfer result. Review storage before trying again.")
+                        transferResult = actual
+                    }
+                }
+            }
+        }, failure = {
+            if (token === transferEpoch) {
+                review("Could not confirm the transfer result. Review storage before trying again.")
+                transferError = TransferError.STORAGE_ERROR
+            }
+        }, late = {
+            when (it) {
+                is TransferCommitResult.Saved -> "Transfer was saved. Unlock and review before trying again."
+                TransferCommitResult.Cancelled, TransferCommitResult.Stale -> "This transfer did not start a save. Unlock before another attempt."
+                is TransferCommitResult.Unconfirmed -> LATE_SAVE_REVIEW
+            }
+        })
+        return true
+    }
+
+    /** A request signal during saving; only transferResult establishes a terminal cancellation. */
+    fun cancelTransfer(token: Any): TransferCancellation? {
+        if (disposed || token !== transferEpoch) return null
+        if (transferResult is TransferCommitResult.Saved || transferResult is TransferCommitResult.Unconfirmed)
+            return TransferCancellation.TOO_LATE
+        val approval = transferApproval
+        if (approval != null) return approval.cancel().also {
+            if (it == TransferCancellation.CANCELLED) transferCancelRequested = true
+        }
+        if (!transferOpen && transferResult !== TransferCommitResult.Cancelled) return null
+        transferOpen = false
+        transferOffer = null
+        transferReview = null
+        transferResult = TransferCommitResult.Cancelled
+        return TransferCancellation.CANCELLED
     }
 
     companion object {
