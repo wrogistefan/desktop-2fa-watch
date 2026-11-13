@@ -11,7 +11,10 @@ Existing `TransferOfferTest` was included in the focused Wrapper run.
 .\gradlew.bat :app:testDebugUnitTest --tests 'org.desktop2fa.desktop.watch.transfer.TransferWireTest' --tests 'org.desktop2fa.desktop.watch.transfer.TransferOfferTest' --stacktrace
 ```
 
-Full JVM/pinned synthetic interoperability/APK verification is pending. Tests
+Full `python tools/interop/run.py --desktop-source ../../app/build/desktop-pinned`
+verification passed in 6m53s: 428 JVM tests, zero failures/errors, one Windows
+symlink-capability skip, actual pinned synthetic Python interoperability and
+`:app:assembleDebug`. Tests
 use in-memory synthetic streams, not real sockets or TLS. State-machine, socket
 write-watchdog, reconnect and paired-device acceptance are not claimed. Device
 tests remain deferred to final acceptance. See the
