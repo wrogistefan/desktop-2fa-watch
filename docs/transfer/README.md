@@ -8,13 +8,24 @@ are separate version spaces.
 
 **Current state:** the v2 storage codec, receipt validation and receipt-preserving
 manual candidates are implemented. The isolated native proof of concept is merged separately. The explicit
-migration backend is implemented but has no app entry point; archive recovery
-and consent/lifecycle integration remain pending. No receiver or network
+migration backend is implemented but has no app entry point; read-only archive recovery is implemented; consent/lifecycle
+integration and the receiver remain pending. No receiver or network
 permission is enabled in the app. The owner accepted
 the [v2 format, migration and recovery design](vault-v2-proposal.md) on
 2026-11-12 after reviewing its Desktop compatibility consequences, and required
 explicit documentation. Design approval is not an implementation or release result;
 each end user must still consent locally before their v1 vault is migrated.
+
+## Owner execution-order amendment — 2026-11-13
+
+The owner explicitly authorized continuing the full Watch implementation before
+physical-watch testing, with device and paired Desktop acceptance deferred until
+the Desktop side is ready. This changes the execution order in the supplied
+specification, not its wire profile, cryptography or acceptance criteria. Continue
+automated JVM, fault, interoperability, build and PR/CI checks throughout. Mark
+unexecuted device checks NOT RUN and keep the transfer experimental until the
+required final acceptance is completed. No Desktop repository/application change
+is authorized by this Watch task.
 
 ## Relationship to roadmap #13
 
@@ -86,3 +97,5 @@ for executed checks and T0–T12 gaps; source code or prepared CI is not proof o
 passing the required real-Wear/all-platform gate.
 
 - [OFFER validation and pure planning](offer-validation-v1.md): strict wire records, shared synthetic vectors, historical conflicts and private receipt candidates; no receiver/save integration.
+
+- [Transfer commit boundary](commit-boundary-v1.md): local approval/cancellation gate and receipt-verified encrypted publication backend.

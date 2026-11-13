@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Transfer commit foundations
+
+- Add a local approval/cancellation boundary and receipt-verified publication
+  backend using the existing encrypted atomic writer. Recheck stale snapshots,
+  reconcile uncertain outcomes, preserve recovery warnings and prevent automatic
+  write retries. Session/network/UI integration remains separate.
+
 ### Transfer validation foundations
 
 - Add strict offline OFFER parsing and pure v2 batch/receipt preparation with
