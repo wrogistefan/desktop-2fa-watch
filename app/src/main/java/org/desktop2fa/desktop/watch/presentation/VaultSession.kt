@@ -17,6 +17,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.desktop2fa.desktop.watch.model.VaultData
+import org.desktop2fa.desktop.watch.vault.VaultMigrationConsent
+import org.desktop2fa.desktop.watch.vault.VaultMigrationResult
+import org.desktop2fa.desktop.watch.vault.migrateVaultToV2
 import org.desktop2fa.desktop.watch.model.TotpEntry
 import org.desktop2fa.desktop.watch.model.SetupKey
 import org.desktop2fa.desktop.watch.vault.CorruptedVaultException
@@ -45,6 +49,15 @@ import org.desktop2fa.desktop.watch.transfer.TransferValidationFailure
 import org.desktop2fa.desktop.watch.transfer.commitApprovedTransfer
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+
+/** One local v1-to-v2 review. Never persist this object or derive consent from a Boolean preference. */
+internal class TransferMigrationReview(data: VaultData) {
+    private val owned = data.copy(entries = data.entries.toMutableList(),
+        transferReceipts = data.transferReceipts.map { it.snapshot() })
+    fun baseline(): VaultData = owned.copy(entries = owned.entries.toMutableList(),
+        transferReceipts = owned.transferReceipts.map { it.snapshot() })
+    override fun toString() = "TransferMigrationReview(redacted)"
+}
 
 /** Non-secret, process-local handoff; never a persisted receipt or active session. */
 internal class LateSessionNotice(val message: String)
@@ -79,6 +92,11 @@ internal open class VaultSessionStorage(
         // since this UI snapshot was captured; never replace that newer data.
         if (!candidate.matches(Vault.load(file, password).data)) return AccountSaveResult(VaultSaveOutcome.NOT_COMMITTED)
         return persistAccountCandidate(candidate.vault(), file, password)
+    }
+    open fun activateTransfer(baseline: VaultData, password: String): VaultMigrationResult {
+        val archiveRoot = noBackupDirectory ?: throw VaultIOException("Migration safety storage is unavailable")
+        if (presence() != VaultPresence.PRESENT) throw VaultIOException("Existing storage requires review")
+        return migrateVaultToV2(file, archiveRoot, password, baseline, VaultMigrationConsent.CONFIRMED)
     }
     open fun prepareTransfer(offer: TransferOffer, password: String): TransferPreparation {
         if (presence() != VaultPresence.PRESENT) throw TransferValidationFailure(TransferError.STORAGE_ERROR)
@@ -126,6 +144,8 @@ internal class VaultSession(
     var addedAccountIndex by mutableStateOf<Int?>(null)
         private set
 
+    var transferMigrationReview by mutableStateOf<TransferMigrationReview?>(null)
+        private set
     var transferReview by mutableStateOf<TransferAdditionCandidate?>(null)
         private set
     var transferResult by mutableStateOf<TransferCommitResult?>(null)
@@ -150,6 +170,7 @@ internal class VaultSession(
     fun acceptsUiToken(token: Any): Boolean = owns(token)
 
     private fun clearTransferState() {
+        transferMigrationReview = null
         transferApproval?.cancel()
         transferApproval = null
         transferEpoch = Any()
@@ -384,7 +405,7 @@ internal class VaultSession(
     }
 
     fun addAccount() {
-        if (operationPending || disposed || transferOpen || recoverySource != null || activeVault == null) return
+        if (operationPending || disposed || transferOpen || transferMigrationReview != null || recoverySource != null || activeVault == null) return
         wizardState = AccountWizardState()
         addedAccountIndex = null
         errorMessage = null
@@ -399,7 +420,7 @@ internal class VaultSession(
     }
 
     fun submitAccount() {
-        if (operationPending || disposed || transferOpen || recoverySource != null) return
+        if (operationPending || disposed || transferOpen || transferMigrationReview != null || recoverySource != null) return
         val vault = activeVault ?: return
         val draft = wizardState.submit(vault.entries.map { it.accountName })
         wizardState = draft
@@ -410,7 +431,7 @@ internal class VaultSession(
 
     /** In-memory additions only; callers resolve consent/collisions before submission. */
     fun submitAdditions(additions: List<TotpEntry>) {
-        if (operationPending || disposed || transferOpen || recoverySource != null) return
+        if (operationPending || disposed || transferOpen || transferMigrationReview != null || recoverySource != null) return
         val vault = activeVault ?: return
         val candidate = try {
             AccountAdditionCandidate(vault.data, additions)
@@ -440,12 +461,52 @@ internal class VaultSession(
         })
     }
 
+    /** Only an explicit local action requests this review; unlock never calls it. */
+    fun requestTransferMigration(): TransferMigrationReview? {
+        if (disposed || operationPending || transferOpen || transferMigrationReview != null ||
+            currentScreen != Screen.MAIN || recoverySource != null || sessionPassword.isEmpty()) return null
+        val data = activeVault?.data ?: return null
+        if (data.version != 1) return null
+        return TransferMigrationReview(data).also { transferMigrationReview = it }
+    }
+
+    fun cancelTransferMigration(review: TransferMigrationReview): Boolean {
+        if (disposed || operationPending || transferMigrationReview !== review) return false
+        transferMigrationReview = null
+        return true
+    }
+
+    /** A fresh local confirmation of the exact review; never called from incoming network traffic. */
+    fun confirmTransferMigration(consent: TransferMigrationReview): Boolean {
+        if (disposed || operationPending || transferMigrationReview !== consent || transferOpen ||
+            currentScreen != Screen.MAIN || recoverySource != null || sessionPassword.isEmpty()) return false
+        val baseline = consent.baseline()
+        val supplied = sessionPassword
+        transferMigrationReview = null
+        operation(loading = false, mutation = true, work = {
+            storage.activateTransfer(baseline, supplied)
+        }, success = { result ->
+            if (result.requiresReview) review("Transfer activation could not be confirmed cleanly. Review existing storage and its safety copy.")
+            else {
+                activeVault = requireNotNull(result.vault)
+                successMessage = "Transfer storage enabled. The encrypted v1 safety copy is retained; older apps cannot read the new main vault."
+                errorMessage = null
+            }
+        }, failure = {
+            review("Transfer activation failed. Existing storage and any safety copy were preserved; review storage before trying again.")
+        }, late = { result ->
+            if (result.requiresReview) "Transfer activation may have changed storage. Review its main vault and safety copy."
+            else "Transfer storage was enabled. Unlock and review the new main vault and retained v1 safety copy."
+        })
+        return true
+    }
+
     private fun writableTransferSession(): Boolean = !disposed && recoverySource == null &&
         activeVault?.data?.version == 2 && sessionPassword.isNotEmpty()
 
     /** Call only for explicit local activation/new authenticated receive owner, never a remote retry. */
     fun beginTransfer(): Any? {
-        if (operationPending || transferOpen || currentScreen != Screen.MAIN || !writableTransferSession()) return null
+        if (operationPending || transferOpen || transferMigrationReview != null || currentScreen != Screen.MAIN || !writableTransferSession()) return null
         clearTransferState()
         transferOpen = true
         return transferEpoch
