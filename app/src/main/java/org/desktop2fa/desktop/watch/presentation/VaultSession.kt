@@ -14,6 +14,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -170,7 +173,15 @@ internal class VaultSession(
         private set
     var transferError by mutableStateOf<TransferError?>(null)
         private set
-    private var transferEpoch = Any()
+    private class TransferOwnerToken { var closedCode: TransferError? = null }
+    private var transferEpoch = TransferOwnerToken()
+    private val transferUpdates = MutableStateFlow(0L)
+    val transferChanges: StateFlow<Long> = transferUpdates.asStateFlow()
+    private fun notifyTransferChanged() { transferUpdates.value += 1 }
+    fun transferOwnerError(token: Any): TransferError? {
+        val owner = token as? TransferOwnerToken ?: return TransferError.VAULT_LOCKED
+        return owner.closedCode ?: if (owner !== transferEpoch || disposed) TransferError.VAULT_LOCKED else null
+    }
     private var transferOpen = false
     private var transferOffer: TransferOffer? = null
     private var transferApproval: TransferSaveGate? = null
@@ -187,22 +198,24 @@ internal class VaultSession(
     fun uiToken(): Any = generation
     fun acceptsUiToken(token: Any): Boolean = owns(token)
 
-    private fun clearTransferState() {
+    private fun clearTransferState(reason: TransferError = TransferError.VAULT_LOCKED) {
+        transferEpoch.closedCode = reason
         transferStatus = null
         transferMigrationReview = null
         transferApproval?.cancel()
         transferApproval = null
-        transferEpoch = Any()
+        transferEpoch = TransferOwnerToken()
         transferOpen = false
         transferOffer = null
         transferReview = null
         transferResult = null
         transferError = null
         transferCancelRequested = false
+        notifyTransferChanged()
     }
 
-    private fun clearSensitiveState() {
-        clearTransferState()
+    private fun clearSensitiveState(reason: TransferError = TransferError.VAULT_LOCKED) {
+        clearTransferState(reason)
         activeVault = null
         sessionPassword = ""
         passwordInput = ""
@@ -241,7 +254,7 @@ internal class VaultSession(
     }
 
     private fun review(message: String) {
-        clearSensitiveState()
+        clearSensitiveState(TransferError.STORAGE_ERROR)
         currentScreen = Screen.STORAGE_ERROR
         errorMessage = message
     }
@@ -310,6 +323,7 @@ internal class VaultSession(
                     isLoading = false
                     mutationInFlight = false
                     if (cleanupRequested) cleanup()
+                    notifyTransferChanged()
                 }
             }
         }
@@ -536,6 +550,22 @@ internal class VaultSession(
         return transferEpoch
     }
 
+    /** Only the retained receive owner calls this after a full authenticated replacement TLS channel. */
+    fun resumeTransferOwner(token: Any): Boolean {
+        if (token !== transferEpoch || disposed || operationPending || !writableTransferSession() || currentScreen != Screen.MAIN)
+            return false
+        transferApproval = null
+        transferOffer = null
+        transferReview = null
+        transferStatus = null
+        transferResult = null
+        transferError = null
+        transferCancelRequested = false
+        transferOpen = true
+        notifyTransferChanged()
+        return true
+    }
+
     /** UI-dispatcher only; incoming traffic must separately check the inactivity deadline. */
     fun acceptsTransferToken(token: Any): Boolean = token === transferEpoch && writableTransferSession() &&
         currentScreen == Screen.MAIN && transferResult !== TransferCommitResult.Cancelled &&
@@ -647,6 +677,7 @@ internal class VaultSession(
         transferOffer = null
         transferReview = null
         transferResult = TransferCommitResult.Cancelled
+        notifyTransferChanged()
         return TransferCancellation.CANCELLED
     }
 

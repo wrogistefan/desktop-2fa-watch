@@ -95,3 +95,5 @@ containment tests, including the limits of metadata-based checks.
 - [Transfer activation session checks (2026-11-13)](transfer-activation-2026-11-13.md): explicit consent, stale baselines and Lock during migration.
 
 - [Transfer protocol and STATUS (2026-11-13)](transfer-protocol-2026-11-13.md): synthetic state transitions, real encrypted read-only queries and Lock/cancellation boundaries.
+
+- [Transfer owner adapter (2026-11-13)](transfer-owner-2026-11-13.md): synthetic end-to-end protocol/session integration and blocked-writer/lifecycle cases.
