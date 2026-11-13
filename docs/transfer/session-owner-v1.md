@@ -24,8 +24,9 @@ approve/cancel taps must still pass through `userAction`.
 
 On disconnection the old draft/gate is cancelled without sending a false wire
 CANCELLED; an already-started atomic writer finishes. A replacement authenticated
-TLS channel waits for that operation to settle before rearming the same receive
-owner and sending HELLO. The protocol then requires STATUS before retry. Any
+TLS channel sends HELLO/READY immediately, then queues its required STATUS until
+the old writer settles. Only that read waits; heartbeat remains responsive.
+The same receive owner is rearmed before executing the fresh read. Any
 old result belongs to the old channel; the replacement reads the actual receipt.
 Rearming is for a retained authenticated credential only, not an unlock, new
 PAKE or restored preference. Native authentication, at most two reconnect

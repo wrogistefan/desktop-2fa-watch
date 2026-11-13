@@ -117,18 +117,18 @@ class VaultTransferOwnerTest {
         f.ui { owner.approve(old) }; assertEquals(0, f.storage.writes)
         f.ui { owner.approve(fresh) }; f.phase(TransferProtocol.Phase.SAVED); assertEquals("RESULT", f.type())
     }
-    @Test fun replacementChannelWaitsForOldWriterBeforeStatus() = Fixture().use { f ->
+    @Test fun replacementChannelAuthenticatesImmediatelyAndStatusWaitsForOldWriter() = Fixture().use { f ->
         val owner = f.open(); val candidate = f.review(); val gate = Gate(); f.storage.atSave = { gate.block() }
         f.ui { owner.approve(candidate) }; gate.await()
         try {
-            f.ui { owner.disconnected(); owner.authenticated() }
-            assertSame(TransferEffect.CloseChannel, f.next())
-            assertEquals(TransferProtocol.Phase.DISCONNECTED, f.ui { owner.phase })
+            f.ui { owner.disconnected() }; assertSame(TransferEffect.CloseChannel, f.next())
+            f.ready(); f.status(batch)
+            assertEquals(TransferProtocol.Phase.LOOKUP, f.ui { owner.phase })
+            assertEquals(0, f.storage.statusReads)
+            f.ui { owner.receive(TransferWire.ping()) }; assertEquals("PONG", f.type())
         } finally { gate.release.countDown() }
-        f.phase(TransferProtocol.Phase.READY); assertEquals("HELLO", f.type())
-        f.ui { owner.receive("""{"v":1,"type":"READY","session_id":"$sid","max_accounts":50,"max_frame":262144}""".toByteArray()) }
-        f.status(batch); f.phase(TransferProtocol.Phase.SAVED); assertEquals("RESULT", f.type())
-        assertEquals(1, f.storage.writes)
+        f.phase(TransferProtocol.Phase.SAVED); assertEquals("RESULT", f.type())
+        assertEquals(1, f.storage.writes); assertEquals(1, f.storage.statusReads)
     }
     @Test fun heartbeatCannotRenewLocalInactivityAndLeaseNeedsClosureAcknowledgement() = Fixture().use { f ->
         val owner = f.open(); f.review()

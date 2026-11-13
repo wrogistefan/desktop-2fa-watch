@@ -22,7 +22,8 @@ internal class VaultTransferOwner private constructor(
 ) {
     private val output = Channel<TransferEffect>(16)
     private var pending: TransferEffect? = null
-    private var resumeWaiting = false
+    private var needsRearm = false
+    private var requestWaiting = false
     private var ended = false
     private var released = false
     private val observer: Job = scope.launch(start = CoroutineStart.LAZY) {
@@ -49,12 +50,8 @@ internal class VaultTransferOwner private constructor(
     }
     fun authenticated() {
         if (!guard()) return
-        if (phase == TransferProtocol.Phase.DISCONNECTED) {
-            // An old non-cancellable writer must settle before STATUS can inspect it.
-            if (session.operationPending) { resumeWaiting = true; return }
-            if (!session.resumeTransferOwner(token)) { execute(protocol.invalid(TransferError.STORAGE_ERROR)); return }
-        }
-        resumeWaiting = false
+        if (phase == TransferProtocol.Phase.DISCONNECTED) needsRearm = true
+        // HELLO is not blocked by an old writer; the eventual STATUS read waits for it.
         execute(protocol.authenticated())
     }
     fun receive(payload: ByteArray) {
@@ -67,7 +64,7 @@ internal class VaultTransferOwner private constructor(
     fun approve(candidate: TransferAdditionCandidate) { if (guard()) execute(protocol.approve(candidate)) }
     fun cancel() { if (guard()) execute(protocol.cancel()) }
     fun tick() { if (guard()) execute(protocol.tick()) }
-    fun disconnected() { resumeWaiting = false; if (!ended) execute(protocol.disconnected()) }
+    fun disconnected() { needsRearm = false; if (!ended) execute(protocol.disconnected()) }
     fun close() { if (!ended) execute(protocol.locked()) }
     private fun clearOutput() { while (output.tryReceive().isSuccess) { /* Drop obsolete channel messages. */ } }
     private fun emit(effect: TransferEffect) {
@@ -85,17 +82,9 @@ internal class VaultTransferOwner private constructor(
             TransferEffect.EndSession -> {
                 emit(effect); ended = true; pending = null; output.close(); observer.cancel()
             }
-            is TransferEffect.Lookup -> {
+            is TransferEffect.Lookup, is TransferEffect.Prepare, is TransferEffect.Save -> {
                 pending = effect
-                if (!session.queryTransferStatus(token, effect.transferId, effect.sha256)) fail(effect.token)
-            }
-            is TransferEffect.Prepare -> {
-                pending = effect
-                if (!session.prepareTransfer(token, effect.offer)) fail(effect.token)
-            }
-            is TransferEffect.Save -> {
-                pending = effect
-                if (!session.approveTransfer(token, effect.candidate)) fail(effect.token)
+                startRequest()
             }
             is TransferEffect.CancelSave -> {
                 val signal = session.cancelTransfer(token)
@@ -103,15 +92,31 @@ internal class VaultTransferOwner private constructor(
                 else execute(protocol.cancellationSignal(effect.token, signal))
             }
             is TransferEffect.DropPending -> {
-                pending = null
+                pending = null; requestWaiting = false
                 session.cancelTransfer(token)
             }
+        }
+    }
+    private fun startRequest() {
+        if (session.operationPending) { requestWaiting = true; return }
+        requestWaiting = false
+        if (needsRearm) {
+            if (!session.resumeTransferOwner(token)) {
+                execute(protocol.invalid(TransferError.STORAGE_ERROR)); return
+            }
+            needsRearm = false
+        }
+        when (val request = pending) {
+            is TransferEffect.Lookup -> if (!session.queryTransferStatus(token, request.transferId, request.sha256)) fail(request.token)
+            is TransferEffect.Prepare -> if (!session.prepareTransfer(token, request.offer)) fail(request.token)
+            is TransferEffect.Save -> if (!session.approveTransfer(token, request.candidate)) fail(request.token)
+            else -> Unit
         }
     }
     private fun fail(operation: Any) { execute(protocol.failed(operation, TransferError.STORAGE_ERROR)) }
     private fun synchronize() {
         if (!guard() || session.operationPending) return
-        if (resumeWaiting) { authenticated(); return }
+        if (requestWaiting) { startRequest(); return }
         when (val request = pending) {
             is TransferEffect.Lookup -> when (val result = session.transferStatus) {
                 is TransferStatusResult.Found -> { pending = null; execute(protocol.lookupCompleted(request.token, result.receipt)) }

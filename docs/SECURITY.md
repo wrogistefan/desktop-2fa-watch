@@ -4,7 +4,7 @@ The [accepted Watch v2 design](transfer/vault-v2-proposal.md) defines the
 transfer-receipt format, header AAD, explicit opt-in migration, retained encrypted
 v1 safety copy and read-only recovery. The v2 codec/receipt validation is now
 implemented alongside the unchanged v1 format. An explicit migration backend is implemented but has no app entry point.
-Read-only archive recovery is implemented; runtime consent/lifecycle integration and transfer remain pending. Design acceptance is not test evidence or release approval;
+Read-only archive recovery and internal migration/transfer session ownership are implemented; the end-user consent UI and network receiver remain pending. Design acceptance is not test evidence or release approval;
 Desktop wire compatibility does not imply direct v2 file compatibility.
 
 This describes the 0.2.0 MVP and its current boundaries. The app has not had an
