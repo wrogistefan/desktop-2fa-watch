@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Transfer protocol foundations
+
+- Add one-batch authenticated protocol ordering, consent/cancellation effects,
+  reconnect STATUS gating and monotonic budgets. Add read-only authenticated
+  STATUS to the password session without writes or implicit migration. The
+  serialized effect adapter and network/UI receiver remain pending.
+
 ### Transfer wire foundations
 
 - Add strict Desktop-to-Watch message schemas and metadata-only Watch replies,

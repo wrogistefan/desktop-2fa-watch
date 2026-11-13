@@ -93,3 +93,5 @@ containment tests, including the limits of metadata-based checks.
 - [Transfer wire codec checks (2026-11-13)](transfer-wire-2026-11-13.md): strict schemas, exact bytes and bounded synthetic streams.
 
 - [Transfer activation session checks (2026-11-13)](transfer-activation-2026-11-13.md): explicit consent, stale baselines and Lock during migration.
+
+- [Transfer protocol and STATUS (2026-11-13)](transfer-protocol-2026-11-13.md): synthetic state transitions, real encrypted read-only queries and Lock/cancellation boundaries.

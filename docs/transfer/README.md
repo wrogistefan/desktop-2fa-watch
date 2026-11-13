@@ -108,3 +108,5 @@ passing the required real-Wear/all-platform gate.
 - [Authenticated wire codec](wire-codec-v1.md): strict directional messages, exact-byte OFFER digest and bounded framing; controller/TLS/network integration remains pending.
 
 - [Explicit activation session contract](activation-v1.md): identity-bound local migration consent, retained v1 recovery copy and older-reader consequences; no app entry point yet.
+
+- [Protocol state and STATUS](protocol-state-v1.md): one-batch ordering, exact local approval, fresh authenticated receipt reads and monotonic budgets; session/transport effect adapter remains pending.
