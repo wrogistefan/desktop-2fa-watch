@@ -24,6 +24,15 @@ class TransferSessionTest {
         @Volatile var beforeCommit: () -> Unit = {}
         @Volatile var atSave: () -> Unit = {}
         @Volatile var writes = 0
+        @Volatile var migrations = 0
+        @Volatile var beforeMigration: () -> Unit = {}
+        override fun activateTransfer(baseline: VaultData, password: String): VaultMigrationResult {
+            beforeMigration()
+            check(baseline == current.data) { "Synthetic stale migration" }
+            migrations++
+            current = Vault(baseline.copy(version = 2))
+            return VaultMigrationResult(VaultSaveOutcome.COMMITTED, current)
+        }
         override fun unlock(password: String) = current
         override fun prepareTransfer(offer: TransferOffer, password: String): TransferPreparation {
             beforePrepare(); return TransferPlanner.prepare(current.data, offer)
@@ -151,6 +160,71 @@ class TransferSessionTest {
         runBlocking { withContext(f.io) {} }
         assertEquals(1, f.storage.writes)
         f.ui { assertNull(activeVault); assertNull(transferResult); assertNull(cancelTransfer(token)) }
+    }
+    @Test fun unlockNeverMigratesAndOnlyExactLocalConsentCanActivate() = Fixture().use { f ->
+        f.storage.current = Vault.create(); f.unlock()
+        assertEquals(0, f.storage.migrations)
+        val consent = f.ui { requireNotNull(requestTransferMigration()) }
+        assertEquals(0, f.storage.migrations)
+        f.ui {
+            assertNull(beginTransfer()); assertNull(requestTransferMigration())
+            assertFalse(confirmTransferMigration(TransferMigrationReview(VaultData(1))))
+            assertTrue(confirmTransferMigration(consent))
+        }; f.idle()
+        assertEquals(1, f.storage.migrations)
+        f.ui {
+            assertEquals(2, activeVault!!.data.version); assertNull(transferMigrationReview)
+            assertFalse(confirmTransferMigration(consent)); assertNotNull(beginTransfer())
+        }
+    }
+    @Test fun migrationRefusalAndLockDiscardConsent() = Fixture().use { f ->
+        f.storage.current = Vault.create(); f.unlock()
+        val refused = f.ui { requireNotNull(requestTransferMigration()) }
+        f.ui { assertTrue(cancelTransferMigration(refused)); assertFalse(confirmTransferMigration(refused)) }
+        val old = f.ui { requireNotNull(requestTransferMigration()) }
+        f.ui { lock(); assertNull(transferMigrationReview) }; f.idle(); f.unlock()
+        f.ui { assertFalse(confirmTransferMigration(old)); assertNull(transferMigrationReview) }
+        assertEquals(0, f.storage.migrations); assertEquals(1, f.storage.current.data.version)
+    }
+    @Test fun staleMigrationDoesNotReplaceDataOrReuseConsent() = Fixture().use { f ->
+        f.storage.current = Vault.create(); f.unlock()
+        val consent = f.ui { requireNotNull(requestTransferMigration()) }
+        f.storage.current = Vault.create().apply { addEntry("new", "synthetic", "AE") }
+        f.ui { confirmTransferMigration(consent) }; f.idle()
+        assertEquals(0, f.storage.migrations); assertEquals(1, f.storage.current.entries.size)
+        f.ui { assertNull(activeVault); assertEquals(Screen.STORAGE_ERROR, currentScreen); assertFalse(confirmTransferMigration(consent)) }
+    }
+    @Test fun lockDuringStartedMigrationHidesUiAndPreservesLateNotice() = Fixture().use { f ->
+        f.storage.current = Vault.create(); f.unlock()
+        val consent = f.ui { requireNotNull(requestTransferMigration()) }; val gate = Gate()
+        f.storage.beforeMigration = { gate.block() }
+        f.ui { confirmTransferMigration(consent) }; gate.await()
+        try { f.ui { lock(); assertNull(activeVault); assertNull(transferMigrationReview) } }
+        finally { gate.release.countDown() }
+        f.idle(); assertEquals(1, f.storage.migrations)
+        f.ui { assertNull(activeVault); assertEquals(Screen.STORAGE_ERROR, currentScreen) }
+        assertNotNull(f.storage.pendingNotice())
+    }
+    @Test fun migrationReviewBlocksManualWritesAndOwnsPrivateSnapshot() = Fixture().use { f ->
+        f.storage.current = Vault.create().apply { addEntry("kept", "synthetic", "AE") }; f.unlock()
+        val consent = f.ui { requireNotNull(requestTransferMigration()) }
+        consent.baseline().entries.clear()
+        assertEquals(1, consent.baseline().entries.size)
+        f.ui {
+            addAccount(); assertEquals(Screen.MAIN, currentScreen)
+            submitAdditions(listOf(org.desktop2fa.desktop.watch.model.TotpEntry("manual", "synthetic", "AE")))
+            assertFalse(operationPending); assertTrue(cancelTransferMigration(consent))
+            addAccount(); assertEquals(Screen.ADD_ACCOUNT, currentScreen)
+        }; assertEquals(0, f.storage.migrations)
+    }
+    @Test fun lockBeforeQueuedMigrationPreventsStorageEntry() = Fixture().use { f ->
+        f.storage.current = Vault.create(); f.unlock()
+        val consent = f.ui { requireNotNull(requestTransferMigration()) }; val gate = Gate()
+        val occupied = CoroutineScope(f.io).launch { gate.block() }; gate.await()
+        try { f.ui { confirmTransferMigration(consent); lock(); assertNull(transferMigrationReview) } }
+        finally { gate.release.countDown() }
+        runBlocking { occupied.join() }; f.idle()
+        assertEquals(0, f.storage.migrations)
     }
     companion object {
         private fun offer() = TransferOffer.parse(("""{"v":1,"type":"OFFER","transfer_id":"11111111111111111111111111111111","accounts":[{"item_id":"22222222222222222222222222222222","kind":"totp","issuer":"synthetic","account":"synthetic account","secret":"AA","algorithm":"SHA1","digits":6,"period":30}]}""").toByteArray())

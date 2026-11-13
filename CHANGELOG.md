@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Transfer activation foundations
+
+- Add session-owned, explicit v1-to-v2 migration consent with a private reviewed
+  baseline, shared writer ownership and Lock/late-save handling. Unlock never
+  migrates. The confirmation UI and receiver entry point remain pending.
+
 ### Transfer session foundations
 
 - Connect internal transfer planning/approval to the password session and shared
