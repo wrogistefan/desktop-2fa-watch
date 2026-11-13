@@ -476,7 +476,12 @@ internal class VaultSession(
         return true
     }
 
-    /** A fresh local confirmation of the exact review; never called from incoming network traffic. */
+    /**
+     * A fresh local confirmation of the exact review; never called from network traffic.
+     * Returns only whether asynchronous work was accepted, never migration success.
+     * Completion updates activeVault/successMessage or enters storage review; a closed
+     * owner receives only the existing late-save notice, never a reopened session.
+     */
     fun confirmTransferMigration(consent: TransferMigrationReview): Boolean {
         if (disposed || operationPending || transferMigrationReview !== consent || transferOpen ||
             currentScreen != Screen.MAIN || recoverySource != null || sessionPassword.isEmpty()) return false
