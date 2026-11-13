@@ -106,3 +106,5 @@ passing the required real-Wear/all-platform gate.
 - [Session storage integration](session-integration-v1.md): shared writer mutex, consent ownership, cancellation and Lock; receiver UI/network integration remains pending.
 
 - [Authenticated wire codec](wire-codec-v1.md): strict directional messages, exact-byte OFFER digest and bounded framing; controller/TLS/network integration remains pending.
+
+- [Explicit activation session contract](activation-v1.md): identity-bound local migration consent, retained v1 recovery copy and older-reader consequences; no app entry point yet.
