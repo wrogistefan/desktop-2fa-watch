@@ -89,3 +89,5 @@ containment tests, including the limits of metadata-based checks.
 - [Transfer publication backend, 2026-11-13](transfer-commit-2026-11-13.md): local approval gate, actual receipt verification and fault regressions; device tests deferred to final acceptance.
 
 - [Transfer session integration (2026-11-13)](transfer-session-2026-11-13.md): synthetic ownership, consent and Lock/cancellation checks.
+
+- [Transfer wire codec checks (2026-11-13)](transfer-wire-2026-11-13.md): strict schemas, exact bytes and bounded synthetic streams.

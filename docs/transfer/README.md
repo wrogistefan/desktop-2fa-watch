@@ -101,3 +101,5 @@ passing the required real-Wear/all-platform gate.
 - [Transfer commit boundary](commit-boundary-v1.md): local approval/cancellation gate and receipt-verified encrypted publication backend.
 
 - [Session storage integration](session-integration-v1.md): shared writer mutex, consent ownership, cancellation and Lock; receiver UI/network integration remains pending.
+
+- [Authenticated wire codec](wire-codec-v1.md): strict directional messages, exact-byte OFFER digest and bounded framing; controller/TLS/network integration remains pending.

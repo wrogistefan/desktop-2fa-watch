@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Transfer wire foundations
+
+- Add strict Desktop-to-Watch message schemas and metadata-only Watch replies,
+  with bounded exact framing and monotonic read deadlines. No network receiver
+  or protocol ordering controller is enabled.
+
 ### Transfer session foundations
 
 - Connect internal transfer planning/approval to the password session and shared

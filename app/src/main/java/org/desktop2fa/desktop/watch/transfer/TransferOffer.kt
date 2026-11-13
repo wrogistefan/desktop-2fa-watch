@@ -12,7 +12,7 @@ internal enum class TransferError {
     INVALID_MESSAGE, UNSUPPORTED_VERSION, INVALID_ACCOUNT, UNSUPPORTED_TOTP,
     LIMIT_EXCEEDED, DUPLICATE_IN_BATCH, NAME_CONFLICT, PARAMETER_CONFLICT, TX_CONFLICT,
     // Existing wire code: storage is invalid or not transfer-ready. No automatic retry/migration.
-    STORAGE_ERROR,
+    STORAGE_ERROR, BUSY, VAULT_LOCKED, SESSION_EXPIRED, TOO_LATE,
 }
 
 /** Fixed diagnostics only: never attach parser exceptions or account values. */
