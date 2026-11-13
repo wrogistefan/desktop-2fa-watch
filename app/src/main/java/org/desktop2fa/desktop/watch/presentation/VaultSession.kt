@@ -118,8 +118,10 @@ internal open class VaultSessionStorage(
     }
     open fun prepareTransfer(offer: TransferOffer, password: String): TransferPreparation =
         TransferPlanner.prepare(loadTransferVault(password).data, offer)
-    open fun transferStatus(transferId: String, sha256: String, password: String): TransferReceipt? =
-        TransferPlanner.status(loadTransferVault(password).data, transferId, sha256)
+    open fun transferStatus(transferId: String, sha256: String, password: String): TransferReceipt? {
+        TransferPlanner.requireIdentifiers(transferId, sha256) // Cheap validation before file inspection/KDF.
+        return TransferPlanner.status(loadTransferVault(password).data, transferId, sha256)
+    }
     open fun commitTransfer(candidate: TransferAdditionCandidate, password: String, approval: TransferSaveGate): TransferCommitResult =
         commitApprovedTransfer(candidate, file, password, approval)
     companion object { private val notices = ConcurrentHashMap<String, LateSessionNotice>() }

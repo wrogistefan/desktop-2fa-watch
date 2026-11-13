@@ -12,8 +12,15 @@ invalidation, heartbeat/idle boundaries and fixed review/session expiry.
 .\gradlew.bat :app:testDebugUnitTest --tests 'org.desktop2fa.desktop.watch.transfer.TransferProtocolTest' --tests 'org.desktop2fa.desktop.watch.presentation.TransferSessionTest' --tests 'org.desktop2fa.desktop.watch.presentation.TransferStatusStorageTest' --stacktrace
 ```
 
-Focused verification passed 42 tests (19 protocol, 21 session, two real
-encrypted STATUS cases), zero failures/errors/skips. Full JVM/pinned synthetic
-interoperability/APK verification is pending. No socket, native reconnect, Compose receiver or device/process-death
+The initial implementation `fb9eac7` passed the full runner
+`python tools/interop/run.py --desktop-source ../../app/build/desktop-pinned`
+in 6m24s: 460 JVM tests, zero failures/errors, one Windows symlink-capability
+skip, actual pinned synthetic Python interoperability and debug APK.
+
+After review, focused verification passed 45 tests (21 protocol, 21 session,
+three STATUS storage cases), zero failures/errors/skips. Added cases prove
+malformed identifiers fail before file/KDF access, a 60-second save with live
+heartbeats still emits RESULT, and a silent-peer timeout loses delivery without
+claiming rollback. The final-head full suite is required in CI. No socket, native reconnect, Compose receiver or device/process-death
 acceptance is claimed. The event/effect machine still needs its serialized
 session/transport adapter. See the [protocol contract](../transfer/protocol-state-v1.md).

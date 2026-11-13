@@ -134,6 +134,26 @@ class TransferProtocolTest {
         clock.time = 50_000; assertTrue(p.tick().contains(TransferEffect.CloseChannel))
         assertEquals(TransferProtocol.Phase.DISCONNECTED, p.phase)
     }
+    @Test fun slowStorageWithLiveHeartbeatsStillReportsConfirmedCommit() {
+        val clock = Clock(); val p = protocol(clock); val candidate = reviewing(p)
+        val save = p.approve(candidate).single() as TransferEffect.Save
+        for (time in 10_000L..60_000L step 10_000L) {
+            clock.time = time
+            assertEquals(listOf("PONG"), p.receive(TransferPeerMessage.Ping).types())
+            assertEquals(TransferProtocol.Phase.SAVING, p.phase)
+        }
+        assertEquals(listOf("RESULT"), p.committed(save.token, TransferCommitResult.Saved(candidate.receipt, null, false)).types())
+    }
+    @Test fun silentPeerTimeoutDoesNotClaimAnAlreadyStartedWriteWasRolledBack() {
+        val clock = Clock(); val p = protocol(clock); val candidate = reviewing(p)
+        val save = p.approve(candidate).single() as TransferEffect.Save
+        clock.time = 15_000
+        val disconnected = p.committed(save.token, TransferCommitResult.Saved(candidate.receipt, null, false))
+        assertTrue(disconnected.contains(TransferEffect.CloseChannel)); assertTrue(disconnected.types().isEmpty())
+        ready(p)
+        val query = p.receive(TransferPeerMessage.Status(batch.transferId, batch.sha256)).single() as TransferEffect.Lookup
+        assertEquals(listOf("RESULT"), p.lookupCompleted(query.token, candidate.receipt).types())
+    }
     @Test fun sessionExpiryRemainsScheduledAcrossDisconnection() {
         val clock = Clock(); val p = protocol(clock, 100); ready(p); p.disconnected()
         assertEquals(100L, p.nextDeadline()); clock.time = 100
