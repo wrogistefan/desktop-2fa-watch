@@ -18,8 +18,12 @@ missing main, orphan recovery files, partial/mutated writer data and no automati
 retry/reuse of an approval. Writer seams use memory-only synthetic snapshots;
 they do not substitute for the real encrypted round-trip cases.
 
-Full JVM/actual pinned synthetic Python interoperability/debug APK verification
-is running and must be recorded after completion. The existing atomic writer,
+Full verification completed successfully with `python tools/interop/run.py
+--desktop-source ../../app/build/desktop-pinned`: 407 JVM tests, zero failures or
+errors, one Windows symlink-capability skip; actual pinned synthetic Python
+interoperability and `:app:assembleDebug` passed. The run took 6m17s. Both Android
+CI runs for the reviewed implementation also passed; Kilo reported no issues.
+Sourcery review was unavailable because its weekly review budget was exhausted. The existing atomic writer,
 Argon2id parameters and AES-GCM format are unchanged. Session/lifecycle/write-lock
 integration is still required: this synchronous helper's caller must hold the
 existing session mutex and own a non-cancellable mutation. No device, directory
