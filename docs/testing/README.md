@@ -90,4 +90,6 @@ containment tests, including the limits of metadata-based checks.
 
 - [Transfer session integration (2026-11-13)](transfer-session-2026-11-13.md): synthetic ownership, consent and Lock/cancellation checks.
 
+- [Transfer wire codec checks (2026-11-13)](transfer-wire-2026-11-13.md): strict schemas, exact bytes and bounded synthetic streams.
+
 - [Transfer activation session checks (2026-11-13)](transfer-activation-2026-11-13.md): explicit consent, stale baselines and Lock during migration.
