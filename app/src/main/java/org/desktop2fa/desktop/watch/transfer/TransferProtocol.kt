@@ -49,7 +49,8 @@ internal class TransferProtocol(
     private var nextPing = Long.MAX_VALUE
     private var cancelRequested = false
 
-    init { require(Regex("[0-9a-f]{32}").matches(sessionId)) }
+    init { require(sessionIdPattern.matches(sessionId)) }
+    companion object { private val sessionIdPattern = Regex("[0-9a-f]{32}") }
     /** Earliest monotonic wakeup; callers need no polling loop. */
     fun nextDeadline(): Long? = when (phase) {
         Phase.CLOSED -> null

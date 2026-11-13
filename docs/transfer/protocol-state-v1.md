@@ -56,7 +56,11 @@ injected monotonic time. Complete-frame idle budgets are
 expiry. Heartbeats do not renew either cutoff or the app's 60-second inactivity
 lock. `nextDeadline()` supplies an absolute wakeup, including credential expiry
 while disconnected, so the owner needs no active polling. Read/write watchdogs
-and complete-frame tracking remain transport responsibilities.
+and complete-frame tracking remain transport responsibilities. Pending storage
+is not an exemption from the specified network deadline: the owner must continue
+receiving/responding to desktop heartbeats on the UI/reactor while KDF/I/O runs
+elsewhere. A silent peer closes the channel, not a started writer. A resulting
+lost RESULT is resolved with STATUS; it is never reported as rolled back.
 
 ## Threats and remaining integration boundaries
 

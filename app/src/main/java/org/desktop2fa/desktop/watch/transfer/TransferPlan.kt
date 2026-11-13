@@ -32,6 +32,12 @@ internal class TransferAdditionCandidate internal constructor(
 }
 
 internal object TransferPlanner {
+    private val transferIdPattern = Regex("[0-9a-f]{32}")
+    private val digestPattern = Regex("[0-9a-f]{64}")
+    fun requireIdentifiers(transferId: String, sha256: String) {
+        if (!transferIdPattern.matches(transferId) || !digestPattern.matches(sha256))
+            throw TransferValidationFailure(TransferError.INVALID_MESSAGE)
+    }
     /** Unknown is absence from retained receipts, never proof of no historical save. */
     fun status(snapshot: VaultData, transferId: String, sha256: String): TransferReceipt? {
         if (snapshot.version != 2) throw TransferValidationFailure(TransferError.STORAGE_ERROR)
@@ -41,8 +47,7 @@ internal object TransferPlanner {
             // Invalid entries or receipts are local storage failures, never a migration/retry signal.
             throw TransferValidationFailure(TransferError.STORAGE_ERROR)
         }
-        if (!Regex("[0-9a-f]{32}").matches(transferId) || !Regex("[0-9a-f]{64}").matches(sha256))
-            throw TransferValidationFailure(TransferError.INVALID_MESSAGE)
+        requireIdentifiers(transferId, sha256)
         val receipt = snapshot.transferReceipts.singleOrNull { it.transferId == transferId } ?: return null
         if (receipt.offerSha256 != sha256) throw TransferValidationFailure(TransferError.TX_CONFLICT)
         return receipt.snapshot()

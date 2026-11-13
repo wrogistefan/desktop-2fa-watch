@@ -28,6 +28,15 @@ class TransferStatusStorageTest {
         catch (_: InvalidPasswordException) {}
         assertArrayEquals(bytes, file.readBytes()); assertEquals(listOf(receipt), Vault.load(file, password).data.transferReceipts)
     }
+    @Test fun malformedIdentifiersAreRejectedBeforeAnyFileOrPasswordAccess() {
+        val missing = File(temporary.root, "synthetic-nonexistent.d2fa")
+        val storage = VaultSessionStorage(missing) { true }
+        for ((id, sha) in listOf("invalid" to receipt.offerSha256, receipt.transferId to "invalid")) {
+            try { storage.transferStatus(id, sha, ""); fail() }
+            catch (failure: TransferValidationFailure) { assertEquals(TransferError.INVALID_MESSAGE, failure.code) }
+        }
+        assertFalse(missing.exists())
+    }
     @Test fun recoveryArtifactsOrCorruptionNeverBecomeUnknownOrEmptyStorage() {
         val (file, storage) = fixture(); val bytes = file.readBytes()
         val pending = File(file.path + ".tmp"); pending.writeBytes(byteArrayOf(1))
